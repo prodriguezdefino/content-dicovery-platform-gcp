@@ -1,0 +1,14 @@
+{
+  "version" : 2,
+  "category" : "default",
+  "id" : "IDENTIFIER",
+  "machine_info" : {
+    "hostname" : "load_test_generator"
+  },
+  "send_time" : "SEND_TIME_TIMESTAMP",
+  "recv_time" : "RECV_TIME_TIMESTAMP",
+  "source_type" : "unix",
+  "source" : "@",
+  "data" : "{\"user_id\":USER_ID,\"event\":\"EVENT_NAME_HERE\",\"properties\":{\"client_send_timestamp\":EPOCH_MS_TIMESTAMP_HERE,\"event_source\":\"generator\",\"client_track_timestamp\":EPOCH_MS_TIMESTAMP_HERE,\"device\":\"pPgaazpTfa5RCKHk6bYxgTpPLp6Ngnp11JpbkCHak7oYi4gWzVGytPEMS1FGHMUxRUkaKdMpDnmvHb1efgr5kj5wgMjSj01qNSkdva7cyUkJfLm1wxAIIec1S27veV1Vz9ZpElGVBlr2520cQhZJCo1cIEqhMmdiVL5qLLXW2qXDaj0KLE9Y7ospU7JXSuqrSRq1QLo9Zu6GcFVhhX96OFwOROFLknKw84KizsotBqUwLhHvtAwLs9RqGGT3DjlFOi9lhzHIYh5TxhhpNfbPcvgfWoHuitCDyYlyRzjQ4tcjw28AzHlXrq8UC101zuvA16frCpZUDFngDZLG5xfz60KFVKyEVglnsQx2q7vhUtON3PjfAoH9j1iMHTCooZQD1XzFSJUP6JPZ7byxpghvRajRLTEP6fo6SaLLSYjaUTNE9IYvS5BKRMedSkCqe0P9kpTQz7oTE8IoJRZUOxgvQH2H82pmOJphJfG4XTlhJWpgEVCC2RMFU77bZkNpWokWVgygIdkVBB3hZIDhmy484B8lnAwl8DAUMGsg99Ejw4SextlQdGdpGqQq0p84lbNc1umXrCFHdtNUG2bkpGLlEg77f6oeqcYHzbCkByW8QtcklwwPlgdqs7JCeA66Ls5L0KZs7LIrKTp9ci91qZPw0Uo1vICH7NxZHFAGloUykoGTXPgJOVP7Zp7COHzCPb7OQb6hxjDiHqtDrx4cmqHGjp9AXbQDcpXAGuHmtJE5iFvSz1dHrXIUdC63NYFTvAUxEzUDArOQFskw3CnezcPErgsqCSav0yRCFYoPrx0zTVIYgpfP18k9Vh0hHa06m4r7vmpMID0DmWJjH7ekr4NnFeZmsRv9Vrf0MvC3cX5DsUdAJNgha8v7ylL1QfBkRvX1eykkMbv8guK6wwz8EJnwBHrLxUImOIaCGaSRogKuDnBwdglvfpF2rnWPTd6LjUmAk8ZOLgmHeZhlNCsds2GUsdeKuaQhhTvtFCXmBkMbdRq8sEfVOY4kt8eJ7p21eX46yp1V\"}}",
+  "event_type" : "EVENT_NAME_HERE"
+}
