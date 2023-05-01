@@ -13,12 +13,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam;
+package com.google.cloud.pso.beam.contentextract;
 
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileIO;
@@ -33,8 +34,13 @@ import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.FlatMapElements;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.WithFailures;
+import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Repeatedly;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.joda.time.Duration;
 
 /**
  * Simple pipeline that captures a Google Drive links, capture the Documents in it (just that doc in
@@ -52,9 +58,9 @@ public class ContentExtractionPipeline {
 
     @Description("The GCS location where extracted content will be written to.")
     @Validation.Required
-    String getGCSLocation();
+    String getBucketLocation();
 
-    void setGCSLocation(String value);
+    void setBucketLocation(String value);
   }
 
   public static void main(String[] args) {
@@ -66,7 +72,15 @@ public class ContentExtractionPipeline {
 
     // Read the events with Google Drive identifiers and extract the content identifier
     var maybeUrls = pipeline
-      .apply("ReadFileEvents", PubsubIO.readMessages().fromSubscription(options.getSubscription()))
+      .apply("ReadSharedURLs", PubsubIO.readMessages().fromSubscription(options.getSubscription()))
+      .apply("ApplyWindow",
+        Window
+          .<PubsubMessage>into(
+            FixedWindows.of(Duration.standardMinutes(1)))
+          .triggering(
+            Repeatedly.forever(AfterWatermark.pastEndOfWindow()))
+          .discardingFiredPanes()
+          .withAllowedLateness(Duration.standardMinutes(1)))
       .apply("ExtractContentId",
         MapElements
           .into(TypeDescriptors.strings())
@@ -107,21 +121,42 @@ public class ContentExtractionPipeline {
       .apply("ToJSONLFormat",
         FlatMapElements
           .into(TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
-          .via((KV<String, List<String>> docContent) -> Utilities.docContentToKeyedJSONLFormat(docContent))
+          .via(Utilities::docContentToKeyedJSONLFormat)
           .exceptionsVia(new WithFailures.ExceptionAsMapHandler<KV<String, List<String>>>() {
           }));
 
     // we grab the jsonl formatted content and write it into the provided GCS location
     maybeJSONLs
       .output()
-      .apply("WriteToGCS",
+      .apply("WriteJSONLToGCS",
+        FileIO.<String, KV<String, String>>writeDynamic()
+          .by(nameAndLineContent -> nameAndLineContent.getKey())
+          .withDestinationCoder(StringUtf8Coder.of())
+          .via(Contextful.fn(nameAndLineContent -> nameAndLineContent.getValue()), TextIO.sink())
+          .to(options.getBucketLocation())
+          .withNaming(
+            Contextful.fn(name -> FileIO.Write.defaultNaming("jsonl_docs" + name, ".jsonl"))));
+
+    // also we grab the content an create document chunks that will be used to extract embeddings
+    maybeDocContents
+      .output()
+      .apply("ExtractEmbeddings",
+        MapElements
+          .into(
+            TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
+          .via(
+            content
+            -> KV.of(
+              content.getKey(),
+              content.getValue().stream().collect(Collectors.joining("\n")))))
+      .apply("WriteContentToGCS",
         FileIO.<String, KV<String, String>>writeDynamic()
           .by(nameAndContent -> nameAndContent.getKey())
           .withDestinationCoder(StringUtf8Coder.of())
-          .via(Contextful.fn(nameAndContent -> nameAndContent.getValue()),
-            TextIO.sink())
-          .to(options.getGCSLocation())
-          .withNaming(Contextful.fn(name -> FileIO.Write.defaultNaming("jsonl_docs" + name, ".jsonl"))));
+          .via(Contextful.fn(nameAndContent -> nameAndContent.getValue()), TextIO.sink())
+          .to(options.getBucketLocation())
+          .withNaming(
+            Contextful.fn(name -> FileIO.Write.defaultNaming("doc_content" + name, ".jsonl"))));
 
     pipeline.run();
   }
