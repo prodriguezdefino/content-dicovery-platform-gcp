@@ -19,6 +19,11 @@ resource "google_project_service" "docs_service" {
   service = "docs.googleapis.com"
 }
 
+resource "google_project_service" "secret_service" {
+  project = var.project
+  service = "secretmanager.googleapis.com"
+}
+
 resource "google_pubsub_topic" "topic" {
   project = var.project
   name = var.run_name
@@ -37,11 +42,32 @@ resource "google_service_account" "dataflow_runner_sa" {
   account_id = "${var.run_name}-df-sa"
 }
 
+resource "google_service_account_key" "sa_key" {
+  service_account_id = google_service_account.dataflow_runner_sa.name
+}
+
+resource "google_secret_manager_secret" "sa_secret" {
+  project    = var.project
+  secret_id = var.run_name
+
+  replication {
+    automatic = true
+  }
+
+  depends_on = [google_project_service.secret_service]
+}
+
+resource "google_secret_manager_secret_version" "sa_secret_version" {
+  secret = google_secret_manager_secret.sa_secret.id
+
+  secret_data = google_service_account_key.sa_key.private_key
+}
+
 module "data_processing_project_membership_roles" {
   source                  = "terraform-google-modules/iam/google//modules/member_iam"
   service_account_address = google_service_account.dataflow_runner_sa.email
   project_id              = var.project
-  project_roles           = ["roles/dataflow.worker", "roles/storage.objectAdmin", "roles/pubsub.viewer", "roles/pubsub.subscriber"]
+  project_roles           = ["roles/dataflow.worker", "roles/storage.objectAdmin", "roles/pubsub.viewer", "roles/pubsub.subscriber", "roles/secretmanager.secretAccessor"]
 }
 
 resource "google_storage_bucket" "content" {

@@ -48,6 +48,7 @@ LAUNCH_PARAMS=" \
  --autoscalingAlgorithm=THROUGHPUT_BASED \
  --enableStreamingEngine \
  --serviceAccount=$DF_SA \
+ --secretId=$RUN_NAME \
  --usePublicIps=false "
 
 if (( $# == 3 ))

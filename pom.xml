@@ -43,6 +43,7 @@
     <mockito.version>3.7.7</mockito.version>
     <slf4j.version>1.7.30</slf4j.version>
     <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
+    <spotless.version>2.35.0</spotless.version>
   </properties>
 
   <repositories>
@@ -130,12 +131,43 @@
                   <resource>reference.conf</resource>
                 </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>com.google.cloud.pso.beam.DocsChunker</mainClass>
+                  <mainClass>com.google.cloud.pso.beam.contentextract.ContentExtractionPipeline</mainClass>
                 </transformer>
               </transformers>
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <!-- enforces code formatting -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <phase>validate</phase>
+          </execution>
+        </executions>
+        <configuration>
+          <java>
+            <!-- These are the defaults, you can override if you want -->
+            <includes>
+              <include>src/main/java/**/*.java</include>
+              <include>src/test/java/**/*.java</include>
+            </includes>
+            <cleanthat />        
+            <googleJavaFormat /> 
+            <importOrder /> 
+            <removeUnusedImports /> 
+            <formatAnnotations />  
+            <licenseHeader>
+              <file>${maven.multiModuleProjectDirectory}/license-header</file>
+            </licenseHeader>
+          </java>
+        </configuration>
       </plugin>
     </plugins>
 
@@ -185,7 +217,10 @@
   </profiles>
 
   <dependencies>
-
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-secretmanager</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-docs</artifactId>
