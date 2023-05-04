@@ -33,6 +33,7 @@ import java.io.Serializable;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,8 +107,17 @@ public class ServiceClientProvider implements Serializable {
     return DRIVE_SERVICE.files().get(driveId).setOauthToken(retrieveAccessToken(secretId));
   }
 
-  public Drive.Files.List driveFileListClient() throws IOException {
-    return DRIVE_SERVICE.files().list().setOauthToken(retrieveAccessToken(secretId));
+  public Drive.Files.List driveFileListClient(String queryString, String pageToken)
+      throws IOException {
+    return DRIVE_SERVICE
+        .files()
+        .list()
+        .setOauthToken(retrieveAccessToken(secretId))
+        .setQ(queryString)
+        .setPageToken(Optional.ofNullable(pageToken).orElse(""))
+        .setSpaces("drive")
+        .setPageSize(10)
+        .setFields("nextPageToken, files(id, mimeType)");
   }
 
   public Docs.Documents.Get documentGetClient(String documentId) throws IOException {

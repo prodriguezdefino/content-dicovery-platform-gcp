@@ -16,12 +16,21 @@
 package com.google.cloud.pso.beam;
 
 import com.google.api.services.docs.v1.Docs;
+import com.google.api.services.docs.v1.model.Body;
 import com.google.api.services.docs.v1.model.Document;
+import com.google.api.services.docs.v1.model.Paragraph;
+import com.google.api.services.docs.v1.model.ParagraphElement;
+import com.google.api.services.docs.v1.model.StructuralElement;
+import com.google.api.services.docs.v1.model.TextRun;
 import com.google.api.services.drive.Drive;
+import com.google.api.services.drive.model.File;
+import com.google.api.services.drive.model.FileList;
 import com.google.cloud.pso.beam.contentextract.utils.DocFetcher;
+import com.google.cloud.pso.beam.contentextract.utils.GoogleDriveAPIMimeTypes;
 import com.google.cloud.pso.beam.contentextract.utils.ServiceClientProvider;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import java.io.IOException;
+import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
@@ -31,22 +40,60 @@ import org.mockito.Mockito;
 public class ContentExtractionTest {
 
   private static final String PUBLIC_DOCUMENT_URL =
-      "https://docs.google.com/document/d/1ydVaJJeL1EYbWtlfj9TPfBTE5IBADkQfZrQaBZxqXGs/edit";
+      "https://docs.google.com/document/d/some_made_up_id";
 
-  @Test
-  public void extractContentFromDocument() throws IOException {
+  Document createMockDocument() {
+    return new Document()
+        .setBody(
+            new Body()
+                .setContent(
+                    List.of(
+                        new StructuralElement()
+                            .setParagraph(
+                                new Paragraph()
+                                    .setElements(
+                                        List.of(
+                                            new ParagraphElement()
+                                                .setTextRun(
+                                                    new TextRun()
+                                                        .setContent(
+                                                            "Some random content for test purposes."))))))))
+        .setTitle("A document title")
+        .setDocumentId("SomeDocumentID");
+  }
+
+  File createMockFile() {
+    return new File().setMimeType(GoogleDriveAPIMimeTypes.FILE.mimeType()).setId("SomeFileId");
+  }
+
+  FileList createMockFileList() {
+    return new FileList().setIncompleteSearch(false).setFiles(List.of(createMockFile()));
+  }
+
+  ServiceClientProvider createMockClientProvider() throws IOException {
     var docGet = Mockito.mock(Docs.Documents.Get.class);
-    Mockito.when(docGet.setAccessToken(ArgumentMatchers.any())).thenReturn(docGet);
-    
-    
+    Mockito.when(docGet.execute()).thenReturn(createMockDocument());
+
     var driveFileList = Mockito.mock(Drive.Files.List.class);
+    Mockito.when(driveFileList.execute()).thenReturn(createMockFileList());
+
     var driveFileGet = Mockito.mock(Drive.Files.Get.class);
+    Mockito.when(driveFileGet.execute()).thenReturn(createMockFile());
 
     var mockedProvider = Mockito.mock(ServiceClientProvider.class);
     Mockito.when(mockedProvider.documentGetClient(ArgumentMatchers.any())).thenReturn(docGet);
     Mockito.when(mockedProvider.driveFileGetClient(ArgumentMatchers.any()))
         .thenReturn(driveFileGet);
-    Mockito.when(mockedProvider.driveFileListClient()).thenReturn(driveFileList);
+    Mockito.when(
+            mockedProvider.driveFileListClient(
+                ArgumentMatchers.anyString(), ArgumentMatchers.anyString()))
+        .thenReturn(driveFileList);
+    return mockedProvider;
+  }
+
+  @Test
+  public void extractContentFromDocument() throws IOException {
+    var mockedProvider = createMockClientProvider();
 
     var fetcher = DocFetcher.createForTests(mockedProvider);
     var docId = Utilities.extractIdFromURL(PUBLIC_DOCUMENT_URL);

@@ -91,14 +91,7 @@ public class DocFetcher implements Serializable {
 
   FileList retrieveDriveQueryResults(String queryString, String pageToken) {
     try {
-      return clientProvider
-          .driveFileListClient()
-          .setQ(queryString)
-          .setPageToken(Optional.ofNullable(pageToken).orElse(""))
-          .setSpaces("drive")
-          .setPageSize(10)
-          .setFields("nextPageToken, files(id, mimeType)")
-          .execute();
+      return clientProvider.driveFileListClient(queryString, pageToken).execute();
     } catch (IOException ex) {
       var msg =
           "Error while trying to query drive, query: " + queryString + ", page token: " + pageToken;
