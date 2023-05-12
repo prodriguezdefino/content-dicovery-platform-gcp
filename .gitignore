@@ -26,3 +26,7 @@ replay_pid*
 /target
 .terraform*
 terraform.*
+
+python-embeddings/libs/*
+*/build
+*.egg-info

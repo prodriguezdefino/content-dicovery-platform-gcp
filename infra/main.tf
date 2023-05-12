@@ -24,6 +24,11 @@ resource "google_project_service" "secret_service" {
   service = "secretmanager.googleapis.com"
 }
 
+resource "google_project_service" "aiplatform_service" {
+  project = var.project
+  service = "aiplatform.googleapis.com"
+}
+
 resource "google_pubsub_topic" "topic" {
   project = var.project
   name = var.run_name
