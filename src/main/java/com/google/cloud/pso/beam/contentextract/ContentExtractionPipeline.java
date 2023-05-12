@@ -22,9 +22,14 @@ import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.DoubleCoder;
+import org.apache.beam.sdk.coders.IterableCoder;
+import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.extensions.python.PythonExternalTransform;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -33,6 +38,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.SdkHarnessOptions;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.FlatMapElements;
@@ -44,6 +50,7 @@ import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Repeatedly;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Duration;
@@ -54,7 +61,10 @@ import org.joda.time.Duration;
  */
 public class ContentExtractionPipeline {
 
-  public interface ContentExtractionOptions extends PipelineOptions {
+  private static final String PYTHON_EMBEDDINGS_TRANSFORM =
+      "beam.embeddings.transforms.ExtractEmbeddingsTransform";
+
+  public interface ContentExtractionOptions extends PipelineOptions, SdkHarnessOptions {
 
     @Description("The PubSub subscription to read events from.")
     @Validation.Required
@@ -79,6 +89,12 @@ public class ContentExtractionPipeline {
     String getProject();
 
     void setProject(String value);
+
+    @Description("The local expansion server url in the form of 'localhost:PORT'.")
+    @Validation.Required
+    String getExpansionService();
+
+    void setExpansionService(String value);
   }
 
   public static void main(String[] args) {
@@ -108,12 +124,21 @@ public class ContentExtractionPipeline {
                     .withAllowedLateness(Duration.standardMinutes(1)))
             .apply(
                 "ExtractContentId",
-                MapElements.into(TypeDescriptors.strings())
+                FlatMapElements.into(TypeDescriptors.strings())
                     .via(
                         (PubsubMessage msg) -> {
                           var json =
                               new Gson().fromJson(new String(msg.getPayload()), JsonObject.class);
-                          return Utilities.extractIdFromURL(json.get("url").getAsString());
+                          if (json.has("url"))
+                            return List.of(
+                                Utilities.extractIdFromURL(json.get("url").getAsString()));
+                          else if (json.has("urls"))
+                            return json.get("urls").getAsJsonArray().asList().stream()
+                                .map(e -> e.getAsString())
+                                .toList();
+                          else
+                            throw new IllegalArgumentException(
+                                "Provided JSON does not have the expected fields ('url', 'urls')");
                         })
                     .exceptionsVia(new WithFailures.ExceptionAsMapHandler<PubsubMessage>() {}));
 
@@ -179,7 +204,7 @@ public class ContentExtractionPipeline {
     maybeDocContents
         .output()
         .apply(
-            "ExtractEmbeddings",
+            "PrepContent",
             MapElements.into(
                     TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
                 .via(
@@ -187,6 +212,34 @@ public class ContentExtractionPipeline {
                         KV.of(
                             content.getKey(),
                             content.getValue().stream().collect(Collectors.joining("\n")))))
+        .apply(
+            "GenerateEmbeddings",
+            PythonExternalTransform
+                .<PCollection<KV<String, String>>,
+                    PCollection<KV<String, Iterable<Iterable<Double>>>>>
+                    from(PYTHON_EMBEDDINGS_TRANSFORM, options.getExpansionService())
+                .withKwargs(
+                    Map.of(
+                        "project",
+                        options.getProject(),
+                        "staging_bucket",
+                        options.getTempLocation()))
+                .withOutputCoder(
+                    KvCoder.of(
+                        StringUtf8Coder.of(),
+                        IterableCoder.of(IterableCoder.of(DoubleCoder.of())))))
+        .apply(
+            "FormatEmbeddingsToString",
+            MapElements.into(
+                    TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
+                .via(
+                    embKV ->
+                        KV.of(
+                            embKV.getKey(),
+                            StreamSupport.stream(embKV.getValue().spliterator(), false)
+                                .map(Iterable::toString)
+                                .toList()
+                                .toString())))
         .apply(
             "WriteContentToGCS",
             FileIO.<String, KV<String, String>>writeDynamic()
@@ -198,8 +251,7 @@ public class ContentExtractionPipeline {
                     TextIO.sink())
                 .to(options.getBucketLocation())
                 .withNaming(
-                    Contextful.fn(
-                        name -> FileIO.Write.defaultNaming("doc_content/" + name, ".jsonl"))));
+                    Contextful.fn(name -> FileIO.Write.defaultNaming("embeddings/" + name, ""))));
 
     // little bit of error handling
     PCollectionList.of(

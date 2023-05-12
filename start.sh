@@ -17,6 +17,7 @@ fi
 
 PROJECT_ID=$1
 RUN_NAME=$2
+REGION=us-central1
 
 echo "creating infrastructure"
 pushd infra
@@ -25,8 +26,20 @@ pushd infra
 source ./tf-apply.sh $PROJECT_ID $RUN_NAME 
 
 popd
-
 # $DF_SA variable was init in the infra setup script
+
+# build and push the image for the python container that extracts embeddings 
+pushd python-embeddings
+source create_container.sh $PROJECT $REGION
+pip3 install .
+# capture a random port
+PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+# start expansion service with the custom python image
+source run_expansion_service.sh $PROJECT $REGION $PORT 
+# EXP_SERVICE_PID is captured in the previous script
+echo "expansion service pid: $EXP_SERVICE_PID"
+popd
+
 PIPELINE_NAME=ContentExtractionPipeline
 
 BUCKET=gs://${RUN_NAME}-content-${PROJECT_ID}
@@ -34,7 +47,7 @@ BUCKET=gs://${RUN_NAME}-content-${PROJECT_ID}
 LAUNCH_PARAMS=" \
  --project=${PROJECT_ID} \
  --runner=DataflowRunner \
- --region=us-central1 \
+ --region=$REGION \
  --streaming \
  --stagingLocation=$BUCKET/dataflow/staging \
  --tempLocation=$BUCKET/dataflow/temp \
@@ -49,6 +62,9 @@ LAUNCH_PARAMS=" \
  --enableStreamingEngine \
  --serviceAccount=$DF_SA \
  --secretId=$RUN_NAME \
+ --experiments=use_runner_v2 \
+ --sdkHarnessContainerImageOverrides=".*python.*,gcr.io/pabs-pso-lab/us-central1/beam-embeddings" \
+ --expansionService=localhost:$PORT \
  --usePublicIps=false "
 
 if (( $# == 3 ))

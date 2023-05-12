@@ -29,7 +29,7 @@
   <properties>
     <java.version>17</java.version>
     
-    <beam.version>2.46.0</beam.version>
+    <beam.version>2.47.0</beam.version>
 
     <bigquery.version>v2-rev20220924-2.0.0</bigquery.version>
     <google-api-client.version>2.0.0</google-api-client.version>
@@ -218,6 +218,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>net.bytebuddy</groupId>
+      <artifactId>byte-buddy</artifactId>
+      <version>1.14.4</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-secretmanager</artifactId>
     </dependency>
@@ -240,6 +245,13 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+    
+    <!-- Adds a dependency on the Beam Python module. -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-extensions-python</artifactId>
       <version>${beam.version}</version>
     </dependency>
 

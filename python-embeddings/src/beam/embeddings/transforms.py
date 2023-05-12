@@ -1,9 +1,6 @@
 from google.cloud import aiplatform
 from collections import deque
 from vertexai.preview.language_models import TextEmbeddingModel
-from typing import List
-from typing import Tuple
-from typing import get_type_hints
 
 import logging
 import pandas as pd
@@ -19,9 +16,7 @@ class ExtractEmbeddingsTransform(beam.PTransform):
         self.split_chunk_group_size=3
         self.chunk_overlap=1
 
-    def expand(self, 
-        pcoll: beam.PCollection[Tuple[str, str]]
-        ) -> beam.PCollection[Tuple[str, List[List[float]]]]:
+    def expand(self, pcoll):
         # Transform logic goes here.
         return (pcoll 
             | 'ExtractEmbeddings' >> beam.ParDo(
@@ -120,7 +115,7 @@ class ExtractEmbeddingsDoFn(beam.DoFn):
         return embeddings
 
 
-    def process(self, element: Tuple[str, str]) -> Tuple[str, List[List[float]]]:
+    def process(self, element: Tuple[str, str]):
         key, value = element
         embeddings = self.get_data_embeddings(
             value, 
