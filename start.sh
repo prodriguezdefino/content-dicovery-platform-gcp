@@ -24,21 +24,24 @@ pushd infra
 
 # we need to create infrastructure, service account and some of the permissions
 source ./tf-apply.sh $PROJECT_ID $RUN_NAME 
-
-popd
 # $DF_SA variable was init in the infra setup script
 
+popd
+
 # build and push the image for the python container that extracts embeddings 
+echo "bootstrap the local expansion service for Beam multi-lang pipeline"
 pushd python-embeddings
 source create_container.sh $PROJECT $REGION
 pip3 install .
-# capture a random port
+# capture a random open port
 PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 # start expansion service with the custom python image
 source run_expansion_service.sh $PROJECT $REGION $PORT 
 # EXP_SERVICE_PID is captured in the previous script
 echo "expansion service pid: $EXP_SERVICE_PID"
 popd
+
+echo "starting main pipeline"
 
 PIPELINE_NAME=ContentExtractionPipeline
 
@@ -63,7 +66,7 @@ LAUNCH_PARAMS=" \
  --serviceAccount=$DF_SA \
  --secretId=$RUN_NAME \
  --experiments=use_runner_v2 \
- --sdkHarnessContainerImageOverrides=".*python.*,gcr.io/pabs-pso-lab/us-central1/beam-embeddings" \
+ --sdkHarnessContainerImageOverrides=".*python.*,gcr.io/$PROJECT_ID/$REGION/beam-embeddings" \
  --expansionService=localhost:$PORT \
  --usePublicIps=false "
 
