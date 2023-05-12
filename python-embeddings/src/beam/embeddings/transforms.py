@@ -11,9 +11,10 @@ import numpy as np
 import apache_beam as beam 
 
 class ExtractEmbeddingsTransform(beam.PTransform):
-    def __init__(self, project, staging_bucket):
+    def __init__(self, project, staging_bucket, region='us-central1'):
         self.project = project
         self.staging_bucket = staging_bucket
+        self.region = region
         self.init_chunk_size=500
         self.split_chunk_group_size=3
         self.chunk_overlap=1
@@ -27,6 +28,7 @@ class ExtractEmbeddingsTransform(beam.PTransform):
                 ExtractEmbeddingsDoFn(
                     self.project,
                     self.staging_bucket,
+                    self.region,
                     self.init_chunk_size, 
                     self.split_chunk_group_size, 
                     self.chunk_overlap)))
@@ -46,7 +48,7 @@ class ExtractEmbeddingsTransform(beam.PTransform):
 
 class ExtractEmbeddingsDoFn(beam.DoFn):
     def __init__(self, 
-            project, staging_bucket, init_chunk_size=500,
+            project, staging_bucket, region, init_chunk_size=500,
             split_chunk_group_size=3, chunk_overlap=1):
         self.embedded_model = None 
         self.init_chunk_size=init_chunk_size
@@ -54,13 +56,13 @@ class ExtractEmbeddingsDoFn(beam.DoFn):
         self.chunk_overlap=chunk_overlap
         self.gcp_project = project
         self.staging_bucket = staging_bucket
+        self.region = region
 
 
     def setup(self):
         aiplatform.init(
             project=self.gcp_project,
-            # seems like stuff only works here for now
-            location='us-central1',
+            location=self.region,
             staging_bucket=self.staging_bucket)
         self.embedded_model = TextEmbeddingModel.from_pretrained("textembedding-gecko")
 
