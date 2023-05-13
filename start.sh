@@ -60,7 +60,7 @@ LAUNCH_PARAMS=" \
  --maxNumWorkers=10 \
  --numWorkers=1 \
  --subscription=projects/$PROJECT_ID/subscriptions/$RUN_NAME-sub \
- --bucketLocation=$BUCKET/content \
+ --bucketLocation=$BUCKET \
  --experiments=min_num_workers=1 \
  --workerMachineType=n2d-standard-4 \
  --autoscalingAlgorithm=THROUGHPUT_BASED \
