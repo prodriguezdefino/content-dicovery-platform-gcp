@@ -22,7 +22,6 @@ import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.DoubleCoder;
 import org.apache.beam.sdk.coders.IterableCoder;
@@ -229,17 +228,10 @@ public class ContentExtractionPipeline {
                         StringUtf8Coder.of(),
                         IterableCoder.of(IterableCoder.of(DoubleCoder.of())))))
         .apply(
-            "FormatEmbeddingsToString",
-            MapElements.into(
+            "FormatEmbeddings",
+            FlatMapElements.into(
                     TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
-                .via(
-                    embKV ->
-                        KV.of(
-                            embKV.getKey(),
-                            StreamSupport.stream(embKV.getValue().spliterator(), false)
-                                .map(Iterable::toString)
-                                .toList()
-                                .toString())))
+                .via(Utilities::embeddingToKeyedJSONLFormat))
         .apply(
             "WriteContentToGCS",
             FileIO.<String, KV<String, String>>writeDynamic()
@@ -251,7 +243,10 @@ public class ContentExtractionPipeline {
                     TextIO.sink())
                 .to(options.getBucketLocation())
                 .withNaming(
-                    Contextful.fn(name -> FileIO.Write.defaultNaming("embeddings/" + name, ""))));
+                    Contextful.fn(
+                        name ->
+                            FileIO.Write.defaultNaming(
+                                "embeddings-index-contents/" + name, ".emb"))));
 
     // little bit of error handling
     PCollectionList.of(

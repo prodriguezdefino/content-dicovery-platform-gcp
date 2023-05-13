@@ -1,5 +1,5 @@
 #!/bin/bash
-set -xeu
+set -eu
 
 if [ "$#" -ne 3 ] 
   then

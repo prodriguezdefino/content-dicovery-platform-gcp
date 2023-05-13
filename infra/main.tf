@@ -72,7 +72,7 @@ module "data_processing_project_membership_roles" {
   source                  = "terraform-google-modules/iam/google//modules/member_iam"
   service_account_address = google_service_account.dataflow_runner_sa.email
   project_id              = var.project
-  project_roles           = ["roles/dataflow.worker", "roles/storage.objectAdmin", "roles/pubsub.viewer", "roles/pubsub.subscriber", "roles/secretmanager.secretAccessor"]
+  project_roles           = ["roles/dataflow.worker", "roles/storage.objectAdmin", "roles/pubsub.viewer", "roles/pubsub.subscriber", "roles/secretmanager.secretAccessor", "roles/aiplatform.user"]
 }
 
 resource "google_storage_bucket" "content" {

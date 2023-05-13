@@ -20,6 +20,8 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.Preconditions;
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
+import com.google.common.collect.Lists;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
@@ -27,6 +29,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.util.List;
+import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,6 +94,28 @@ public class Utilities {
               return json.toString();
             })
         .map(jsonl -> KV.of(content.getKey(), jsonl))
+        .toList();
+  }
+
+  public static List<KV<String, String>> embeddingToKeyedJSONLFormat(
+      KV<String, Iterable<Iterable<Double>>> content) {
+    var embeddings =
+        StreamSupport.stream(content.getValue().spliterator(), false)
+            .map(vals -> Lists.newArrayList(vals))
+            .toList();
+    return IntStream.range(0, embeddings.size())
+        .mapToObj(
+            i -> {
+              var embArray = new JsonArray();
+              for (var val : embeddings.get(i)) {
+                embArray.add(val);
+              }
+              var json = new JsonObject();
+              json.addProperty("id", content.getKey() + i);
+              json.add("embedding", embArray);
+              return json.toString();
+            })
+        .map(jsonEmb -> KV.of(content.getKey(), jsonEmb))
         .toList();
   }
 
