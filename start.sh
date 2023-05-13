@@ -23,7 +23,7 @@ echo "creating infrastructure"
 pushd infra
 
 # we need to create infrastructure, service account and some of the permissions
-source ./tf-apply.sh $PROJECT_ID $RUN_NAME 
+source ./tf-apply.sh $PROJECT_ID $REGION $RUN_NAME 
 # $DF_SA variable was init in the infra setup script
 
 popd
@@ -46,9 +46,11 @@ echo "starting main pipeline"
 PIPELINE_NAME=ContentExtractionPipeline
 
 BUCKET=gs://${RUN_NAME}-content-${PROJECT_ID}
+JOBNAME=doc-content-extraction-`echo "$RUN_NAME" | tr _ -`-${USER}
 
 LAUNCH_PARAMS=" \
  --project=${PROJECT_ID} \
+ --jobName=$JOBNAME \
  --runner=DataflowRunner \
  --region=$REGION \
  --streaming \

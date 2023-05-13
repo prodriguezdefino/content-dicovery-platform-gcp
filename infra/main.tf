@@ -78,7 +78,7 @@ module "data_processing_project_membership_roles" {
 resource "google_storage_bucket" "content" {
   project       = var.project 
   name          = "${var.run_name}-content-${var.project}"
-  location      = "US-CENTRAL1"
+  location      = upper(var.region)
   storage_class = "REGIONAL"
   force_destroy = true
 
@@ -93,7 +93,42 @@ resource "google_storage_bucket" "content" {
   public_access_prevention = "enforced"
 }
 
+resource "google_storage_bucket_object" "dummy_data" {
+  name   = "embeddings-index-contents/dummy-data.json"
+  bucket = google_storage_bucket.content.name
+  content = <<EOF
+
+EOF
+}
+
+resource "google_vertex_ai_index" "embeddings_index" {
+  project  = var.project
+  region   = var.region
+  display_name = "${var.run_name}-embeddings-index"
+  description = "A vertex ai matching engine index."
+  metadata {
+    contents_delta_uri = "gs://${google_storage_bucket.content.name}/embeddings-index-contents"
+    config {
+      dimensions = 2
+      approximate_neighbors_count = 150
+      distance_measure_type = "DOT_PRODUCT_DISTANCE"
+      algorithm_config {
+        tree_ah_config {
+          leaf_node_embedding_count = 500
+          leaf_nodes_to_search_percent = 7
+        }
+      }
+    }
+  }
+  index_update_method = "STREAM_UPDATE"
+  depends_on = [google_storage_bucket_object.dummy_data]
+}
+
 variable project {}
+
+variable region {
+  default = "us-central1"
+}
 
 variable run_name {}
 

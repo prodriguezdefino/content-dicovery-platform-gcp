@@ -1,6 +1,7 @@
 from google.cloud import aiplatform
 from collections import deque
 from vertexai.preview.language_models import TextEmbeddingModel
+from typing import Tuple
 
 import logging
 import pandas as pd
