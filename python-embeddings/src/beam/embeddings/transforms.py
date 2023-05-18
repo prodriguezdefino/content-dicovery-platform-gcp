@@ -78,7 +78,7 @@ class ExtractEmbeddingsDoFn(beam.DoFn):
         yield s[start:]
 
 
-    def overlapping_chunks(self, iterable, chunk_size=3, overlap=0):
+    def overlapping_chunks(self, iterable, chunk_size=3, overlap=1):
         # we'll use a deque to hold the values because it automatically
         # discards any extraneous elements if it grows too large
         if chunk_size < 1:
@@ -112,16 +112,17 @@ class ExtractEmbeddingsDoFn(beam.DoFn):
         chunks_final = ["\n".join(n) for n in chunks]
         embeddings = []
         for chunk in chunks_final:
-            embeddings.append(self.get_embeddings(chunk))
+            emb = self.get_embeddings(chunk)
+            embeddings.append(emb)
         return embeddings
 
 
     def process(self, element: Tuple[str, str]):
-        key, value = element
+        docId, content = element
         embeddings = self.get_data_embeddings(
-            value, 
+            content, 
             self.init_chunk_size, 
             self.split_chunk_group_size, 
             self.chunk_overlap)
-        yield (key, embeddings)
+        yield (docId, embeddings)
 
