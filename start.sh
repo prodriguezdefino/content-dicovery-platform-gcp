@@ -8,28 +8,33 @@ if [ "$#" -ne 2 ] && [ "$#" -ne 3 ]
     exit -1
 fi
 
-MORE_PARAMS=""
-
-if (( $# == 3 ))
-then
-  MORE_PARAMS=$MORE_PARAMS$3
-fi
-
 PROJECT_ID=$1
 RUN_NAME=$2
 REGION=us-central1
 
-echo "creating infrastructure"
+echo " "
+echo "********************************************"
+echo "Creating GCP infrastructure"
+echo "********************************************"
+echo " "
+
 pushd infra
 
 # we need to create infrastructure, service account and some of the permissions
 source ./tf-apply.sh $PROJECT_ID $REGION $RUN_NAME 
-# $DF_SA variable was init in the infra setup script
+# $DF_SA & $INDEX_ID variables are init in the infra setup script
 
 popd
 
 # build and push the image for the python container that extracts embeddings 
-echo "bootstrap the local expansion service for Beam multi-lang pipeline"
+echo " "
+echo "********************************************"
+echo "Install python mods and deps "
+echo "and bootstrap the local expansion service "
+echo "for Beam multi-lang pipeline"
+echo "********************************************"
+echo " "
+
 pushd python-embeddings
 source create_container.sh $PROJECT $REGION
 pip3 install .
@@ -41,7 +46,11 @@ source run_expansion_service.sh $PROJECT $REGION $PORT
 echo "expansion service pid: $EXP_SERVICE_PID"
 popd
 
-echo "starting main pipeline"
+echo " "
+echo "********************************************"
+echo "Starting Beam pipeline"
+echo "********************************************"
+echo " "
 
 PIPELINE_NAME=ContentExtractionPipeline
 
@@ -59,14 +68,16 @@ LAUNCH_PARAMS=" \
  --gcpTempLocation=$BUCKET/dataflow/gcptemp \
  --maxNumWorkers=10 \
  --numWorkers=1 \
+ --topic=projects/$PROJECT_ID/topics/$RUN_NAME \
  --subscription=projects/$PROJECT_ID/subscriptions/$RUN_NAME-sub \
  --bucketLocation=$BUCKET \
+ --matchingEngineIndexId=$INDEX_ID \
  --experiments=min_num_workers=1 \
  --workerMachineType=n2d-standard-4 \
  --autoscalingAlgorithm=THROUGHPUT_BASED \
  --enableStreamingEngine \
  --serviceAccount=$DF_SA \
- --secretId=$RUN_NAME \
+ --secretManagerId=projects/$PROJECT_ID/secrets/$RUN_NAME/versions/latest \
  --experiments=use_runner_v2 \
  --sdkHarnessContainerImageOverrides=".*python.*,gcr.io/$PROJECT_ID/$REGION/beam-embeddings" \
  --expansionService=localhost:$PORT \

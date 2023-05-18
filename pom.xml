@@ -21,16 +21,14 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.google.cloud.pso.beam</groupId>
-  <artifactId>docs-chunker</artifactId>
+  <artifactId>googledocs-content-extraction</artifactId>
+  <name>Google Drive :: Content Extraction Pipeline</name>
   <version>0.1</version>
-
   <packaging>jar</packaging>
 
   <properties>
     <java.version>17</java.version>
-    
     <beam.version>2.47.0</beam.version>
-
     <bigquery.version>v2-rev20220924-2.0.0</bigquery.version>
     <google-api-client.version>2.0.0</google-api-client.version>
     <guava.version>31.1-jre</guava.version>
@@ -69,6 +67,7 @@
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
+          <compilerArgument>-Xlint:unchecked</compilerArgument>
         </configuration>
       </plugin>
 
@@ -185,37 +184,6 @@
     </pluginManagement>
   </build>
 
-  <profiles>
-    <profile>
-      <id>direct-runner</id>
-      <!-- Makes the DirectRunner available when running a pipeline. -->
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-runners-direct-java</artifactId>
-          <version>${beam.version}</version>
-          <scope>runtime</scope>
-        </dependency>
-      </dependencies>
-    </profile>
-
-    <profile>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <id>dataflow-runner</id>
-      <!-- Makes the DataflowRunner available when running a pipeline. -->
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
-          <version>${beam.version}</version>
-          <scope>runtime</scope>
-        </dependency>
-      </dependencies>
-    </profile>
-  </profiles>
-
   <dependencies>
     <dependency>
       <groupId>net.bytebuddy</groupId>
@@ -252,6 +220,12 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-extensions-python</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
       <version>${beam.version}</version>
     </dependency>
 

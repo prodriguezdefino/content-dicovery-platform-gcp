@@ -76,6 +76,7 @@ module "data_processing_project_membership_roles" {
     "roles/dataflow.worker", 
     "roles/storage.objectAdmin", 
     "roles/pubsub.viewer", 
+    "roles/pubsub.publisher", 
     "roles/pubsub.subscriber", 
     "roles/secretmanager.secretAccessor", 
     "roles/aiplatform.user"]
@@ -115,7 +116,7 @@ resource "google_vertex_ai_index" "embeddings_index" {
   metadata {
     contents_delta_uri = "gs://${google_storage_bucket.content.name}/embeddings-index-contents"
     config {
-      dimensions = 2
+      dimensions = 768
       approximate_neighbors_count = 150
       distance_measure_type = "DOT_PRODUCT_DISTANCE"
       algorithm_config {
@@ -144,4 +145,8 @@ output "df_sa" {
 
 output "df_sa_id" {
   value = google_service_account.dataflow_runner_sa.unique_id
+}
+
+output "index_id" {
+  value = google_vertex_ai_index.embeddings_index.id
 }

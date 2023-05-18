@@ -20,10 +20,11 @@ terraform init && terraform apply \
 TF_JSON_OUTPUT=$(terraform output -json)
 DF_SA=$(echo $TF_JSON_OUTPUT | jq .df_sa.value | tr -d '"')
 DF_SA_ID=$(echo $TF_JSON_OUTPUT | jq .df_sa_id.value | tr -d '"')
+INDEX_ID=$(echo $TF_JSON_OUTPUT | jq .index_id.value | tr -d '"')
 
 
 echo " "
-echo "**********************************"
+echo "******************************************************************************************************************************************************"
 echo " "
 echo "Now that the infrastructure and service accounts have been created, please follow the steps to grant domain-wide delegation to the service account." 
 echo "Follow steps at: https://developers.google.com/workspace/guides/create-credentials#optional_set_up_domain-wide_delegation_for_a_service_account"
@@ -33,5 +34,5 @@ echo " scopes to add: https://www.googleapis.com/auth/documents and https://www.
 echo " "
 echo "Also, remember to enable permissions on the folders or documents for the email $DF_SA" 
 echo " "
-echo "**********************************"
+echo "******************************************************************************************************************************************************"
 echo " "
