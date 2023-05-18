@@ -18,19 +18,22 @@ package com.google.cloud.pso.beam.contentextract.utils;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.Preconditions;
+import com.google.cloud.pso.beam.contentextract.Types.*;
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
-import com.google.common.collect.Lists;
-import com.google.gson.JsonArray;
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
+import java.text.Normalizer;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +42,7 @@ import org.slf4j.LoggerFactory;
 public class Utilities {
 
   private static final Logger LOG = LoggerFactory.getLogger(Utilities.class);
+  private static final String CONTENT_KEY_SEPARATOR = "___";
 
   static NetHttpTransport createTransport() {
     try {
@@ -97,25 +101,18 @@ public class Utilities {
         .toList();
   }
 
-  public static List<KV<String, String>> embeddingToKeyedJSONLFormat(
+  public static KV<String, String> contentToKeyedParagraphs(KV<String, List<String>> content) {
+    return KV.of(content.getKey(), content.getValue().stream().collect(Collectors.joining("\n")));
+  }
+
+  public static List<KV<String, List<Double>>> embeddingToRightTypes(
       KV<String, Iterable<Iterable<Double>>> content) {
     var embeddings =
         StreamSupport.stream(content.getValue().spliterator(), false)
-            .map(vals -> Lists.newArrayList(vals))
+            .map(vals -> StreamSupport.stream(vals.spliterator(), false).toList())
             .toList();
     return IntStream.range(0, embeddings.size())
-        .mapToObj(
-            i -> {
-              var embArray = new JsonArray();
-              for (var val : embeddings.get(i)) {
-                embArray.add(val);
-              }
-              var json = new JsonObject();
-              json.addProperty("id", content.getKey() + i);
-              json.add("embedding", embArray);
-              return json.toString();
-            })
-        .map(jsonEmb -> KV.of(content.getKey(), jsonEmb))
+        .mapToObj(i -> KV.of(content.getKey() + CONTENT_KEY_SEPARATOR + i, embeddings.get(i)))
         .toList();
   }
 
@@ -131,5 +128,47 @@ public class Utilities {
       LOG.error(msg, ex);
       throw new RuntimeException(msg, ex);
     }
+  }
+
+  public static List<Transport> extractContentId(PubsubMessage msg) {
+    try {
+      var json = new Gson().fromJson(new String(msg.getPayload()), JsonObject.class);
+      if (json.has("url"))
+        return List.of(
+            new Transport(
+                Utilities.extractIdFromURL(json.get("url").getAsString()), msg.getAttributeMap()));
+      else if (json.has("urls"))
+        return json.get("urls").getAsJsonArray().asList().stream()
+            .map(
+                e ->
+                    new Transport(
+                        Utilities.extractIdFromURL(e.getAsString()), msg.getAttributeMap()))
+            .toList();
+      else if (json.has("retries"))
+        return json.get("retries").getAsJsonArray().asList().stream()
+            .map(
+                e ->
+                    new Transport(
+                        Utilities.extractIdFromURL(e.getAsString()), msg.getAttributeMap()))
+            .toList();
+      else
+        throw new IllegalArgumentException(
+            "Provided JSON does not have the expected fields ('url', 'urls', 'retries')");
+    } catch (Exception ex) {
+      var errMsg = "Error while trying to extract the content id.";
+      LOG.error(errMsg);
+      throw new ContentIdExtractError(errMsg, ex);
+    }
+  }
+
+  public static String newIdFromTitleAndDriveId(String title, String driveId) {
+    var normalized = Normalizer.normalize(title, Normalizer.Form.NFD.NFD);
+    return normalized
+            .replaceAll("[ ]{1,}", "_")
+            .replaceAll("[\\[\\]]", "")
+            .replaceAll("[\\n\\r]", "")
+            .toLowerCase()
+        + CONTENT_KEY_SEPARATOR
+        + driveId;
   }
 }

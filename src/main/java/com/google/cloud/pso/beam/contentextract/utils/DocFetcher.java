@@ -18,6 +18,7 @@ package com.google.cloud.pso.beam.contentextract.utils;
 import com.google.api.services.docs.v1.model.TextRun;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import com.google.cloud.pso.beam.contentextract.Types.*;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.Serializable;
@@ -36,19 +37,11 @@ public class DocFetcher implements Serializable {
 
   private final ServiceClientProvider clientProvider;
 
-  private DocFetcher(String secretId) {
-    this.clientProvider = ServiceClientProvider.create(secretId);
+  private DocFetcher(ServiceClientProvider serviceClientProvider) {
+    this.clientProvider = serviceClientProvider;
   }
 
-  private DocFetcher(ServiceClientProvider provider) {
-    this.clientProvider = provider;
-  }
-
-  public static DocFetcher create(String secretId) {
-    return new DocFetcher(secretId);
-  }
-
-  public static DocFetcher createForTests(ServiceClientProvider provider) {
+  public static DocFetcher create(ServiceClientProvider provider) {
     return new DocFetcher(provider);
   }
 
@@ -56,7 +49,7 @@ public class DocFetcher implements Serializable {
     try {
       var response = clientProvider.documentGetClient(documentId).execute();
       var processedId =
-          response.getTitle().replace(" ", "_").toLowerCase() + "-" + response.getDocumentId();
+          Utilities.newIdFromTitleAndDriveId(response.getTitle(), response.getDocumentId());
       return KV.of(
           processedId,
           response.getBody().getContent().stream()
@@ -82,10 +75,10 @@ public class DocFetcher implements Serializable {
               .filter(text -> !text.isBlank())
               .map(text -> text.replace("\n", ""))
               .toList());
-    } catch (IOException ex) {
+    } catch (Exception ex) {
       var errMsg = "errors while trying to retrieve document content, id: " + documentId;
       LOG.error(errMsg, ex);
-      throw new RuntimeException(errMsg, ex);
+      throw new DocumentContentError(errMsg, ex);
     }
   }
 
@@ -140,10 +133,10 @@ public class DocFetcher implements Serializable {
           yield List.of();
         }
       };
-    } catch (IOException ex) {
+    } catch (Exception ex) {
       var msg = "Error while trying to access the provided resource, id: " + id;
       LOG.error(msg, ex);
-      throw new RuntimeException(msg, ex);
+      throw new DocumentIdError(msg, ex);
     }
   }
 }

@@ -31,6 +31,7 @@ import com.google.cloud.pso.beam.contentextract.utils.ServiceClientProvider;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import java.io.IOException;
 import java.util.List;
+import org.apache.beam.sdk.values.KV;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
@@ -95,7 +96,7 @@ public class ContentExtractionTest {
   public void extractContentFromDocument() throws IOException {
     var mockedProvider = createMockClientProvider();
 
-    var fetcher = DocFetcher.createForTests(mockedProvider);
+    var fetcher = DocFetcher.create(mockedProvider);
     var docId = Utilities.extractIdFromURL(PUBLIC_DOCUMENT_URL);
     Assert.assertNotNull(docId);
     var files = fetcher.retrieveDriveFiles(docId);
@@ -106,5 +107,21 @@ public class ContentExtractionTest {
           System.out.println(docContent.getKey());
           jsonLines.forEach(line -> System.out.println(line.getValue()));
         });
+  }
+
+  @Test
+  public void testEmbeddingToJSON() {
+    KV<String, Iterable<Iterable<Double>>> kv =
+        KV.of("someid", List.of(List.of(3.5, 4.5, 0.9), List.of(1.2, 4.2, 3.1)));
+
+    var res = Utilities.embeddingToRightTypes(kv);
+    System.out.println(res);
+  }
+
+  @Test
+  public void testNewId() {
+    var expected = "name_some_2022_info___18Ds2syb04";
+    Assert.assertEquals(
+        expected, Utilities.newIdFromTitleAndDriveId("[name] some 2022 info", "18Ds2syb04"));
   }
 }

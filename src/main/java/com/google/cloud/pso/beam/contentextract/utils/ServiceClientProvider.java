@@ -30,11 +30,17 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +49,10 @@ public class ServiceClientProvider implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(ServiceClientProvider.class);
 
   private static final List<String> SCOPES =
-      List.of("https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive");
+      List.of(
+          "https://www.googleapis.com/auth/documents",
+          "https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/cloud-platform");
   private static final NetHttpTransport HTTP_TRANSPORT = createTransport();
   private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
   private static final String APP_NAME = "DocContentExtractor";
@@ -57,9 +66,9 @@ public class ServiceClientProvider implements Serializable {
           .build(
               new CacheLoader<String, String>() {
                 @Override
-                public String load(String projectId) {
+                public String load(String credentialsSecretId) {
                   try {
-                    var credentials = getCredentialsFromSecretManager(projectId);
+                    var credentials = getCredentialsFromSecretManager(credentialsSecretId);
                     credentials.refreshIfExpired();
                     var accessToken = credentials.refreshAccessToken();
                     return accessToken.getTokenValue();
@@ -70,15 +79,21 @@ public class ServiceClientProvider implements Serializable {
                   }
                 }
               });
+  private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().build();
 
-  private final String secretId;
+  private final String region;
+  private final String secretManagerId;
+  private final String matchingEngineIndexId;
 
-  private ServiceClientProvider(String secretId) {
-    this.secretId = secretId;
+  ServiceClientProvider(String region, String secretManagerId, String matchingEngineIndexId) {
+    this.region = region;
+    this.secretManagerId = secretManagerId;
+    this.matchingEngineIndexId = matchingEngineIndexId;
   }
 
-  public static ServiceClientProvider create(String secretId) {
-    return new ServiceClientProvider(secretId);
+  public static ServiceClientProvider create(
+      String region, String secretManagerId, String matchingEngineIndexId) {
+    return new ServiceClientProvider(region, secretManagerId, matchingEngineIndexId);
   }
 
   static GoogleCredentials getCredentialsFromSecretManager(String secretId) {
@@ -103,8 +118,64 @@ public class ServiceClientProvider implements Serializable {
     }
   }
 
+  static String formatEmbeddingsBody(List<KV<String, List<Double>>> embeddings) {
+    var datapointTemplate =
+        """
+        {
+          "datapoint_id" : "%s",
+          "feature_vector" : %s
+        }""";
+    var datapoints =
+        embeddings.stream()
+            .map(kv -> String.format(datapointTemplate, kv.getKey(), kv.getValue().toString()))
+            .toList();
+    return String.format(
+        """
+        {
+          "datapoints" : %s
+        }""", datapoints.toString());
+  }
+
+  public void upsertVectorDBDataPoints(List<KV<String, List<Double>>> dataPoints) {
+    try {
+      var uriStr =
+          String.format(
+              "https://%s-aiplatform.googleapis.com/v1/%s:upsertDatapoints",
+              region, matchingEngineIndexId);
+
+      var body = formatEmbeddingsBody(dataPoints);
+
+      var request =
+          HttpRequest.newBuilder()
+              .uri(new URI(uriStr))
+              .header("Authorization", "Bearer " + retrieveAccessToken())
+              .header("Content-Type", "application/json; charset=utf-8")
+              .method("POST", HttpRequest.BodyPublishers.ofString(body))
+              .build();
+
+      var response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() != 200)
+        throw new RuntimeException(
+            String.format(
+                "Error returned by matching engine index upsert: %s \nRequest payload: %s ",
+                response.toString(), request.toString()));
+      else
+        LOG.info(
+            String.format(
+                "Propagated %d extracted embeddings vectors with ids: %s.",
+                dataPoints.size(), dataPoints.stream().map(KV::getKey).toList().toString()));
+    } catch (IOException | InterruptedException | URISyntaxException ex) {
+      var msg = "Error while trying to upsert data in matching engine index.";
+      throw new RuntimeException(msg, ex);
+    }
+  }
+
+  String retrieveAccessToken() {
+    return retrieveAccessToken(secretManagerId);
+  }
+
   public Drive.Files.Get driveFileGetClient(String driveId) throws IOException {
-    return DRIVE_SERVICE.files().get(driveId).setOauthToken(retrieveAccessToken(secretId));
+    return DRIVE_SERVICE.files().get(driveId).setOauthToken(retrieveAccessToken());
   }
 
   public Drive.Files.List driveFileListClient(String queryString, String pageToken)
@@ -112,7 +183,7 @@ public class ServiceClientProvider implements Serializable {
     return DRIVE_SERVICE
         .files()
         .list()
-        .setOauthToken(retrieveAccessToken(secretId))
+        .setOauthToken(retrieveAccessToken())
         .setQ(queryString)
         .setPageToken(Optional.ofNullable(pageToken).orElse(""))
         .setSpaces("drive")
@@ -121,6 +192,6 @@ public class ServiceClientProvider implements Serializable {
   }
 
   public Docs.Documents.Get documentGetClient(String documentId) throws IOException {
-    return DOCS_SERVICE.documents().get(documentId).setAccessToken(retrieveAccessToken(secretId));
+    return DOCS_SERVICE.documents().get(documentId).setAccessToken(retrieveAccessToken());
   }
 }
