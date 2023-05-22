@@ -60,6 +60,7 @@ JOBNAME=doc-content-extraction-`echo "$RUN_NAME" | tr _ -`-${USER}
 LAUNCH_PARAMS=" \
  --project=${PROJECT_ID} \
  --jobName=$JOBNAME \
+ --subnetwork=$SUBNET \
  --runner=DataflowRunner \
  --region=$REGION \
  --streaming \
