@@ -21,7 +21,7 @@ TF_JSON_OUTPUT=$(terraform output -json)
 DF_SA=$(echo $TF_JSON_OUTPUT | jq .df_sa.value | tr -d '"')
 DF_SA_ID=$(echo $TF_JSON_OUTPUT | jq .df_sa_id.value | tr -d '"')
 INDEX_ID=$(echo $TF_JSON_OUTPUT | jq .index_id.value | tr -d '"')
-
+SUBNET=$(echo $TF_JSON_OUTPUT | jq .subnet.value | tr -d '"')
 
 echo " "
 echo "******************************************************************************************************************************************************"

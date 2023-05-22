@@ -12,21 +12,31 @@ locals {
 resource "google_project_service" "drive_service" {
   project = var.project
   service = "drive.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "docs_service" {
   project = var.project
   service = "docs.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "servicenetworking_service" {
+  project = var.project
+  service = "servicenetworking.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "secret_service" {
   project = var.project
   service = "secretmanager.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "aiplatform_service" {
   project = var.project
   service = "aiplatform.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_pubsub_topic" "topic" {
@@ -98,37 +108,6 @@ resource "google_storage_bucket" "content" {
     }
   }
   public_access_prevention = "enforced"
-}
-
-resource "google_storage_bucket_object" "dummy_data" {
-  name   = "embeddings-index-contents/dummy-data.json"
-  bucket = google_storage_bucket.content.name
-  content = <<EOF
-
-EOF
-}
-
-resource "google_vertex_ai_index" "embeddings_index" {
-  project  = var.project
-  region   = var.region
-  display_name = "${var.run_name}-embeddings-index"
-  description = "A vertex ai matching engine index."
-  metadata {
-    contents_delta_uri = "gs://${google_storage_bucket.content.name}/embeddings-index-contents"
-    config {
-      dimensions = 768
-      approximate_neighbors_count = 150
-      distance_measure_type = "DOT_PRODUCT_DISTANCE"
-      algorithm_config {
-        tree_ah_config {
-          leaf_node_embedding_count = 500
-          leaf_nodes_to_search_percent = 7
-        }
-      }
-    }
-  }
-  index_update_method = "STREAM_UPDATE"
-  depends_on = [google_storage_bucket_object.dummy_data]
 }
 
 variable project {}
