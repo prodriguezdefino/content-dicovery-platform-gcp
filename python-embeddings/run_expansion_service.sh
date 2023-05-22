@@ -12,7 +12,12 @@ REGION=$2
 PORT=$3
 
 # terminate previously started expansion service instances
-kill $(pgrep -a -f "Python.*apache_beam.runners.portability.expansion_service_main" 2>&1)
+PIDS=$(pgrep -a -f "Python.*apache_beam.runners.portability.expansion_service_main" 2>&1) || true
+
+if [ $PIDS != "true" ]; then 
+  kill $PIDS
+fi
+
 
 python3 -m apache_beam.runners.portability.expansion_service_main \
 --port $PORT \
