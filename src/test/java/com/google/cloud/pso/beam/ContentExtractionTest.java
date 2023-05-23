@@ -31,6 +31,7 @@ import com.google.cloud.pso.beam.contentextract.utils.ServiceClientProvider;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.IntStream;
 import org.apache.beam.sdk.values.KV;
 import org.junit.Assert;
 import org.junit.Test;
@@ -114,7 +115,7 @@ public class ContentExtractionTest {
     KV<String, Iterable<Iterable<Double>>> kv =
         KV.of("someid", List.of(List.of(3.5, 4.5, 0.9), List.of(1.2, 4.2, 3.1)));
 
-    var res = Utilities.embeddingToRightTypes(kv);
+    var res = Utilities.addEmbeddingsIdentifiers(kv);
     System.out.println(res);
   }
 
@@ -123,5 +124,12 @@ public class ContentExtractionTest {
     var expected = "name_some_2022_info___18Ds2syb04";
     Assert.assertEquals(
         expected, Utilities.newIdFromTitleAndDriveId("[name] some 2022 info", "18Ds2syb04"));
+  }
+
+  @Test
+  public void genDP() {
+    var embs = IntStream.range(0, 768).mapToDouble(Double::new).mapToObj(d -> d).toList();
+    var embeddings = List.of(KV.of("SomeId", embs));
+    System.out.println(ServiceClientProvider.formatEmbeddingsBody(embeddings));
   }
 }

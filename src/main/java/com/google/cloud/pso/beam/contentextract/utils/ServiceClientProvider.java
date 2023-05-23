@@ -118,7 +118,7 @@ public class ServiceClientProvider implements Serializable {
     }
   }
 
-  static String formatEmbeddingsBody(List<KV<String, List<Double>>> embeddings) {
+  public static String formatEmbeddingsBody(List<KV<String, List<Double>>> embeddings) {
     var datapointTemplate =
         """
         {

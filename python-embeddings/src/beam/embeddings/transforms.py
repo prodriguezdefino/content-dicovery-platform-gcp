@@ -104,8 +104,9 @@ class ExtractEmbeddingsDoFn(beam.DoFn):
                 yield tuple(queue)[-i:]
 
 
-    def get_data_embeddings(self, input_text, init_chunk_size=500,
+    def get_data_embeddings(self, content, init_chunk_size=500,
                split_chunk_group_size=3, chunk_overlap=1):
+        docId, input_text = content
         chunks_iter = self.get_chunks_iter(input_text, init_chunk_size)
         chunks = self.overlapping_chunks(
             chunks_iter, chunk_size=split_chunk_group_size, overlap=chunk_overlap)
@@ -113,16 +114,13 @@ class ExtractEmbeddingsDoFn(beam.DoFn):
         embeddings = []
         for chunk in chunks_final:
             emb = self.get_embeddings(chunk)
-            embeddings.append(emb)
+            embeddings.append((docId, emb))
         return embeddings
 
 
-    def process(self, element: Tuple[str, str]):
-        docId, content = element
-        embeddings = self.get_data_embeddings(
+    def process(self, content: Tuple[str, str]):
+        yield self.get_data_embeddings(
             content, 
             self.init_chunk_size, 
             self.split_chunk_group_size, 
             self.chunk_overlap)
-        yield (docId, embeddings)
-

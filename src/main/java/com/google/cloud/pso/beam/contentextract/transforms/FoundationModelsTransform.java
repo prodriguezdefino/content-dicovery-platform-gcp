@@ -26,14 +26,16 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.python.PythonExternalTransform;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Flatten;
+import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.beam.vendor.grpc.v1p48p1.com.google.common.collect.Lists;
 
 /** */
 public abstract class FoundationModelsTransform
@@ -61,7 +63,7 @@ public abstract class FoundationModelsTransform
               "GenerateEmbeddings",
               PythonExternalTransform
                   .<PCollection<KV<String, String>>,
-                      PCollection<KV<String, Iterable<Iterable<Double>>>>>
+                      PCollection<Iterable<KV<String, Iterable<Double>>>>>
                       from(PYTHON_EMBEDDINGS_TRANSFORM, options.getExpansionService())
                   .withKwargs(
                       Map.of(
@@ -70,10 +72,10 @@ public abstract class FoundationModelsTransform
                           "staging_bucket",
                           options.getTempLocation()))
                   .withOutputCoder(
-                      KvCoder.of(
-                          StringUtf8Coder.of(),
-                          IterableCoder.of(IterableCoder.of(DoubleCoder.of())))))
-          .apply("ConsolidateEmbeddings", Reshuffle.viaRandomKey())
+                      IterableCoder.of(
+                          KvCoder.of(StringUtf8Coder.of(), IterableCoder.of(DoubleCoder.of())))))
+          .apply("FlatMap", Flatten.iterables())
+          .apply("ConsolidateEmbeddings", GroupByKey.create())
           .apply(
               "FormatEmbeddings",
               MapElements.into(
@@ -81,7 +83,7 @@ public abstract class FoundationModelsTransform
                           TypeDescriptors.kvs(
                               TypeDescriptors.strings(),
                               TypeDescriptors.lists(TypeDescriptors.doubles()))))
-                  .via(Utilities::embeddingToRightTypes))
+                  .via(Utilities::addEmbeddingsIdentifiers))
           .apply(
               "UpsertIndexDatapoints",
               ParDo.of(
@@ -105,7 +107,10 @@ public abstract class FoundationModelsTransform
 
       @ProcessElement
       public void process(ProcessContext context) {
-        serviceClient.upsertVectorDBDataPoints(context.element());
+        // recommendation is not to send more than 20 datapoints per request to matching engine
+        // index upsert method
+        Lists.partition(context.element(), 15)
+            .forEach(embeddings -> serviceClient.upsertVectorDBDataPoints(embeddings));
       }
     }
   }

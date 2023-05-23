@@ -105,7 +105,7 @@ public class Utilities {
     return KV.of(content.getKey(), content.getValue().stream().collect(Collectors.joining("\n")));
   }
 
-  public static List<KV<String, List<Double>>> embeddingToRightTypes(
+  public static List<KV<String, List<Double>>> addEmbeddingsIdentifiers(
       KV<String, Iterable<Iterable<Double>>> content) {
     var embeddings =
         StreamSupport.stream(content.getValue().spliterator(), false)
