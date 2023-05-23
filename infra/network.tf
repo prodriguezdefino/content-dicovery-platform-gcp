@@ -46,8 +46,20 @@ data "google_compute_subnetwork" "subnet_priv" {
   region  = var.region
 }
 
-output "subnet" {
-  value = data.google_compute_subnetwork.subnet_priv.self_link
+
+resource "null_resource" "subnet_privateaccess" {
+
+  triggers = {
+    region      = var.region
+    subnet      = data.google_compute_subnetwork.subnet_priv.name
+  }
+
+  provisioner "local-exec" {
+    when       = create
+    command    = "gcloud compute networks subnets update ${self.triggers.subnet} --region=${self.triggers.region} --enable-private-ip-google-access --quiet"
+    on_failure = fail
+  }
+
 }
 
 resource "google_compute_firewall" "allow_icmp" {

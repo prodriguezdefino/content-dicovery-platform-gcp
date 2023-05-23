@@ -129,3 +129,7 @@ output "df_sa_id" {
 output "index_id" {
   value = google_vertex_ai_index.embeddings_index.id
 }
+
+output "subnet" {
+  value = data.google_compute_subnetwork.subnet_priv.self_link
+}
