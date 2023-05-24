@@ -75,7 +75,8 @@ public class Types {
 
   public record Instances(String prompt) {}
 
-  public record Parameters(Double temperature, Integer maxOutputTokens, Integer topK, Double topP) {}
+  public record Parameters(
+      Double temperature, Integer maxOutputTokens, Integer topK, Double topP) {}
 
   public record PalmRequest(Parameters parameters, Instances instances) {}
 

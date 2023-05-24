@@ -15,6 +15,8 @@
  */
 package com.google.cloud.pso.beam.contentextract.utils;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.Preconditions;
@@ -28,7 +30,6 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
-import java.text.DecimalFormat;
 import java.text.Normalizer;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -36,11 +37,7 @@ import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
-import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
 import org.apache.beam.sdk.values.KV;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
