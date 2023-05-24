@@ -114,7 +114,7 @@ class ExtractEmbeddingsDoFn(beam.DoFn):
         embeddings = []
         for chunk in chunks_final:
             emb = self.get_embeddings(chunk)
-            embeddings.append((docId, emb))
+            embeddings.append((docId, (chunk, emb)))
         return embeddings
 
 

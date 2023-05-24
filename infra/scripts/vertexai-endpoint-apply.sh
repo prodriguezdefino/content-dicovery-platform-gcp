@@ -11,13 +11,19 @@ PROJECT=$1
 REGION=$2
 RUN_NAME=$3
 NETWORK=$4
-DEPLOYMENT=deployment$RUN_NAME
+ENDPOINT_NAME=endpoint-$RUN_NAME
 
-# create the index endpoint
-gcloud ai index-endpoints create \
-  --display-name="$RUN_NAME-endpoint" \
-  --network=$NETWORK \
-  --project=$PROJECT \
-  --region=$REGION
+# Format request body
+BODY=$(cat <<EOF
+{
+  "display_name": "$ENDPOINT_NAME",
+  "publicEndpointEnabled": "true"
+}
+EOF
+)
 
-
+curl -X POST \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Content-Type: application/json; charset=utf-8" \
+    -d "$BODY" \
+    "https://$REGION-aiplatform.googleapis.com/v1/projects/$PROJECT/locations/$REGION/indexEndpoints"

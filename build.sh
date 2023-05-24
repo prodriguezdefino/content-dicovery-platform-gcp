@@ -12,7 +12,7 @@ PROJECT_ID=$1
 REGION=$2
 
 echo "compile java pipeline"
-mvn clean package -DskipTests
+mvn clean install -DskipTests
 
 echo "compile and install python transforms"
 pushd python-embeddings

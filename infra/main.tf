@@ -89,7 +89,8 @@ module "data_processing_project_membership_roles" {
     "roles/pubsub.publisher", 
     "roles/pubsub.subscriber", 
     "roles/secretmanager.secretAccessor", 
-    "roles/aiplatform.user"]
+    "roles/aiplatform.user",
+    "roles/bigtable.user"]
 }
 
 resource "google_storage_bucket" "content" {
@@ -114,6 +115,10 @@ variable project {}
 
 variable region {
   default = "us-central1"
+}
+
+variable zone {
+  default = "us-central1-a"
 }
 
 variable run_name {}

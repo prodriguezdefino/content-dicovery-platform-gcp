@@ -23,10 +23,11 @@
 hs_err_pid*
 replay_pid*
 
-/target
+**/target
 .terraform*
 terraform.*
 
 python-embeddings/libs/*
 */build
 *.egg-info
+application.properties.local

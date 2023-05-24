@@ -46,6 +46,7 @@ source run_expansion_service.sh $PROJECT $REGION $PORT
 echo "expansion service pid: $EXP_SERVICE_PID"
 popd
 
+pushd content-extraction
 echo " "
 echo "********************************************"
 echo "Starting Beam pipeline"
@@ -63,25 +64,29 @@ LAUNCH_PARAMS=" \
  --subnetwork=$SUBNET \
  --runner=DataflowRunner \
  --region=$REGION \
+ --autoscalingAlgorithm=THROUGHPUT_BASED \
+ --enableStreamingEngine \
  --streaming \
  --stagingLocation=$BUCKET/dataflow/staging \
  --tempLocation=$BUCKET/dataflow/temp \
  --gcpTempLocation=$BUCKET/dataflow/gcptemp \
+ --experiments=min_num_workers=1 \
+ --workerMachineType=n2d-standard-4 \
  --maxNumWorkers=10 \
  --numWorkers=1 \
+ --experiments=use_runner_v2 \
+ --sdkHarnessContainerImageOverrides=".*python.*,gcr.io/$PROJECT_ID/$REGION/beam-embeddings" \
+ --expansionService=localhost:$PORT \
  --topic=projects/$PROJECT_ID/topics/$RUN_NAME \
  --subscription=projects/$PROJECT_ID/subscriptions/$RUN_NAME-sub \
  --bucketLocation=$BUCKET \
  --matchingEngineIndexId=$INDEX_ID \
- --experiments=min_num_workers=1 \
- --workerMachineType=n2d-standard-4 \
- --autoscalingAlgorithm=THROUGHPUT_BASED \
- --enableStreamingEngine \
+ --matchingEngineIndexEndpointId=$INDEX_ENDPOINT_ID \
+ --matchingEngineIndexEndpointDomain=$INDEX_ENDPOINT_DOMAIN \
+ --matchingEngineIndexEndpointDeploymentName=$INDEX_ENDPOINT_DEPLOYMENT \
+ --bigTableInstanceName=$RUN_NAME-instance \
  --serviceAccount=$DF_SA \
  --secretManagerId=projects/$PROJECT_ID/secrets/$RUN_NAME/versions/latest \
- --experiments=use_runner_v2 \
- --sdkHarnessContainerImageOverrides=".*python.*,gcr.io/$PROJECT_ID/$REGION/beam-embeddings" \
- --expansionService=localhost:$PORT \
  --usePublicIps=false "
 
 if (( $# == 3 ))
@@ -90,3 +95,5 @@ then
 fi
 
 mvn compile exec:java -Dexec.mainClass=com.google.cloud.pso.beam.contentextract.${PIPELINE_NAME} -Dexec.cleanupDaemonThreads=false -Dexec.args="${LAUNCH_PARAMS}"
+
+popd 
