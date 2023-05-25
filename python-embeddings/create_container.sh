@@ -15,10 +15,6 @@ if [ "$#" -eq 1 ]
     GCP_REGION=$2
 fi
 
-export DOCKER_IMAGE="gcr.io/${GCP_PROJECT}/${GCP_REGION}/beam-embeddings:latest"
+DOCKER_PYTHON_IMAGE="gcr.io/${GCP_PROJECT}/${GCP_REGION}/beam-embeddings:latest"
 
-gcloud auth configure-docker
-# Build Docker Image
-docker image build --progress=plain -t $DOCKER_IMAGE .
-# Push image to Google Cloud Registry
-docker push $DOCKER_IMAGE
+gcloud builds submit --tag $DOCKER_PYTHON_IMAGE

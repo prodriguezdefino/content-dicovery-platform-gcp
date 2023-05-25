@@ -16,10 +16,12 @@ if [ "$#" -eq 2 ]
     GCP_REGION=$3
 fi
 
-export DOCKER_IMAGE="gcr.io/${GCP_PROJECT}/${GCP_REGION}/$RUN_NAME-services:latest"
+DOCKER_SERVICES_IMAGE="gcr.io/${GCP_PROJECT}/${GCP_REGION}/$RUN_NAME-services:latest"
 
-gcloud auth configure-docker
+#gcloud auth configure-docker
 # Build Docker Image
-docker image build --progress=plain -t $DOCKER_IMAGE .
+#docker image build --progress=plain -t $DOCKER_SERVICES_IMAGE .
 # Push image to Google Cloud Registry
-docker push $DOCKER_IMAGE
+#docker push $DOCKER_SERVICES_IMAGE
+
+gcloud builds submit --tag $DOCKER_SERVICES_IMAGE
