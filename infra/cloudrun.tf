@@ -3,6 +3,7 @@ locals {
       {
         "project.id" : "${var.project}",
         "region" : "${var.region}",
+        "pubsub.topic" : "${google_pubsub_topic.topic.id}",
         "bt.instance" : "${google_bigtable_instance.instance.name}",
         "bt.table" : "content_per_embedding",
         "bt.columnfamily" : "data",
@@ -68,7 +69,7 @@ resource "google_cloud_run_v2_service" "services" {
       resources {
         limits = {
           cpu = "4"
-          memory = "4000Mi"
+          memory = "4GiB"
         }
       }
     }

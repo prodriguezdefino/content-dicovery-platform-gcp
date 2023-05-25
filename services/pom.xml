@@ -59,6 +59,10 @@
       <artifactId>google-cloud-bigtable</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-pubsub</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.google.cloud.pso.beam</groupId>
       <artifactId>googledocs-content-service-clients</artifactId>
     </dependency>

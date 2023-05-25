@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.data.query.service;
+package com.google.cloud.pso.data.services;
 
 import java.util.List;
 import java.util.stream.Collectors;

@@ -137,7 +137,11 @@ public class MatchingEngineClient extends VertexAIClient {
                 "Error returned by matching engine index find neighbors: %s \nRequest payload: %s ",
                 response.toString(), request.toString()));
 
-      return GSON.fromJson(response.body(), Types.NearestNeighborgsResponse.class);
+      var nnsResp = GSON.fromJson(response.body(), Types.NearestNeighborgsResponse.class);
+
+      LOG.info("NNs: " + nnsResp.nearestNeighbors().toString());
+
+      return nnsResp;
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve nearest neighbors from matching engine index.";
       throw new RuntimeException(msg, ex);

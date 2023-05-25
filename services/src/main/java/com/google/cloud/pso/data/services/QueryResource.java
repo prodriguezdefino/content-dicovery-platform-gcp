@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.data.query.service;
+package com.google.cloud.pso.data.services;
 
 import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;

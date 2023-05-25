@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.data.query.service;
+package com.google.cloud.pso.data.services;
 
 import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
@@ -40,6 +40,7 @@ public class BeansProducer {
   private String projectId;
   private String region;
   private String credentialsSecretManagerId;
+  private String pubsubTopic;
   private String matchingEngineIndexId;
   private String matchingEngineIndexEndpointId;
   private String matchingEngineIndexEndpointDomain;
@@ -64,6 +65,7 @@ public class BeansProducer {
     projectId = configuration.get("project.id").getAsString();
     region = configuration.get("region").getAsString();
     credentialsSecretManagerId = configuration.get("secretmanager.credentials.id").getAsString();
+    pubsubTopic = configuration.get("pubsub.topic").getAsString();
     matchingEngineIndexId = configuration.get("matchingengine.index.id").getAsString();
     matchingEngineIndexEndpointId =
         configuration.get("matchingengine.indexendpoint.id").getAsString();
@@ -135,5 +137,13 @@ public class BeansProducer {
         maxOutputTokens,
         topK,
         topP);
+  }
+
+  @Produces
+  @ApplicationScoped
+  public PubSubService producePubSubService() throws IOException {
+    var psService = new PubSubService(pubsubTopic);
+    psService.init();
+    return psService;
   }
 }
