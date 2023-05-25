@@ -59,7 +59,7 @@ BUCKET=gs://${RUN_NAME}-content-${PROJECT_ID}
 JOBNAME=doc-content-extraction-`echo "$RUN_NAME" | tr _ -`-${USER}
 
 LAUNCH_PARAMS=" \
- --project=${PROJECT_ID} \
+ --project=$PROJECT_ID \
  --jobName=$JOBNAME \
  --subnetwork=$SUBNET \
  --runner=DataflowRunner \
@@ -86,7 +86,7 @@ LAUNCH_PARAMS=" \
  --matchingEngineIndexEndpointDeploymentName=$INDEX_ENDPOINT_DEPLOYMENT \
  --bigTableInstanceName=$RUN_NAME-instance \
  --serviceAccount=$DF_SA \
- --secretManagerId=projects/$PROJECT_ID/secrets/$RUN_NAME/versions/latest \
+ --secretManagerId=$SECRET_CREDENTIALS \
  --usePublicIps=false "
 
 if (( $# == 3 ))

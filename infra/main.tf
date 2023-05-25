@@ -63,7 +63,7 @@ resource "google_service_account_key" "sa_key" {
 
 resource "google_secret_manager_secret" "sa_secret" {
   project    = var.project
-  secret_id = var.run_name
+  secret_id  = var.run_name
 
   replication {
     automatic = true
@@ -145,4 +145,12 @@ output "index_endpoint_id" {
 
 output "index_endpoint_domain" {
   value = data.external.get_indexendpoint_domain.result.index_endpoint_domain
+}
+
+output "secret_credentials" {
+  value = google_secret_manager_secret_version.sa_secret_version.name
+}
+
+output "secret_service_configuration" {
+  value = google_secret_manager_secret_version.service_config_version.name
 }
