@@ -2,20 +2,26 @@
 set -eu
 
 
-if [ "$#" -ne 2 ] 
+if [ "$#" -ne 3 ] 
   then
-    echo "Usage : sh build.sh <gcp project> <gcp region> " 
+    echo "Usage : sh build.sh <gcp project> <run name> <gcp region> " 
     exit -1
 fi
 
 PROJECT_ID=$1
-REGION=$2
+RUN_NAME=$2
+REGION=$3
 
-echo "compile java pipeline"
+echo "compile and install java source"
 mvn clean install -DskipTests
 
 echo "compile and install python transforms"
 pushd python-embeddings
-source create_container.sh $PROJECT $REGION
+source create_container.sh $PROJECT_ID $REGION
 pip3 install .
+popd
+
+echo "create service container"
+pushd services
+source create_container.sh $PROJECT_ID $RUN_NAME $REGION
 popd

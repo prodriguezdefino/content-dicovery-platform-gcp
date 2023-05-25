@@ -14,6 +14,14 @@ REGION=us-central1
 
 echo " "
 echo "********************************************"
+echo "Build and install source code"
+echo "********************************************"
+echo " "
+
+source build.sh $PROJECT_ID $RUN_NAME $REGION
+
+echo " "
+echo "********************************************"
 echo "Creating GCP infrastructure"
 echo "********************************************"
 echo " "
@@ -36,8 +44,6 @@ echo "********************************************"
 echo " "
 
 pushd python-embeddings
-source create_container.sh $PROJECT $REGION
-pip3 install .
 # capture a random open port
 PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 # start expansion service with the custom python image
