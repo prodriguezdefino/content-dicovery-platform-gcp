@@ -22,8 +22,8 @@ DF_SA=$(echo $TF_JSON_OUTPUT | jq .df_sa.value | tr -d '"')
 DF_SA_ID=$(echo $TF_JSON_OUTPUT | jq .df_sa_id.value | tr -d '"')
 INDEX_ID=$(echo $TF_JSON_OUTPUT | jq .index_id.value | tr -d '"')
 SUBNET=$(echo $TF_JSON_OUTPUT | jq .subnet.value | tr -d '"')
-INDEX_ENDPOINT_DOMAIN=$(gcloud alpha ai index-endpoints list --region $REGION --filter="displayName=endpoint-$NAME" --format='value(publicEndpointDomainName)')
-INDEX_ENDPOINT_ID=$(gcloud alpha ai index-endpoints list --region $REGION --filter="displayName=endpoint-$NAME" --format='value(name)')
+INDEX_ENDPOINT_DOMAIN=$(echo $TF_JSON_OUTPUT | jq .index_endpoint_domain.value | tr -d '"')
+INDEX_ENDPOINT_ID=$(echo $TF_JSON_OUTPUT | jq .index_endpoint_id.value | tr -d '"')
 INDEX_ENDPOINT_DEPLOYMENT=deploy$NAME
 
 echo " "

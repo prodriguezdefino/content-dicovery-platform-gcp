@@ -98,5 +98,17 @@ resource "null_resource" "delete_endpoint_deployment" {
   }
 
   depends_on = [null_resource.create_index_endpoint, null_resource.delete_endpoint_deployment]
-
 }
+
+data "external" "get_indexendpoint_domain" {
+  program = ["${path.module}/scripts/retrieve-indexendpoint-domain.sh","${var.region}","${var.run_name}"]
+
+  depends_on = [null_resource.delete_endpoint_deployment]
+}
+
+data "external" "get_indexendpoint_id" {
+  program = ["${path.module}/scripts/retrieve-indexendpoint-id.sh","${var.region}","${var.run_name}"]
+
+  depends_on = [null_resource.create_index_endpoint]
+}
+

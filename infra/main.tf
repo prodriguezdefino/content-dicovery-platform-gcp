@@ -138,3 +138,11 @@ output "index_id" {
 output "subnet" {
   value = data.google_compute_subnetwork.subnet_priv.self_link
 }
+
+output "index_endpoint_id" {
+  value = data.external.get_indexendpoint_id.result.index_endpoint_id
+}
+
+output "index_endpoint_domain" {
+  value = data.external.get_indexendpoint_domain.result.index_endpoint_domain
+}
