@@ -1,3 +1,5 @@
+provider "google-beta" {
+}
 
 /*       Local Variables     */
 locals {
@@ -36,6 +38,12 @@ resource "google_project_service" "secret_service" {
 resource "google_project_service" "aiplatform_service" {
   project = var.project
   service = "aiplatform.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "run_service" {
+  project = var.project
+  service = "run.googleapis.com"
   disable_on_destroy = false
 }
 
@@ -153,4 +161,8 @@ output "secret_credentials" {
 
 output "secret_service_configuration" {
   value = google_secret_manager_secret_version.service_config_version.name
+}
+
+output "service_url" {
+  value = google_cloud_run_v2_service.services.uri
 }

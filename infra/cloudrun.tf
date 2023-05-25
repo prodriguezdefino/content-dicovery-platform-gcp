@@ -33,3 +33,63 @@ resource "google_secret_manager_secret_version" "service_config_version" {
 
   secret_data = local.configuration
 }
+
+resource "google_cloud_run_v2_service" "services" {
+  name     = "${var.run_name}-service"
+  location = var.region
+  project  = var.project
+
+  template {
+    service_account = google_service_account.dataflow_runner_sa.email
+    containers {
+      image = "gcr.io/${var.project}/${var.region}/${var.run_name}-services:latest"
+      startup_probe {
+        initial_delay_seconds = 10
+        timeout_seconds = 1
+            period_seconds = 3
+            failure_threshold = 3
+            tcp_socket {
+                port = 8080
+            }
+        }
+        liveness_probe {
+            initial_delay_seconds = 10
+            timeout_seconds = 1
+            period_seconds = 10
+            failure_threshold = 3
+            http_get {
+                path = "/q/health/live"
+            }
+        }
+        env {
+            name = "JAVA_OPTS_APPEND"
+            value = "-Dsecretmanager.configuration.version=${google_secret_manager_secret_version.service_config_version.name}"
+        }
+      resources {
+        limits = {
+          cpu = "4"
+          memory = "4000Mi"
+        }
+      }
+    }
+  }
+
+  traffic {
+    type = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent         = 100
+  }
+
+  lifecycle {
+    ignore_changes = [
+      launch_stage,
+    ]
+  }
+}
+
+resource "google_cloud_run_service_iam_member" "google_permission" {
+  location = var.region
+  project = var.project
+  service = google_cloud_run_v2_service.services.name
+  role = "roles/run.invoker"
+  member = "domain:google.com"
+}
