@@ -17,10 +17,15 @@ package com.google.cloud.pso.data.query.service;
 
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
+import com.google.cloud.bigtable.data.v2.models.RowCell;
 import java.io.IOException;
+import java.util.Comparator;
 
 /** */
 public class BigTableService {
+
+  private static final Comparator<RowCell> CELL_COMPARATOR =
+      (r1, r2) -> Long.compare(r1.getTimestamp(), r2.getTimestamp());
 
   private final String bigTableInstanceName;
   private final String bigTableTableName;
@@ -28,7 +33,7 @@ public class BigTableService {
   private final String bigTableColumnQualifierContent;
   private final String bigTableColumnQualifierLink;
   private final String bigTableProjectId;
-  
+
   private BigtableDataClient bigTableClient;
 
   public BigTableService(
@@ -62,15 +67,13 @@ public class BigTableService {
 
     var content =
         row.getCells(bigTableColumnFamily, bigTableColumnQualifierContent).stream()
-            // we want the latest version of the content, so reverse ordering here
-            .max((r1, r2) -> Long.compare(r1.getTimestamp(), r2.getTimestamp()))
+            .max(CELL_COMPARATOR)
             .map(rc -> rc.getValue().toStringUtf8())
             .orElse("");
 
     var link =
         row.getCells(bigTableColumnFamily, bigTableColumnQualifierLink).stream()
-            // we want the latest version of the content, so reverse ordering here
-            .max((r1, r2) -> Long.compare(r1.getTimestamp(), r2.getTimestamp()))
+            .max(CELL_COMPARATOR)
             .map(rc -> rc.getValue().toStringUtf8())
             .orElse("");
 

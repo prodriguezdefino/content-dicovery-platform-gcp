@@ -22,7 +22,6 @@ import com.google.cloud.pso.beam.contentextract.clients.Utilities;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.IOException;
-import java.util.Base64;
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
@@ -66,7 +65,8 @@ public class BeansProducer {
     region = configuration.get("region").getAsString();
     credentialsSecretManagerId = configuration.get("secretmanager.credentials.id").getAsString();
     matchingEngineIndexId = configuration.get("matchingengine.index.id").getAsString();
-    matchingEngineIndexEndpointId = configuration.get("matchingengine.indexendpoint.id").getAsString();
+    matchingEngineIndexEndpointId =
+        configuration.get("matchingengine.indexendpoint.id").getAsString();
     matchingEngineIndexEndpointDomain =
         configuration.get("matchingengine.indexendpoint.domain").getAsString();
     matchingEngineIndexDeploymentId =

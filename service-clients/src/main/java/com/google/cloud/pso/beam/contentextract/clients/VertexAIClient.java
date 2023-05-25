@@ -22,7 +22,6 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.util.List;
-import org.apache.beam.sdk.values.KV;
 
 /** */
 public abstract class VertexAIClient implements Serializable {
@@ -40,7 +39,8 @@ public abstract class VertexAIClient implements Serializable {
     return GoogleCredentialsCache.retrieveAccessToken(credentialsSecretManagerId);
   }
 
-  public static String formatUpsertDatapoints(List<KV<String, List<Double>>> embeddings) {
+  public static String formatUpsertDatapoints(
+      MatchingEngineClient.UpsertMatchingEngineDatapoints embeddings) {
     var datapointTemplate =
         """
         {
@@ -48,8 +48,11 @@ public abstract class VertexAIClient implements Serializable {
           "feature_vector" : %s
         }""";
     var datapoints =
-        embeddings.stream()
-            .map(kv -> String.format(datapointTemplate, kv.getKey(), kv.getValue().toString()))
+        embeddings.datapoints().stream()
+            .map(
+                emb ->
+                    String.format(
+                        datapointTemplate, emb.datapointId(), emb.featureVector().toString()))
             .toList();
     return String.format(
         """

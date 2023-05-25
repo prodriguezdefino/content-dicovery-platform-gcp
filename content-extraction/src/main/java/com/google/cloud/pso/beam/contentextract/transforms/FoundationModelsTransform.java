@@ -18,6 +18,7 @@ package com.google.cloud.pso.beam.contentextract.transforms;
 import com.google.bigtable.v2.Mutation;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
+import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import com.google.protobuf.ByteString;
 import java.util.List;
@@ -196,7 +197,13 @@ public abstract class FoundationModelsTransform
         // recommendation is not to send more than 20 datapoints per request to matching engine
         // index upsert method
         Lists.partition(context.element(), 15)
-            .forEach(embeddings -> serviceClient.upsertVectorDBDataPoints(embeddings));
+            .forEach(
+                embeddings ->
+                    serviceClient.upsertVectorDBDataPoints(
+                        new MatchingEngineClient.UpsertMatchingEngineDatapoints(
+                            embeddings.stream()
+                                .map(kv -> new Types.Datapoint(kv.getKey(), kv.getValue(), null))
+                                .toList())));
       }
     }
   }

@@ -13,7 +13,7 @@ RUN_NAME=$2
 REGION=$3
 
 echo "compile and install java source"
-mvn clean install -DskipTests
+mvn install -DskipTests
 
 echo "compile and install python transforms"
 pushd python-embeddings

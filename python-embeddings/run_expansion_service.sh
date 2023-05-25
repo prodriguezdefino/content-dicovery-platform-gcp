@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 
 if [ "$#" -ne 3 ] 
   then
@@ -26,5 +25,3 @@ python3 -m apache_beam.runners.portability.expansion_service_main \
 --environment_config=gcr.io/$PROJECT/$REGION/beam-embeddings &
 
 EXP_SERVICE_PID=$(echo $!)
-
-

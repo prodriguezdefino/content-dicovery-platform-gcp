@@ -128,11 +128,4 @@ public class ContentExtractionTest {
     Assert.assertEquals(
         expected, Utilities.newIdFromTitleAndDriveId("[name] some 2022 info", "18Ds2syb04"));
   }
-
-  @Test
-  public void genDP() {
-    var embs = IntStream.range(0, 768).mapToDouble(Double::new).mapToObj(d -> d).toList();
-    var embeddings = List.of(KV.of("SomeId", embs));
-    System.out.println(MatchingEngineClient.formatUpsertDatapoints(embeddings));
-  }
 }

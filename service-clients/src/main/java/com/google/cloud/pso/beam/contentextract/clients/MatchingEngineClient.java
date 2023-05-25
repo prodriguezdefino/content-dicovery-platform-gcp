@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
 import java.util.List;
-import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,14 +90,16 @@ public class MatchingEngineClient extends VertexAIClient {
     }
   }
 
-  public void upsertVectorDBDataPoints(List<KV<String, List<Double>>> dataPoints) {
+  public record UpsertMatchingEngineDatapoints(List<Types.Datapoint> datapoints) {}
+
+  public void upsertVectorDBDataPoints(UpsertMatchingEngineDatapoints upsertRequest) {
     try {
       var uriStr =
           String.format(
               "https://%s-aiplatform.googleapis.com/v1/%s:upsertDatapoints",
               region, matchingEngineIndexId);
 
-      var body = formatUpsertDatapoints(dataPoints);
+      var body = formatUpsertDatapoints(upsertRequest);
       var request = createHTTPBasedRequest(uriStr, body);
       var response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
@@ -110,8 +111,8 @@ public class MatchingEngineClient extends VertexAIClient {
       else
         LOG.info(
             "Propagated {} extracted embeddings vectors with ids: {}.",
-            dataPoints.size(),
-            dataPoints.stream().map(KV::getKey).toList().toString());
+            upsertRequest.datapoints().size(),
+            upsertRequest.datapoints().stream().map(emb -> emb.datapointId()).toList().toString());
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to upsert data in matching engine index.";
       throw new RuntimeException(msg, ex);
