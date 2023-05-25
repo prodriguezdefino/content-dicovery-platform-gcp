@@ -47,22 +47,9 @@ resource "google_project_service" "run_service" {
   disable_on_destroy = false
 }
 
-resource "google_pubsub_topic" "topic" {
-  project = var.project
-  name = var.run_name
-}
-
-resource "google_pubsub_subscription" "subscription" {
-  project = var.project
-  name  = "${var.run_name}-sub"
-  topic = google_pubsub_topic.topic.name
-
-  labels = local.topic_labels
-}
-
 resource "google_service_account" "dataflow_runner_sa" {
   project    = var.project
-  account_id = "${var.run_name}-df-sa"
+  account_id = "${var.run_name}-sa"
 }
 
 resource "google_service_account_key" "sa_key" {
