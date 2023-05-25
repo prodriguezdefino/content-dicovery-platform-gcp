@@ -18,35 +18,34 @@ package com.google.cloud.pso.data.query.service;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
 import java.io.IOException;
-import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /** */
-@ApplicationScoped
 public class BigTableService {
 
-  @ConfigProperty(name = "bt.instance")
-  String bigTableInstanceName;
+  private final String bigTableInstanceName;
+  private final String bigTableTableName;
+  private final String bigTableColumnFamily;
+  private final String bigTableColumnQualifierContent;
+  private final String bigTableColumnQualifierLink;
+  private final String bigTableProjectId;
+  
+  private BigtableDataClient bigTableClient;
 
-  @ConfigProperty(name = "bt.table")
-  String bigTableTableName;
+  public BigTableService(
+      String bigTableInstanceName,
+      String bigTableTableName,
+      String bigTableColumnFamily,
+      String bigTableColumnQualifierContent,
+      String bigTableColumnQualifierLink,
+      String bigTableProjectId) {
+    this.bigTableInstanceName = bigTableInstanceName;
+    this.bigTableTableName = bigTableTableName;
+    this.bigTableColumnFamily = bigTableColumnFamily;
+    this.bigTableColumnQualifierContent = bigTableColumnQualifierContent;
+    this.bigTableColumnQualifierLink = bigTableColumnQualifierLink;
+    this.bigTableProjectId = bigTableProjectId;
+  }
 
-  @ConfigProperty(name = "bt.columnfamily")
-  String bigTableColumnFamily;
-
-  @ConfigProperty(name = "bt.columnqualifier.content")
-  String bigTableColumnQualifierContent;
-
-  @ConfigProperty(name = "bt.columnqualifier.link")
-  String bigTableColumnQualifierLink;
-
-  @ConfigProperty(name = "project.id")
-  String bigTableProjectId;
-
-  BigtableDataClient bigTableClient;
-
-  @PostConstruct
   public void init() throws IOException {
     bigTableClient =
         BigtableDataClient.create(

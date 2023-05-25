@@ -21,11 +21,8 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.Preconditions;
 import com.google.cloud.pso.beam.contentextract.Types.*;
-import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
-import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -126,20 +123,6 @@ public class Utilities {
   public static List<KV<String, List<Double>>> removeContentFromEmbeddingsKV(
       List<KV<String, KV<String, List<Double>>>> content) {
     return content.stream().map(kv -> KV.of(kv.getKey(), kv.getValue().getValue())).toList();
-  }
-
-  public static ByteString getSecretValue(String secretId) {
-    try (var client = SecretManagerServiceClient.create()) {
-      LOG.info("retrieving encoded key secret {}", secretId);
-      Preconditions.checkArgument(
-          SecretVersionName.isParsableFrom(secretId), "The provided secret is not parseable.");
-      var secretVersionName = SecretVersionName.parse(secretId);
-      return client.accessSecretVersion(secretVersionName).getPayload().getData();
-    } catch (Exception ex) {
-      var msg = "Error while interacting with SecretManager client, key: " + secretId;
-      LOG.error(msg, ex);
-      throw new RuntimeException(msg, ex);
-    }
   }
 
   public static List<Transport> extractContentId(PubsubMessage msg) {

@@ -28,7 +28,6 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @Path("/query/content")
 public class QueryResource {
@@ -37,17 +36,7 @@ public class QueryResource {
   @Inject EmbeddingsClient embeddingsService;
   @Inject MatchingEngineClient matchingEngineService;
   @Inject PalmClient palmService;
-
-  @Inject
-  @ConfigProperty(name = "matchingengine.index.deployment")
-  String matchingEngineIndexDeploymentId;
-
-  private final Integer maxNeighbors = 5;
-  private final Double neighborMaxDistance = 10.0;
-  private final Double temperature = 0.2;
-  private final Integer maxOutputTokens = 1024;
-  private final Integer topK = 40;
-  private final Double topP = 0.95;
+  @Inject BeansProducer.ResourceConfiguration configuration;
 
   @POST
   @Produces(MediaType.APPLICATION_JSON)
@@ -59,13 +48,14 @@ public class QueryResource {
     var embResponse = embeddingsService.retrieveEmbeddings(embeddingRequest);
     var nnResp =
         matchingEngineService.queryNearestNeighboors(
-            embResponse.toNearestNeighborRequest(matchingEngineIndexDeploymentId, maxNeighbors));
+            embResponse.toNearestNeighborRequest(
+                configuration.matchingEngineIndexDeploymentId(), configuration.maxNeighbors()));
 
     var context =
         nnResp.nearestNeighbors().stream()
             .flatMap(n -> n.neighbors().stream())
             // filter out the dummy index initial vector
-            .filter(n -> n.distance() < neighborMaxDistance)
+            .filter(n -> n.distance() < configuration.maxNeighborDistance())
             .map(n -> n.datapoint().datapointId())
             .map(id -> btService.queryByPrefix(id))
             .map(content -> Tuple2.of(content.content(), content.sourceLink()))
@@ -79,7 +69,11 @@ public class QueryResource {
     var palmResp =
         palmService.sendPromptToModel(
             new Types.PalmRequest(
-                new Types.Parameters(temperature, maxOutputTokens, topK, topP),
+                new Types.Parameters(
+                    configuration.temperature(),
+                    configuration.maxOutputTokens(),
+                    configuration.topK(),
+                    configuration.topP()),
                 new Types.Instances(prompt)));
 
     return new QueryResult(

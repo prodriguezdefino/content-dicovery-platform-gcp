@@ -17,13 +17,9 @@ package com.google.cloud.pso.beam.contentextract.clients;
 
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
-import com.google.cloud.secretmanager.v1.SecretVersionName;
-import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
@@ -63,7 +59,8 @@ public class GoogleCredentialsCache {
 
   static GoogleCredentials getCredentialsFromSecretManager(String secretId) {
     try {
-      var buffer = Base64.getDecoder().decode(getSecretValue(secretId).asReadOnlyByteBuffer());
+      var buffer =
+          Base64.getDecoder().decode(Utilities.getSecretValue(secretId).asReadOnlyByteBuffer());
       var in = new ByteBufferBackedInputStream(buffer);
       return GoogleCredentials.fromStream(in).createScoped(SCOPES);
     } catch (IOException ex) {
@@ -78,20 +75,6 @@ public class GoogleCredentialsCache {
       return TOKEN_CACHE.get(secretId);
     } catch (ExecutionException ex) {
       var msg = "Error while trying to retrieve access token from cache";
-      LOG.error(msg, ex);
-      throw new RuntimeException(msg, ex);
-    }
-  }
-
-  public static ByteString getSecretValue(String secretId) {
-    try (var client = SecretManagerServiceClient.create()) {
-      LOG.info("retrieving encoded key secret {}", secretId);
-      Preconditions.checkArgument(
-          SecretVersionName.isParsableFrom(secretId), "The provided secret is not parseable.");
-      var secretVersionName = SecretVersionName.parse(secretId);
-      return client.accessSecretVersion(secretVersionName).getPayload().getData();
-    } catch (Exception ex) {
-      var msg = "Error while interacting with SecretManager client, key: " + secretId;
       LOG.error(msg, ex);
       throw new RuntimeException(msg, ex);
     }
