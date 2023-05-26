@@ -62,7 +62,11 @@ public class QueryResource {
             .toList();
 
     var contextContent = context.stream().map(Tuple2::getItem1).toList();
-    var sourceLinks = context.stream().map(Tuple2::getItem2).collect(Collectors.toSet());
+    var sourceLinks =
+        context.stream()
+            .map(Tuple2::getItem2)
+            .filter(link -> !link.isBlank())
+            .collect(Collectors.toSet());
 
     var prompt = PromptUtilities.formatPrompt(query.text, contextContent);
 
@@ -76,9 +80,18 @@ public class QueryResource {
                     configuration.topP()),
                 new Types.Instances(prompt)));
 
-    return new QueryResult(
-        palmResp.predictions().stream().map(pr -> pr.content()).collect(Collectors.joining("\n")),
-        new ArrayList<>(sourceLinks));
+    var responseText =
+        palmResp.predictions().stream().anyMatch(pp -> pp.safetyAttributes().blocked())
+            ? "Response blocked by model, check on provided document links if available."
+            : palmResp.predictions().stream()
+                .map(pr -> pr.content())
+                .collect(Collectors.joining("\n"));
+    var responseLinks =
+        responseText.contains(PromptUtilities.NEGATIVE_ANSWER)
+            ? List.<String>of()
+            : new ArrayList<>(sourceLinks);
+
+    return new QueryResult(responseText, responseLinks);
   }
 
   public record UserQuery(String text) {}

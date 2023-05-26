@@ -21,10 +21,12 @@ import java.util.stream.Collectors;
 /** */
 public class PromptUtilities {
 
+  public static final String NEGATIVE_ANSWER = "Answer is not available in current knowledge base";
+
   private static final String PROMPT_TEMPLATE =
       """
       Answer the question as descriptive as possible using the provided context.
-      If the answer is not contained in the context, say "Answer not available in context".
+      If the answer is not contained in the context, say "%s".
       All of your answers should start with "Oi Mate!".
 
 
@@ -39,6 +41,7 @@ public class PromptUtilities {
 
   public static String formatPrompt(String query, List<String> context) {
 
-    return String.format(PROMPT_TEMPLATE, context.stream().collect(Collectors.joining(" ")), query);
+    return String.format(
+        PROMPT_TEMPLATE, NEGATIVE_ANSWER, context.stream().collect(Collectors.joining(" ")), query);
   }
 }

@@ -52,7 +52,7 @@ public class BeansProducer {
   private String bigTableColumnQualifierLink;
 
   private final Integer maxNeighbors = 5;
-  private final Double neighborMaxDistance = 10.0;
+  private final Double maxNeighborDistance = 10.0;
   private final Double temperature = 0.2;
   private final Integer maxOutputTokens = 1024;
   private final Integer topK = 40;
@@ -132,7 +132,7 @@ public class BeansProducer {
     return new ResourceConfiguration(
         matchingEngineIndexDeploymentId,
         maxNeighbors,
-        neighborMaxDistance,
+        maxNeighborDistance,
         temperature,
         maxOutputTokens,
         topK,
