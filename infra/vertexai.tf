@@ -27,10 +27,11 @@ resource "google_vertex_ai_index" "embeddings_index" {
       dimensions = local.dimensions
       approximate_neighbors_count = 150
       distance_measure_type = "DOT_PRODUCT_DISTANCE"
+      feature_norm_type = "UNIT_L2_NORM"
       algorithm_config {
         tree_ah_config {
-          leaf_node_embedding_count = 500
-          leaf_nodes_to_search_percent = 7
+          leaf_node_embedding_count = 1000
+          leaf_nodes_to_search_percent = 10
         }
       }
     }
@@ -56,7 +57,6 @@ resource "null_resource" "create_index_endpoint" {
     command    = "${path.module}/scripts/vertexai-endpoint-apply.sh ${self.triggers.project} ${self.triggers.region} ${self.triggers.run_name} ${self.triggers.network}"
     on_failure = fail
   }
-  depends_on = [google_compute_global_address.vertex_range]
 }
 
 resource "null_resource" "create_index_deployment" {
@@ -77,7 +77,7 @@ resource "null_resource" "create_index_deployment" {
     on_failure = fail
   }
 
-  depends_on = [null_resource.create_index_endpoint, google_compute_global_address.vertex_range]
+  depends_on = [null_resource.create_index_endpoint]
 }
 
 resource "null_resource" "delete_endpoint_deployment" {

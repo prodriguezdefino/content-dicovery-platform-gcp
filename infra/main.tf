@@ -131,7 +131,7 @@ output "index_id" {
 }
 
 output "subnet" {
-  value = data.google_compute_subnetwork.subnet_priv.self_link
+  value = google_compute_subnetwork.subnet_priv.self_link
 }
 
 output "index_endpoint_id" {
