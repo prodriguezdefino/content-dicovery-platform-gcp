@@ -93,7 +93,7 @@ resource "null_resource" "delete_endpoint_deployment" {
 
   provisioner "local-exec" {
     when       = destroy
-    command    = "${path.module}/scripts/vertexai-destroy.sh ${self.triggers.project} ${self.triggers.region} ${self.triggers.run_name} ${self.triggers.network}"
+    command    = "${path.module}/scripts/vertexai-destroy.sh ${self.triggers.project} ${self.triggers.region} ${self.triggers.run_name}"
     on_failure = fail
   }
 

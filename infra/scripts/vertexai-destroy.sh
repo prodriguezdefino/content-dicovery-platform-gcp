@@ -3,7 +3,7 @@ set -x
 
 if [ "$#" -ne 3 ] 
   then
-    echo "Usage : sh vertexai-apply.sh <gcp project> <region> <run name> <network>"
+    echo "Usage : sh vertexai-apply.sh <gcp project> <region> <run name>"
     exit -1
 fi
 
