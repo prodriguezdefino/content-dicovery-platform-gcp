@@ -200,7 +200,7 @@ public abstract class FoundationModelsTransform
             .forEach(
                 embeddings ->
                     serviceClient.upsertVectorDBDataPoints(
-                        new MatchingEngineClient.UpsertMatchingEngineDatapoints(
+                        new Types.UpsertMatchingEngineDatapoints(
                             embeddings.stream()
                                 .map(kv -> new Types.Datapoint(kv.getKey(), kv.getValue(), null))
                                 .toList())));

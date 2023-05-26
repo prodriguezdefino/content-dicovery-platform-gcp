@@ -39,8 +39,7 @@ public abstract class VertexAIClient implements Serializable {
     return GoogleCredentialsCache.retrieveAccessToken(credentialsSecretManagerId);
   }
 
-  public static String formatUpsertDatapoints(
-      MatchingEngineClient.UpsertMatchingEngineDatapoints embeddings) {
+  public static String formatUpsertDatapoints(Types.UpsertMatchingEngineDatapoints embeddings) {
     var datapointTemplate =
         """
         {

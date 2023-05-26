@@ -90,9 +90,7 @@ public class MatchingEngineClient extends VertexAIClient {
     }
   }
 
-  public record UpsertMatchingEngineDatapoints(List<Types.Datapoint> datapoints) {}
-
-  public void upsertVectorDBDataPoints(UpsertMatchingEngineDatapoints upsertRequest) {
+  public void upsertVectorDBDataPoints(Types.UpsertMatchingEngineDatapoints upsertRequest) {
     try {
       var uriStr =
           String.format(
@@ -119,7 +117,7 @@ public class MatchingEngineClient extends VertexAIClient {
     }
   }
 
-  public Types.NearestNeighborgsResponse queryNearestNeighboors(
+  public Types.NearestNeighborsResponse queryNearestNeighbors(
       Types.NearestNeighborRequest nnRequest) {
 
     try {
@@ -137,7 +135,7 @@ public class MatchingEngineClient extends VertexAIClient {
                 "Error returned by matching engine index find neighbors: %s \nRequest payload: %s ",
                 response.toString(), request.toString()));
 
-      var nnsResp = GSON.fromJson(response.body(), Types.NearestNeighborgsResponse.class);
+      var nnsResp = GSON.fromJson(response.body(), Types.NearestNeighborsResponse.class);
 
       LOG.info("NNs: " + nnsResp.nearestNeighbors().toString());
 

@@ -71,18 +71,20 @@ public class Types {
 
   public record Neighbors(String id, List<Neighbor> neighbors) {}
 
-  public record NearestNeighborgsResponse(List<Neighbors> nearestNeighbors) {}
+  public record NearestNeighborsResponse(List<Neighbors> nearestNeighbors) {}
 
   public record Instances(String prompt) {}
 
-  public record Parameters(
+  public record PalmRequestParameters(
       Double temperature, Integer maxOutputTokens, Integer topK, Double topP) {}
 
-  public record PalmRequest(Parameters parameters, Instances instances) {}
+  public record PalmRequest(PalmRequestParameters parameters, Instances instances) {}
 
   public record SafetyAttributes(List<String> categories, List<Double> scores, Boolean blocked) {}
 
   public record PalmPrediction(SafetyAttributes safetyAttributes, String content) {}
 
   public record PalmResponse(List<PalmPrediction> predictions) {}
+
+  public record UpsertMatchingEngineDatapoints(List<Types.Datapoint> datapoints) {}
 }

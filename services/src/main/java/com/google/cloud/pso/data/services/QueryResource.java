@@ -47,7 +47,7 @@ public class QueryResource {
 
     var embResponse = embeddingsService.retrieveEmbeddings(embeddingRequest);
     var nnResp =
-        matchingEngineService.queryNearestNeighboors(
+        matchingEngineService.queryNearestNeighbors(
             embResponse.toNearestNeighborRequest(
                 configuration.matchingEngineIndexDeploymentId(), configuration.maxNeighbors()));
 
@@ -69,7 +69,7 @@ public class QueryResource {
     var palmResp =
         palmService.sendPromptToModel(
             new Types.PalmRequest(
-                new Types.Parameters(
+                new Types.PalmRequestParameters(
                     configuration.temperature(),
                     configuration.maxOutputTokens(),
                     configuration.topK(),
