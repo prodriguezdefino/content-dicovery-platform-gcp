@@ -45,22 +45,22 @@ resource "google_cloud_run_v2_service" "services" {
     containers {
       image = "gcr.io/${var.project}/${var.region}/${var.run_name}-services:latest"
       startup_probe {
-        initial_delay_seconds = 10
-        timeout_seconds = 1
-            period_seconds = 3
-            failure_threshold = 3
-            tcp_socket {
-                port = 8080
-            }
+          initial_delay_seconds = 5
+          timeout_seconds = 1
+          period_seconds = 3
+          failure_threshold = 3
+          tcp_socket {
+            port = 8080
+          }
         }
         liveness_probe {
-            initial_delay_seconds = 10
-            timeout_seconds = 1
-            period_seconds = 10
-            failure_threshold = 3
-            http_get {
-                path = "/q/health/live"
-            }
+          initial_delay_seconds = 5
+          timeout_seconds = 1
+          period_seconds = 10
+          failure_threshold = 3
+          http_get {
+            path = "/q/health/live"
+          }
         }
         env {
             name = "JAVA_OPTS_APPEND"
@@ -87,10 +87,18 @@ resource "google_cloud_run_v2_service" "services" {
   }
 }
 
-resource "google_cloud_run_service_iam_member" "google_permission" {
+resource "google_cloud_run_service_iam_member" "google_domain_permission" {
   location = var.region
   project = var.project
   service = google_cloud_run_v2_service.services.name
   role = "roles/run.invoker"
   member = "domain:google.com"
+}
+
+resource "google_cloud_run_service_iam_member" "sa_permission" {
+  location = var.region
+  project = var.project
+  service = google_cloud_run_v2_service.services.name
+  role = "roles/run.invoker"
+  member = "serviceAccount:${google_service_account.dataflow_runner_sa.email}"
 }
