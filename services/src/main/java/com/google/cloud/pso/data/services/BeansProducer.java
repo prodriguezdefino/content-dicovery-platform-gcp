@@ -53,10 +53,10 @@ public class BeansProducer {
 
   private final Integer maxNeighbors = 5;
   private final Double maxNeighborDistance = 10.0;
-  private final Double temperature = 0.2;
+  private final Double temperature = 0.1;
   private final Integer maxOutputTokens = 1024;
-  private final Integer topK = 40;
-  private final Double topP = 0.95;
+  private final Integer topK = 20;
+  private final Double topP = 0.5;
 
   @PostConstruct
   public void init() {

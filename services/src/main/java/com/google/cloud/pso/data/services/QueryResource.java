@@ -87,7 +87,9 @@ public class QueryResource {
                 .map(pr -> pr.content())
                 .collect(Collectors.joining("\n"));
     var responseLinks =
-        responseText.contains(PromptUtilities.NEGATIVE_ANSWER)
+        responseText.contains(PromptUtilities.NEGATIVE_ANSWER_1)
+                || responseText.contains(PromptUtilities.NEGATIVE_ANSWER_2)
+                || responseText.contains(PromptUtilities.FOUND_IN_INTERNET)
             ? List.<String>of()
             : new ArrayList<>(sourceLinks);
 

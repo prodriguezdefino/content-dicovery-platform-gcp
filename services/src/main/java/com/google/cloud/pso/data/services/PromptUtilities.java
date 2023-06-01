@@ -21,13 +21,17 @@ import java.util.stream.Collectors;
 /** */
 public class PromptUtilities {
 
-  public static final String NEGATIVE_ANSWER = "Answer is not available in current knowledge base";
+  public static final String NEGATIVE_ANSWER_1 = "Answer is not available in current content base.";
+  public static final String NEGATIVE_ANSWER_2 = "I'm not sure";
+  public static final String FOUND_IN_INTERNET =
+      "I found the following information on the internet";
 
   private static final String PROMPT_TEMPLATE =
       """
-      Answer the question as descriptive as possible using the provided context.
-      If the answer is not contained in the context, say "%s".
-      All of your answers should start with "OiM8! ".
+      Answer the question as descriptive as possible using only the information on the provided Context.
+      If a possible Answer is not contained in the provided Context, answer "%s".
+      Do not use information outside of the context, unless the Question requests for it.
+      All of your answers should start with "Hey M8! ".
 
 
       Context:
@@ -42,6 +46,9 @@ public class PromptUtilities {
   public static String formatPrompt(String query, List<String> context) {
 
     return String.format(
-        PROMPT_TEMPLATE, NEGATIVE_ANSWER, context.stream().collect(Collectors.joining(" ")), query);
+        PROMPT_TEMPLATE,
+        NEGATIVE_ANSWER_1,
+        context.stream().collect(Collectors.joining(" ")),
+        query);
   }
 }
