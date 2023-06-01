@@ -27,7 +27,7 @@ public class PromptUtilities {
       """
       Answer the question as descriptive as possible using the provided context.
       If the answer is not contained in the context, say "%s".
-      All of your answers should start with "Oi Mate!".
+      All of your answers should start with "OiM8! ".
 
 
       Context:
