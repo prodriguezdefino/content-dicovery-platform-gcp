@@ -82,10 +82,10 @@ public class Types {
 
   public record SafetyAttributes(List<String> categories, List<Double> scores, Boolean blocked) {}
 
-  public record CitationMedata(List<String> citations) {}
+  public record CitationMetadata(List<String> citations) {}
 
   public record PalmPrediction(
-      SafetyAttributes safetyAttributes, CitationMedata citationMetadata, String content) {}
+      SafetyAttributes safetyAttributes, CitationMetadata citationMetadata, String content) {}
 
   public record PalmResponse(List<PalmPrediction> predictions) {}
 
