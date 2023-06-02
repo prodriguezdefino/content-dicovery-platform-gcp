@@ -22,7 +22,8 @@ import java.util.stream.Collectors;
 public class PromptUtilities {
 
   public static final String NEGATIVE_ANSWER_1 = "Answer is not available in current content base.";
-  public static final String NEGATIVE_ANSWER_2 = "I'm not sure";
+  public static final List<String> NEGATIVE_ANSWERS =
+      List.of(NEGATIVE_ANSWER_1, "I'm not sure", "I am not sure");
   public static final String FOUND_IN_INTERNET =
       "I found the following information on the internet";
 
@@ -50,5 +51,9 @@ public class PromptUtilities {
         NEGATIVE_ANSWER_1,
         context.stream().collect(Collectors.joining(" ")),
         query);
+  }
+
+  public static Boolean checkNegativeAnswer(String answer) {
+    return NEGATIVE_ANSWERS.stream().filter(nans -> answer.contains(nans)).findAny().isPresent();
   }
 }

@@ -19,6 +19,7 @@ import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
+import com.google.common.collect.Lists;
 import io.smallrye.mutiny.tuples.Tuple2;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,17 +57,32 @@ public class QueryResource {
             .flatMap(n -> n.neighbors().stream())
             // filter out the dummy index initial vector
             .filter(n -> n.distance() < configuration.maxNeighborDistance())
-            .map(n -> n.datapoint().datapointId())
-            .map(id -> btService.queryByPrefix(id))
-            .map(content -> Tuple2.of(content.content(), content.sourceLink()))
+            // capture content and link from storage and preserve distance from original query
+            .map(
+                nn -> {
+                  var content = btService.queryByPrefix(nn.datapoint().datapointId());
+                  return new ContentAndMetadata(
+                      content.content(), content.sourceLink(), nn.distance());
+                })
             .toList();
 
-    var contextContent = context.stream().map(Tuple2::getItem1).toList();
+    var contextContent = context.stream().map(ContentAndMetadata::content).toList();
     var sourceLinks =
         context.stream()
-            .map(Tuple2::getItem2)
-            .filter(link -> !link.isBlank())
-            .collect(Collectors.toSet());
+            // discard content
+            .map(ContentAndMetadata::toLinkAndDistance)
+            // filter empty links
+            .filter(ld -> !ld.link().isBlank())
+            // get max distance value per link
+            .collect(
+                Collectors.toMap(
+                    LinkAndDistance::link, ld -> ld.distance(), (d1, d2) -> d1 > d2 ? d1 : d2))
+            .entrySet()
+            .stream()
+            // order descending by distance
+            .sorted((e1, e2) -> -e1.getValue().compareTo(e2.getValue()))
+            .map(e -> e.getKey())
+            .toList();
 
     var prompt = PromptUtilities.formatPrompt(query.text, contextContent);
 
@@ -87,13 +103,20 @@ public class QueryResource {
                 .map(pr -> pr.content())
                 .collect(Collectors.joining("\n"));
     var responseLinks =
-        responseText.contains(PromptUtilities.NEGATIVE_ANSWER_1)
-                || responseText.contains(PromptUtilities.NEGATIVE_ANSWER_2)
+        PromptUtilities.checkNegativeAnswer(responseText)
                 || responseText.contains(PromptUtilities.FOUND_IN_INTERNET)
             ? List.<String>of()
-            : new ArrayList<>(sourceLinks);
+            : sourceLinks;
 
     return new QueryResult(responseText, responseLinks);
+  }
+
+  record LinkAndDistance(String link, Double distance) {}
+
+  record ContentAndMetadata(String content, String link, Double distance) {
+    public LinkAndDistance toLinkAndDistance() {
+      return new LinkAndDistance(link(), distance());
+    }
   }
 
   public record UserQuery(String text) {}
