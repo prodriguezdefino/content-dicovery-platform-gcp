@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 
-if [ "$#" -ne 2 ] && [ "$#" -ne 3 ]
+if [ "$#" -ne 3 ] && [ "$#" -ne 4 ]
   then
     echo "Usage : sh deploy_pipeline.sh <gcp project> <a run name> <optional params>" 
     exit -1
@@ -59,7 +59,7 @@ LAUNCH_PARAMS=" \
  --tempLocation=$BUCKET/dataflow/temp \
  --gcpTempLocation=$BUCKET/dataflow/gcptemp \
  --experiments=min_num_workers=1 \
- --workerMachineType=n2d-standard-4 \
+ --workerMachineType=n2d-standard-2 \
  --maxNumWorkers=10 \
  --numWorkers=1 \
  --experiments=use_runner_v2 \
@@ -77,9 +77,9 @@ LAUNCH_PARAMS=" \
  --secretManagerId=$SECRET_CREDENTIALS \
  --usePublicIps=false "
 
-if (( $# == 3 ))
+if (( $# == 4 ))
 then
-  LAUNCH_PARAMS=$LAUNCH_PARAMS$3
+  LAUNCH_PARAMS=$LAUNCH_PARAMS$4
 fi
 
 mvn compile exec:java -Dexec.mainClass=com.google.cloud.pso.beam.contentextract.${PIPELINE_NAME} -Dexec.cleanupDaemonThreads=false -Dexec.args="${LAUNCH_PARAMS}"

@@ -68,8 +68,8 @@ resource "google_cloud_run_v2_service" "services" {
         }
       resources {
         limits = {
-          cpu = "4"
-          memory = "4G"
+          cpu = "2"
+          memory = "2Gi"
         }
       }
     }
