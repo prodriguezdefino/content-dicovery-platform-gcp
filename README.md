@@ -15,3 +15,31 @@ All the componente s described before are implemented using publicly available G
 The next image shows how the different components of the architecture and technologies interact betweeen each other.
 
 ![Platform's diagram](images/diagram.png)
+
+## Deployment Automation
+
+This platform uses Terraform for the setup of all its components. For those that currently does not have native support we have created null_resource wrappers, this are good workarounds but they tend to have very rough edges so be aware of potential errors.
+
+The complete deployment as of today (June 2023) can take up to 90 mintues to complete, the biggest culprit being the Matching Engine related components that take the majority of that time to be created and readily available. With time this extended runtimes will only improve. 
+
+## First setup 
+
+The setup should be executable from the scripts included in the repository. 
+
+### Requirements
+
+There are a few requirements needed to be fulfilled to deploy this platform being those: 
+
+* A gcloud installation
+* A services account or user configured in gcloud with enough permissions to create the needed resources 
+* A python 3.8+ installation
+* A Java 17 installation
+* A Terraform 0.12+ installation
+
+### Triggering a deployment 
+
+In order to have all the components deployed in GCP we need to build, create infrastructure and later on deploy the services and pipelines. 
+
+To achieve this we included the script `start.sh` which basically orchestrate the other included scripts to accomplish the full deployment goal. 
+
+Also we have included a `cleanup.sh` script in charge of destroying the infrastructure and clean up the collected data. 
