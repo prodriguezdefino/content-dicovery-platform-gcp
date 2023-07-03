@@ -20,6 +20,7 @@ import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
+import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,6 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.beam.vendor.grpc.v1p48p1.com.google.common.collect.Lists;
 import org.joda.time.Instant;
 
 /** */
