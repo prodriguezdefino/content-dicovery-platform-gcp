@@ -18,7 +18,7 @@ package com.google.cloud.pso.data.services;
 import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
-import com.google.cloud.pso.beam.contentextract.clients.Utilities;
+import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.IOException;
@@ -46,10 +46,13 @@ public class BeansProducer {
   private String matchingEngineIndexEndpointDomain;
   private String matchingEngineIndexDeploymentId;
   private String bigTableInstanceName;
-  private String bigTableTableName;
-  private String bigTableColumnFamily;
-  private String bigTableColumnQualifierContent;
-  private String bigTableColumnQualifierLink;
+  private String bigTableQueryContextTableName;
+  private String bigTableQueryContextColumnFamily;
+  private String bigTableContentTableName;
+  private String bigTableContentColumnFamily;
+  private String bigTableContentColumnQualifierContent;
+  private String bigTableContentColumnQualifierLink;
+  private String bigTableContentColumnQualifierContext;
 
   private final Integer maxNeighbors = 5;
   private final Double maxNeighborDistance = 10.0;
@@ -74,10 +77,16 @@ public class BeansProducer {
     matchingEngineIndexDeploymentId =
         configuration.get("matchingengine.index.deployment").getAsString();
     bigTableInstanceName = configuration.get("bt.instance").getAsString();
-    bigTableTableName = configuration.get("bt.table").getAsString();
-    bigTableColumnFamily = configuration.get("bt.columnfamily").getAsString();
-    bigTableColumnQualifierContent = configuration.get("bt.columnqualifier.content").getAsString();
-    bigTableColumnQualifierLink = configuration.get("bt.columnqualifier.link").getAsString();
+    bigTableQueryContextTableName = configuration.get("bt.contexttable").getAsString();
+    bigTableQueryContextColumnFamily = configuration.get("bt.contextcolumnfamily").getAsString();
+    bigTableContentTableName = configuration.get("bt.contenttable").getAsString();
+    bigTableContentColumnFamily = configuration.get("bt.contentcolumnfamily").getAsString();
+    bigTableContentColumnQualifierContent =
+        configuration.get("bt.contentcolumnqualifier.content").getAsString();
+    bigTableContentColumnQualifierLink =
+        configuration.get("bt.contentcolumnqualifier.link").getAsString();
+    bigTableContentColumnQualifierContext =
+        configuration.get("bt.contextcolumnqualifier").getAsString();
   }
 
   @Produces
@@ -108,10 +117,13 @@ public class BeansProducer {
     var btService =
         new BigTableService(
             bigTableInstanceName,
-            bigTableTableName,
-            bigTableColumnFamily,
-            bigTableColumnQualifierContent,
-            bigTableColumnQualifierLink,
+            bigTableQueryContextTableName,
+            bigTableQueryContextColumnFamily,
+            bigTableContentTableName,
+            bigTableContentColumnFamily,
+            bigTableContentColumnQualifierContent,
+            bigTableContentColumnQualifierLink,
+            bigTableContentColumnQualifierContext,
             projectId);
     btService.init();
     return btService;

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.beam.contentextract.clients;
 
+import com.google.cloud.pso.beam.contentextract.clients.utils.GoogleCredentialsCache;
 import com.google.gson.Gson;
 import java.io.Serializable;
 import java.net.URI;
@@ -75,7 +76,7 @@ public abstract class VertexAIClient implements Serializable {
         datapointIds.stream().map(id -> "\"" + id + "\"").toList().toString());
   }
 
-  HttpRequest createHTTPBasedRequest(String uri, String body) throws URISyntaxException {
+  protected HttpRequest createHTTPBasedRequest(String uri, String body) throws URISyntaxException {
     return HttpRequest.newBuilder()
         .uri(new URI(uri))
         .header("Authorization", "Bearer " + retrieveAccessToken())

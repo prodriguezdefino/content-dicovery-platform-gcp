@@ -73,7 +73,11 @@ public class Types {
 
   public record NearestNeighborsResponse(List<Neighbors> nearestNeighbors) {}
 
-  public record Instances(String prompt) {}
+  public record Exchange(String author, String content) {}
+
+  public record Example(String input, String output) {}
+
+  public record Instances(String context, List<Example> examples, List<Exchange> messages) {}
 
   public record PalmRequestParameters(
       Double temperature, Integer maxOutputTokens, Integer topK, Double topP) {}
@@ -85,7 +89,9 @@ public class Types {
   public record CitationMetadata(List<String> citations) {}
 
   public record PalmPrediction(
-      SafetyAttributes safetyAttributes, CitationMetadata citationMetadata, String content) {}
+      List<SafetyAttributes> safetyAttributes,
+      List<CitationMetadata> citationMetadata,
+      List<Exchange> candidates) {}
 
   public record PalmResponse(List<PalmPrediction> predictions) {}
 

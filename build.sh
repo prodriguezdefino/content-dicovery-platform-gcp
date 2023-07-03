@@ -16,26 +16,25 @@ echo "********************************************"
 echo "Build and deploy source code"
 echo "********************************************"
 echo " "
+echo " "
+echo " "
 
 echo "compile and install java source"
-echo " "
-echo " "
-echo " "
 mvn install -DskipTests
+echo " "
+echo " "
+echo " "
 
 echo "compile and install python transforms"
-echo " "
-echo " "
-echo " "
 pushd python-embeddings
 source create_container.sh $PROJECT_ID $REGION
 pip3 install .
 popd
+echo " "
+echo " "
+echo " "
 
 echo "create service container"
-echo " "
-echo " "
-echo " "
 pushd services
 source create_container.sh $PROJECT_ID $RUN_NAME $REGION
 popd

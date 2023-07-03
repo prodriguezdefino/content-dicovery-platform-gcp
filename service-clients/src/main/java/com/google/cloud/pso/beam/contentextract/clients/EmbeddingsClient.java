@@ -15,17 +15,17 @@
  */
 package com.google.cloud.pso.beam.contentextract.clients;
 
-import static com.google.cloud.pso.beam.contentextract.clients.VertexAIClient.HTTP_CLIENT;
+import static com.google.cloud.pso.beam.contentextract.clients.utils.Utilities.buildRetriableExecutorForOperation;
+import static com.google.cloud.pso.beam.contentextract.clients.utils.Utilities.executeOperation;
 
+import com.google.cloud.pso.beam.contentextract.clients.exceptions.EmbeddingsException;
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/** */
+/** A minimal REST based client to interact with the embeddings model in VertexAI. */
 public class EmbeddingsClient extends VertexAIClient {
-  private static final Logger LOG = LoggerFactory.getLogger(MatchingEngineClient.class);
 
   private final String projectId;
   private final String region;
@@ -42,7 +42,6 @@ public class EmbeddingsClient extends VertexAIClient {
   }
 
   public Types.EmbeddingsResponse retrieveEmbeddings(Types.EmbeddingRequest embeddingRequest) {
-
     try {
       var uriStr =
           String.format(
@@ -53,7 +52,7 @@ public class EmbeddingsClient extends VertexAIClient {
       var response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() != 200)
-        throw new RuntimeException(
+        throw new EmbeddingsException(
             String.format(
                 "Error returned by embeddings model: %s \nRequest payload: %s ",
                 response.toString(), request.toString()));
@@ -61,7 +60,15 @@ public class EmbeddingsClient extends VertexAIClient {
       return GSON.fromJson(response.body(), Types.EmbeddingsResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve embeddings from model.";
-      throw new RuntimeException(msg, ex);
+      throw new EmbeddingsException(msg, ex);
     }
+  }
+
+  public Types.EmbeddingsResponse retrieveEmbeddingsWithRetries(
+      Types.EmbeddingRequest embeddingRequest) {
+    return executeOperation(
+        buildRetriableExecutorForOperation(
+            "retrieveEmbeddings", Lists.newArrayList(EmbeddingsException.class)),
+        () -> retrieveEmbeddings(embeddingRequest));
   }
 }

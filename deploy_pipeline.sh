@@ -3,13 +3,13 @@ set -eu
 
 if [ "$#" -ne 3 ] && [ "$#" -ne 4 ]
   then
-    echo "Usage : sh deploy_pipeline.sh <gcp project> <a run name> <optional params>" 
+    echo "Usage : sh deploy_pipeline.sh <gcp project> <a run name> <region> <optional params>" 
     exit -1
 fi
 
 PROJECT_ID=$1
 RUN_NAME=$2
-REGION=us-central1
+REGION=$3
 
 
 pushd infra

@@ -22,7 +22,7 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.docs.v1.Docs;
 import com.google.api.services.drive.Drive;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleCredentialsCache;
+import com.google.cloud.pso.beam.contentextract.clients.utils.GoogleCredentialsCache;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Optional;

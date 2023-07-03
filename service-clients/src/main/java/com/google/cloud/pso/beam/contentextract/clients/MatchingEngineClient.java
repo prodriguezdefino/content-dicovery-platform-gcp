@@ -15,10 +15,11 @@
  */
 package com.google.cloud.pso.beam.contentextract.clients;
 
-import static com.google.cloud.pso.beam.contentextract.clients.VertexAIClient.HTTP_CLIENT;
-import static com.google.cloud.pso.beam.contentextract.clients.VertexAIClient.formatReadIndexDatapoints;
-import static com.google.cloud.pso.beam.contentextract.clients.VertexAIClient.formatUpsertDatapoints;
+import static com.google.cloud.pso.beam.contentextract.clients.utils.Utilities.buildRetriableExecutorForOperation;
+import static com.google.cloud.pso.beam.contentextract.clients.utils.Utilities.executeOperation;
 
+import com.google.cloud.pso.beam.contentextract.clients.exceptions.MatchingEngineException;
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
@@ -80,7 +81,7 @@ public class MatchingEngineClient extends VertexAIClient {
       if (response.statusCode() != 200)
         throw new RuntimeException(
             String.format(
-                "Error returned by matching engine index read datapoints: %s \nRequest payload: %s ",
+                "Error returned by matching engine index read datapoints: %s \nRequest payload: %s.",
                 response.toString(), request.toString()));
 
       return GSON.fromJson(response.body(), Types.DatapointsResponse.class);
@@ -108,7 +109,7 @@ public class MatchingEngineClient extends VertexAIClient {
                 response.toString(), request.toString()));
       else
         LOG.info(
-            "Propagated {} extracted embeddings vectors with ids: {}.",
+            "Upserted {} extracted embeddings vectors with ids: {}.",
             upsertRequest.datapoints().size(),
             upsertRequest.datapoints().stream().map(emb -> emb.datapointId()).toList().toString());
     } catch (IOException | InterruptedException | URISyntaxException ex) {
@@ -138,7 +139,16 @@ public class MatchingEngineClient extends VertexAIClient {
       return GSON.fromJson(response.body(), Types.NearestNeighborsResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve nearest neighbors from matching engine index.";
-      throw new RuntimeException(msg, ex);
+      throw new MatchingEngineException(msg, ex);
     }
+  }
+
+  public Types.NearestNeighborsResponse queryNearestNeighborsWithRetries(
+      Types.NearestNeighborRequest nnRequest) {
+
+    return executeOperation(
+        buildRetriableExecutorForOperation(
+            "retrieveEmbeddings", Lists.newArrayList(MatchingEngineException.class)),
+        () -> queryNearestNeighbors(nnRequest));
   }
 }
