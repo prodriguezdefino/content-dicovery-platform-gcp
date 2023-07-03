@@ -7,8 +7,10 @@ locals {
   min_nodes  = 1
   max_nodes  = 5
   cpu_target = 80
-  table_name = "content_per_embedding"
-  cf_name    = "data"
+  content_table_name = "content_per_embedding"
+  content_cf_name    = "data"
+  query_context_table_name = "query_context_by_session"
+  query_context_cf_name    = "exchange"
 }
 
 /*       resources           */
@@ -31,29 +33,59 @@ resource "google_bigtable_instance" "instance" {
   deletion_protection=false
 }
 
-resource "google_bigtable_table" "table" {
+resource "google_bigtable_table" "content_table" {
   project       = var.project
-  name          = local.table_name
+  name          = local.content_table_name
   instance_name = google_bigtable_instance.instance.name
 
   column_family {
-    family = local.cf_name
+    family = local.content_cf_name
   }
 }
 
-resource "google_bigtable_gc_policy" "policy" {
+resource "google_bigtable_table" "context_table" {
+  project       = var.project
+  name          = local.query_context_table_name
+  instance_name = google_bigtable_instance.instance.name
+
+  column_family {
+    family = local.query_context_cf_name
+  }
+}
+
+resource "google_bigtable_gc_policy" "content_policy" {
   project         = var.project
   instance_name   = google_bigtable_instance.instance.name
-  table           = google_bigtable_table.table.name
-  column_family   = local.cf_name
+  table           = google_bigtable_table.content_table.name
+  column_family   = local.content_cf_name
   deletion_policy = "ABANDON"
-
 
   gc_rules = <<EOF
   {
     "rules": [
       {
         "max_version": 5
+      }
+    ]
+  }
+  EOF
+}
+
+resource "google_bigtable_gc_policy" "context_policy" {
+  project         = var.project
+  instance_name   = google_bigtable_instance.instance.name
+  table           = google_bigtable_table.context_table.name
+  column_family   = local.query_context_cf_name
+  deletion_policy = "ABANDON"
+
+  gc_rules = <<EOF
+  {
+    "rules": [
+      {
+        "max_version": 5
+      },
+      {
+        "max_age": "24h"
       }
     ]
   }
