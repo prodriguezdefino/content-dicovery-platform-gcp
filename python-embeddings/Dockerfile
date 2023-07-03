@@ -1,9 +1,9 @@
-FROM apache/beam_python3.10_sdk:2.47.0
+FROM apache/beam_python3.11_sdk:2.48.0
 
 # just in case lets upgrade pip 
 RUN pip install --upgrade pip
 # pre install known dependencies
-RUN pip install 'apache_beam[gcp]==2.47.0' 'google-cloud-aiplatform==1.25' 'pandas'
+RUN pip install 'apache_beam[gcp]==2.48.0' 'google-cloud-aiplatform==1.25' 'pandas'
 # copy the local setup into the container
 COPY . /tmp/install/
 # install the manually downloaded dependencies
