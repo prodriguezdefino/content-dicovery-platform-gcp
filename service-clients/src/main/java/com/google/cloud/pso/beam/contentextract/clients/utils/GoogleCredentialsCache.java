@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.contentextract.clients;
+package com.google.cloud.pso.beam.contentextract.clients.utils;
 
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.google.auth.oauth2.GoogleCredentials;

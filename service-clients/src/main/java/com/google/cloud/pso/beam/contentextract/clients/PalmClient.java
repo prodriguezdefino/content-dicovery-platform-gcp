@@ -15,17 +15,17 @@
  */
 package com.google.cloud.pso.beam.contentextract.clients;
 
-import static com.google.cloud.pso.beam.contentextract.clients.VertexAIClient.HTTP_CLIENT;
+import static com.google.cloud.pso.beam.contentextract.clients.utils.Utilities.buildRetriableExecutorForOperation;
+import static com.google.cloud.pso.beam.contentextract.clients.utils.Utilities.executeOperation;
 
+import com.google.cloud.pso.beam.contentextract.clients.exceptions.PalmException;
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** */
 public class PalmClient extends VertexAIClient {
-  private static final Logger LOG = LoggerFactory.getLogger(MatchingEngineClient.class);
 
   private final String projectId;
   private final String region;
@@ -46,7 +46,7 @@ public class PalmClient extends VertexAIClient {
     try {
       var uriStr =
           String.format(
-              "https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/text-bison:predict",
+              "https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/chat-bison:predict",
               region, projectId, region);
       var body = GSON.toJson(palmReq);
       var request = createHTTPBasedRequest(uriStr, body);
@@ -63,5 +63,12 @@ public class PalmClient extends VertexAIClient {
       var msg = "Error while trying to retrieve prompt response from PaLM.";
       throw new RuntimeException(msg, ex);
     }
+  }
+
+  public Types.PalmResponse sendPromptToModelWithRetries(Types.PalmRequest palmReq) {
+    return executeOperation(
+        buildRetriableExecutorForOperation(
+            "retrieveEmbeddings", Lists.newArrayList(PalmException.class)),
+        () -> sendPromptToModel(palmReq));
   }
 }
