@@ -44,6 +44,10 @@ To achieve this we included the script `start.sh` which basically orchestrate th
 
 Also we have included a `cleanup.sh` script in charge of destroying the infrastructure and clean up the collected data. 
 
+### Google Docs Permissions
+
+Once the infrastructure is setup, the deployment process will print out instructions to grant the service account that runs the content extraction pipeline broad permissions to impersonate Google Workspace document access. This is not an ideal setup, but for PoC purposes should be sufficient. Once those permissions are granted, in order to extract the actual content, the service account should have permissions to the documents and Google Drive folders provided as URLs.
+
 ## Exposed Services
 
 The solution exposes a couple of resources through GCP CloudRun, which can be used to interact for content ingestion and content discovery queries. 
@@ -71,6 +75,6 @@ In the case of wanting to include the content of an article, document, or page t
 ```bash 
 curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
   -F documentId=<somedocid> \
-  -F documentContent=@</some/local/directory/file/to/upload \
+  -F documentContent=@</some/local/directory/file/to/upload> \
   https://<service-address>/ingest/content/multipart
 ```
