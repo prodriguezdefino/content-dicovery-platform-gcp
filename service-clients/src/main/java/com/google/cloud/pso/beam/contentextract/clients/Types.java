@@ -17,6 +17,7 @@ package com.google.cloud.pso.beam.contentextract.clients;
 
 import com.google.gson.annotations.SerializedName;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** */
 public class Types {
@@ -77,23 +78,38 @@ public class Types {
 
   public record Example(String input, String output) {}
 
-  public record Instances(String context, List<Example> examples, List<Exchange> messages) {}
+  public record ChatInstances(String context, List<Example> examples, List<Exchange> messages) {}
 
   public record PalmRequestParameters(
       Double temperature, Integer maxOutputTokens, Integer topK, Double topP) {}
 
-  public record PalmRequest(PalmRequestParameters parameters, Instances instances) {}
+  public record PalmChatAnswerRequest(PalmRequestParameters parameters, ChatInstances instances) {}
 
   public record SafetyAttributes(List<String> categories, List<Double> scores, Boolean blocked) {}
 
   public record CitationMetadata(List<String> citations) {}
 
-  public record PalmPrediction(
+  public record PalmChatPrediction(
       List<SafetyAttributes> safetyAttributes,
       List<CitationMetadata> citationMetadata,
       List<Exchange> candidates) {}
 
-  public record PalmResponse(List<PalmPrediction> predictions) {}
+  public record PalmChatResponse(List<PalmChatPrediction> predictions) {}
+
+  public record SummarizationInstances(String prompt) {}
+
+  public record PalmSummarizationRequest(
+      PalmRequestParameters parameters, SummarizationInstances instances) {}
+
+  public record PalmSummarizationPrediction(
+      SafetyAttributes safetyAttributes, CitationMetadata citationMetadata, String content) {}
+
+  public record PalmSummarizationResponse(List<PalmSummarizationPrediction> predictions) {
+
+    public String summary() {
+      return predictions.stream().map(sum -> sum.content()).collect(Collectors.joining(" "));
+    }
+  }
 
   public record UpsertMatchingEngineDatapoints(List<Types.Datapoint> datapoints) {}
 }

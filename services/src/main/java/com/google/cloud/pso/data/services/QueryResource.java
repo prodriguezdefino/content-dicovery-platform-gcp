@@ -59,16 +59,18 @@ public class QueryResource {
               .flatMap(qas -> qas.toExchange().stream())
               .toList();
 
-      var currentExchange = Lists.newArrayList(previousExchange);
-      currentExchange.add(new Types.Exchange("user", query.text()));
+      var summarizedConversation =
+          palmService.predictSummarizationWithRetries(
+              new Types.PalmSummarizationRequest(
+                  new Types.PalmRequestParameters(
+                      configuration.temperature(),
+                      configuration.maxOutputTokens(),
+                      configuration.topK(),
+                      configuration.topP()),
+                  new Types.SummarizationInstances(
+                      PromptUtilities.formatChatSummaryPrompt(previousExchange))));
 
-      var toRetriveEmbeddings =
-          query.text()
-              + "\n"
-              + previousExchange.stream()
-                  .map(ex -> ex.content())
-                  .limit(5)
-                  .collect(Collectors.joining("\n"));
+      var toRetriveEmbeddings = query.text() + "\n\n" + summarizedConversation.summary();
 
       var embeddingRequest =
           new Types.EmbeddingRequest(List.of(new Types.TextInstance(toRetriveEmbeddings)));
@@ -112,17 +114,19 @@ public class QueryResource {
               .map(e -> e.getKey())
               .toList();
 
-      var palmRequestContext = PromptUtilities.formatPrompt(contextContent);
+      var palmRequestContext = PromptUtilities.formatChatContextPrompt(contextContent);
+      var currentExchange = Lists.newArrayList(previousExchange);
+      currentExchange.add(new Types.Exchange("user", query.text()));
 
       var palmResp =
-          palmService.sendPromptToModelWithRetries(
-              new Types.PalmRequest(
+          palmService.predictChatAnswerWithRetries(
+              new Types.PalmChatAnswerRequest(
                   new Types.PalmRequestParameters(
                       configuration.temperature(),
                       configuration.maxOutputTokens(),
                       configuration.topK(),
                       configuration.topP()),
-                  new Types.Instances(
+                  new Types.ChatInstances(
                       palmRequestContext, PromptUtilities.EXCHANGE_EXAMPLES, currentExchange)));
 
       var responseText =

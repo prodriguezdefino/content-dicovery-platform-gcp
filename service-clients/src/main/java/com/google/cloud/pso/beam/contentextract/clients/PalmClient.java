@@ -41,7 +41,7 @@ public class PalmClient extends VertexAIClient {
     return new PalmClient(projectId, region, credentialsSecretManagerId);
   }
 
-  public Types.PalmResponse sendPromptToModel(Types.PalmRequest palmReq) {
+  public Types.PalmChatResponse predictChatAnswer(Types.PalmChatAnswerRequest palmReq) {
 
     try {
       var uriStr =
@@ -58,17 +58,50 @@ public class PalmClient extends VertexAIClient {
                 "Error returned by PaLM: %d, %s \nRequest payload: %s ",
                 response.statusCode(), response.body(), request.toString()));
 
-      return GSON.fromJson(response.body(), Types.PalmResponse.class);
+      return GSON.fromJson(response.body(), Types.PalmChatResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve prompt response from PaLM.";
       throw new RuntimeException(msg, ex);
     }
   }
 
-  public Types.PalmResponse sendPromptToModelWithRetries(Types.PalmRequest palmReq) {
+  public Types.PalmChatResponse predictChatAnswerWithRetries(Types.PalmChatAnswerRequest palmReq) {
     return executeOperation(
         buildRetriableExecutorForOperation(
             "retrieveEmbeddings", Lists.newArrayList(PalmException.class)),
-        () -> sendPromptToModel(palmReq));
+        () -> predictChatAnswer(palmReq));
+  }
+
+  public Types.PalmSummarizationResponse predictSummarization(
+      Types.PalmSummarizationRequest palmReq) {
+
+    try {
+      var uriStr =
+          String.format(
+              "https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/text-bison:predict",
+              region, projectId, region);
+      var body = GSON.toJson(palmReq);
+      var request = createHTTPBasedRequest(uriStr, body);
+      var response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() != 200)
+        throw new RuntimeException(
+            String.format(
+                "Error returned by PaLM: %d, %s \nRequest payload: %s ",
+                response.statusCode(), response.body(), request.toString()));
+
+      return GSON.fromJson(response.body(), Types.PalmSummarizationResponse.class);
+    } catch (IOException | InterruptedException | URISyntaxException ex) {
+      var msg = "Error while trying to retrieve prompt response from PaLM.";
+      throw new RuntimeException(msg, ex);
+    }
+  }
+
+  public Types.PalmSummarizationResponse predictSummarizationWithRetries(
+      Types.PalmSummarizationRequest palmReq) {
+    return executeOperation(
+        buildRetriableExecutorForOperation(
+            "retrieveEmbeddings", Lists.newArrayList(PalmException.class)),
+        () -> predictSummarization(palmReq));
   }
 }
