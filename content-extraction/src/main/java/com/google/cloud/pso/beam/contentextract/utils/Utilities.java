@@ -129,40 +129,30 @@ public class Utilities {
     try {
       var json = new Gson().fromJson(new String(msg.getPayload()), JsonObject.class);
       if (json.has("url"))
-        return List.of(
-            new Transport(
-                Utilities.extractIdFromURL(json.get("url").getAsString()), msg.getAttributeMap()));
+        return List.of(new Transport(json.get("url").getAsString(), msg.getAttributeMap()));
       else if (json.has("urls"))
         return json.get("urls").getAsJsonArray().asList().stream()
-            .map(
-                e ->
-                    new Transport(
-                        Utilities.extractIdFromURL(e.getAsString()), msg.getAttributeMap()))
+            .map(e -> new Transport(e.getAsString(), msg.getAttributeMap()))
             .toList();
       else if (json.has("retry"))
-        return List.of(
-            new Transport(
-                Utilities.extractIdFromURL(json.get("retry").getAsString()),
-                msg.getAttributeMap()));
+        return List.of(new Transport(json.get("retry").getAsString(), msg.getAttributeMap()));
       else if (json.has("retries"))
         return json.get("retries").getAsJsonArray().asList().stream()
-            .map(
-                e ->
-                    new Transport(
-                        Utilities.extractIdFromURL(e.getAsString()), msg.getAttributeMap()))
+            .map(e -> new Transport(e.getAsString(), msg.getAttributeMap()))
             .toList();
       else
         throw new IllegalArgumentException(
             "Provided JSON does not have the expected fields ('url', 'urls', 'retries', 'retry')");
     } catch (Exception ex) {
-      var errMsg = "Error while trying to extract the content id.";
+      var errMsg =
+          "Error while trying to extract the content id. Message: " + new String(msg.getPayload());
       LOG.error(errMsg);
       throw new ContentIdExtractError(errMsg, ex);
     }
   }
 
   public static String newIdFromTitleAndDriveId(String title, String driveId) {
-    var normalized = Normalizer.normalize(title, Normalizer.Form.NFD.NFD);
+    var normalized = Normalizer.normalize(title, Normalizer.Form.NFD);
     return normalized
             .replaceAll("[ ]{1,}", "_")
             .replaceAll("[\\[\\]]", "")

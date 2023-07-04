@@ -32,7 +32,7 @@ There are a few requirements needed to be fulfilled to deploy this platform bein
 
 * A gcloud installation
 * A services account or user configured in gcloud with enough permissions to create the needed resources 
-* A python 3.8+ installation
+* A python 3.11 installation
 * A Java 17 installation
 * A Terraform 0.12+ installation
 
@@ -43,3 +43,34 @@ In order to have all the components deployed in GCP we need to build, create inf
 To achieve this we included the script `start.sh` which basically orchestrate the other included scripts to accomplish the full deployment goal. 
 
 Also we have included a `cleanup.sh` script in charge of destroying the infrastructure and clean up the collected data. 
+
+## Exposed Services
+
+The solution exposes a couple of resources through GCP CloudRun, which can be used to interact for content ingestion and content discovery queries. 
+
+### Content Ingestion
+
+This service is capable of ingesting data from documents hosted in Google Drive or self contained multi-part requests which contain a document identifier and the document's content encoded as binary. 
+
+#### Google Drive Content Ingestion
+
+The Google Drive ingestion is done by sending a HTTP request simielar to the next example 
+```bash
+ curl -X POST -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+    https://<service-address>/ingest/content/gdrive \
+    -d $'{"url":"https://docs.google.com/document/d/somevalid-googledocid"}'
+```
+This request will indicate the platform to grab the document from the provided `url` and in case the service account that runs the ingestion has access permissions to the document, it will extract the content from it and store the information for indexing, later discovery and retrieval.
+
+The request can contain the url of a Google document or a Google Drive folder, in the last case the ingestion will crawl the folder for documents to process. Also, is possible to use the property `urls` which expect a `JSONArray` of `string` values, each of them a valid Google Document url.
+
+#### Multipart Content Ingestion
+
+In the case of wanting to include the content of an article, document, or page that is locally accessible by the ingest client, using the multipart endpoint should be sufficient to ingest the document. See the next `curl` command as an example, the service expects that the `documentId` form field is set to identify and univocally index the content:
+```bash 
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  -F documentId=<somedocid> \
+  -F documentContent=@</some/local/directory/file/to/upload \
+  https://<service-address>/ingest/content/multipart
+```

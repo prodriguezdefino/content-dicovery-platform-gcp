@@ -95,7 +95,7 @@ public class DocContentRetriever implements Serializable {
 
   public List<File> retrieveDriveFiles(String id) {
     try {
-      var maybeFile = clientProvider.driveFileGetClient(id).execute();
+      var maybeFile = clientProvider.driveFileGetClient(Utilities.extractIdFromURL(id)).execute();
       return switch (GoogleDriveAPIMimeTypes.get(maybeFile.getMimeType())) {
         case DOCUMENT -> List.of(maybeFile);
         case FOLDER -> {

@@ -97,9 +97,7 @@ public class ContentExtractionTest {
     var mockedProvider = createMockClientProvider();
 
     var fetcher = DocContentRetriever.create(mockedProvider);
-    var docId = Utilities.extractIdFromURL(PUBLIC_DOCUMENT_URL);
-    Assert.assertNotNull(docId);
-    var files = fetcher.retrieveDriveFiles(docId);
+    var files = fetcher.retrieveDriveFiles(PUBLIC_DOCUMENT_URL);
     files.forEach(
         file -> {
           var docContent = fetcher.retrieveDocumentContent(file.getId());

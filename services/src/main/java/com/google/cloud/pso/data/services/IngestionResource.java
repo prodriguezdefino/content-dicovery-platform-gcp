@@ -18,7 +18,10 @@ package com.google.cloud.pso.data.services;
 import com.google.gson.JsonObject;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Base64;
 import javax.inject.Inject;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -30,11 +33,12 @@ public class IngestionResource {
   @Inject PubSubService psService;
 
   @POST
+  @Path("/gdrive")
   @Produces(MediaType.APPLICATION_JSON)
-  public GoogleDriveIngestionResponse query(GoogleDriveIngestionRequest request)
+  public IngestionResponse ingestGoogleDriveUrls(GoogleDriveIngestionRequest request)
       throws URISyntaxException {
     var msgId = psService.publishMessage(request.toProperJSON());
-    return new GoogleDriveIngestionResponse("Ingestion trace id: " + msgId);
+    return new IngestionResponse("Ingestion trace id: " + msgId);
   }
 
   public record GoogleDriveIngestionRequest(String url) {
@@ -46,5 +50,31 @@ public class IngestionResource {
     }
   }
 
-  public record GoogleDriveIngestionResponse(String status) {}
+  @POST
+  @Path("/multipart")
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  public IngestionResponse ingestMultipartContent(MultipartContentIngestionRequest request)
+      throws URISyntaxException {
+    var msgId = psService.publishMessage(request.toProperJSON());
+    return new IngestionResponse("Ingestion trace id: " + msgId);
+  }
+
+  public static class MultipartContentIngestionRequest {
+    @FormParam("documentId")
+    String documentId;
+
+    @FormParam("documentContent")
+    byte[] content;
+
+    public String toProperJSON() throws URISyntaxException {
+      var json = new JsonObject();
+      var document = new JsonObject();
+      document.addProperty("id", documentId);
+      document.addProperty("content", Base64.getEncoder().encodeToString(content));
+      json.add("document", document);
+      return json.toString();
+    }
+  }
+
+  public record IngestionResponse(String status) {}
 }

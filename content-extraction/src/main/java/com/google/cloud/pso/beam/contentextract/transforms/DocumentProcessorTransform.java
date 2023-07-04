@@ -21,13 +21,21 @@ import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTran
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
 import com.google.cloud.pso.beam.contentextract.utils.GoogleDocClient;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.FlatMapElements;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
@@ -35,8 +43,11 @@ import org.apache.beam.sdk.values.PInput;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.PValue;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** */
 public class DocumentProcessorTransform
@@ -51,12 +62,23 @@ public class DocumentProcessorTransform
     var options = input.getPipeline().getOptions().as(ContentExtractionOptions.class);
     var fetcher = DocContentRetriever.create(GoogleDocClient.create(options.getSecretManagerId()));
 
-    var maybeUrls =
+    var maybePubSubMessageContent =
         input.apply(
-            "ExtractContentId",
-            FlatMapElements.into(TypeDescriptor.of(Types.Transport.class))
-                .via(Utilities::extractContentId)
-                .exceptionsVia(new ErrorHandlingTransform.ErrorHandler<>()));
+            "CheckIfContentIsIncluded",
+            ParDo.of(new CheckIfContentIsIncludedDoFn())
+                .withOutputTags(
+                    CheckIfContentIsIncludedDoFn.pubsubMessageContent,
+                    TupleTagList.of(CheckIfContentIsIncludedDoFn.documentContent)
+                        .and(CheckIfContentIsIncludedDoFn.failures)));
+
+    var maybeUrls =
+        maybePubSubMessageContent
+            .get(CheckIfContentIsIncludedDoFn.pubsubMessageContent)
+            .apply(
+                "ExtractContentId",
+                FlatMapElements.into(TypeDescriptor.of(Types.Transport.class))
+                    .via(Utilities::extractContentId)
+                    .exceptionsVia(new ErrorHandlingTransform.ErrorHandler<>()));
 
     // In case the identifier is a folder then we need to crawl it an extract all the docs in there
     var maybeDocIds =
@@ -86,9 +108,14 @@ public class DocumentProcessorTransform
                     .via((Types.Transport t) -> fetcher.retrieveDocumentContent(t.contentId()))
                     .exceptionsVia(new ErrorHandlingTransform.ErrorHandler<>()));
 
+    var outputContent =
+        PCollectionList.of(maybeDocContents.output())
+            .and(maybePubSubMessageContent.get(CheckIfContentIsIncludedDoFn.documentContent))
+            .apply("FlattenOutputs", Flatten.pCollections());
+
     return DocumentProcessingResult.of(
         input.getPipeline(),
-        maybeDocContents.output(),
+        outputContent,
         maybeDocIds.failures(),
         maybeUrls.failures(),
         maybeDocContents.failures());
@@ -173,6 +200,51 @@ public class DocumentProcessorTransform
 
     public PCollectionList<Types.ProcessingError> failures() {
       return PCollectionList.of(docIdFailures).and(docUrlFailures).and(docContentFailures);
+    }
+  }
+
+  static class CheckIfContentIsIncludedDoFn extends DoFn<PubsubMessage, PubsubMessage> {
+    private static final Logger LOG = LoggerFactory.getLogger(CheckIfContentIsIncludedDoFn.class);
+
+    static final TupleTag<PubsubMessage> pubsubMessageContent = new TupleTag<>() {};
+    static final TupleTag<KV<String, List<String>>> documentContent = new TupleTag<>() {};
+    static final TupleTag<Types.ProcessingError> failures = new TupleTag<>() {};
+
+    @ProcessElement
+    public void process(ProcessContext context) {
+      var payload = new String(context.element().getPayload());
+      try {
+        var json = new Gson().fromJson(payload, JsonObject.class);
+
+        if (json.has("document")) {
+          // the document property is present, the message should have the content included, so
+          // there is no need to extract it from Google Drive.
+          var document = json.getAsJsonObject("document");
+          if (document.has("id") && document.has("content")) {
+            var content =
+                KV.of(
+                    document.get("id").getAsString(),
+                    Stream.of(
+                            new String(
+                                    Base64.getDecoder()
+                                        .decode(document.get("content").getAsString()))
+                                .split("\n"))
+                        .toList());
+            LOG.info("Extracted {} from document json.", content.toString());
+            context.output(documentContent, content);
+          } else {
+            throw new IllegalArgumentException(
+                "The provided document does not contain a document 'id' or a 'content' property.");
+          }
+        } else {
+          // nothing to be done here, let the pipeline continue processing
+          context.output(pubsubMessageContent, context.element());
+        }
+      } catch (Exception ex) {
+        var errMsg = "Error while trying to review if the message contains the document content.";
+        LOG.error(errMsg);
+        context.output(failures, new Types.Discardable(payload, ex));
+      }
     }
   }
 }
