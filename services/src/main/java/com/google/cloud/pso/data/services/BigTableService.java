@@ -115,15 +115,23 @@ public class BigTableService {
     var row = readRowWithRetries(contentTableName, key);
 
     var content =
-        row.getCells(contentColumnFamily, columnQualifierContent).stream()
-            .max(ORDERED_CELL_COMPARATOR)
-            .map(rc -> rc.getValue().toStringUtf8())
+        Optional.ofNullable(row)
+            .map(
+                r ->
+                    r.getCells(contentColumnFamily, columnQualifierContent).stream()
+                        .max(ORDERED_CELL_COMPARATOR)
+                        .map(rc -> rc.getValue().toStringUtf8())
+                        .orElse(""))
             .orElse("");
 
     var link =
-        row.getCells(contentColumnFamily, columnQualifierLink).stream()
-            .max(ORDERED_CELL_COMPARATOR)
-            .map(rc -> rc.getValue().toStringUtf8())
+        Optional.ofNullable(row)
+            .map(
+                r ->
+                    r.getCells(contentColumnFamily, columnQualifierLink).stream()
+                        .max(ORDERED_CELL_COMPARATOR)
+                        .map(rc -> rc.getValue().toStringUtf8())
+                        .orElse(""))
             .orElse("");
 
     return new ContentByKeyResponse(key, content, link);

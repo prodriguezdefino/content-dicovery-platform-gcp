@@ -15,14 +15,12 @@
  */
 package com.google.cloud.pso.beam.contentextract.clients.utils;
 
-import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
@@ -45,7 +43,7 @@ public class GoogleCredentialsCache {
                 @Override
                 public String load(String credentialsSecretId) {
                   try {
-                    var credentials = getCredentialsFromSecretManager(credentialsSecretId);
+                    var credentials = getDefaultCredentials();
                     credentials.refreshIfExpired();
                     var accessToken = credentials.refreshAccessToken();
                     return accessToken.getTokenValue();
@@ -57,14 +55,11 @@ public class GoogleCredentialsCache {
                 }
               });
 
-  static GoogleCredentials getCredentialsFromSecretManager(String secretId) {
+  static GoogleCredentials getDefaultCredentials() {
     try {
-      var buffer =
-          Base64.getDecoder().decode(Utilities.getSecretValue(secretId).asReadOnlyByteBuffer());
-      var in = new ByteBufferBackedInputStream(buffer);
-      return GoogleCredentials.fromStream(in).createScoped(SCOPES);
-    } catch (IOException ex) {
-      var errMsg = "errors while trying to create credentials";
+      return GoogleCredentials.getApplicationDefault().createScoped(SCOPES);
+    } catch (Exception ex) {
+      var errMsg = "errors while trying to create default credentials";
       LOG.error(errMsg, ex);
       throw new RuntimeException(errMsg, ex);
     }
