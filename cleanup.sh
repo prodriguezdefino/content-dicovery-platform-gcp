@@ -1,14 +1,15 @@
 #!/bin/bash
 set -eu
 
-if [ "$#" -ne 2 ]
+if [ "$#" -ne 3 ]
   then
-    echo "Usage : sh cleanup.sh <gcp project> <run name>" 
+    echo "Usage : sh cleanup.sh <gcp project> <state-bucket-name> <run name>" 
     exit -1
 fi
 
 GCP_PROJECT=$1
-RUN_NAME=$2
+STATE_BUCKET=$2
+RUN_NAME=$3
 REGION=us-central1
 
 function drain_job(){
@@ -40,6 +41,6 @@ echo "removing infrastructure"
 pushd infra
 
 # answering anything but `yes` will keep the infra in place for review
-source ./tf-destroy.sh $GCP_PROJECT $REGION $RUN_NAME 
+source ./tf-destroy.sh $GCP_PROJECT $STATE_BUCKET $REGION $RUN_NAME 
 
 popd

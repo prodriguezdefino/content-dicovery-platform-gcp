@@ -1,4 +1,10 @@
+terraform {
+  backend "gcs" {
+  }
+}
+
 provider "google-beta" {
+  project = var.project
 }
 
 /*       Local Variables     */
@@ -108,6 +114,8 @@ resource "google_storage_bucket" "content" {
 
 variable project {}
 
+variable run_name {}
+
 variable region {
   default = "us-central1"
 }
@@ -115,8 +123,6 @@ variable region {
 variable zone {
   default = "us-central1-a"
 }
-
-variable run_name {}
 
 output "df_sa" {
   value = google_service_account.dataflow_runner_sa.email

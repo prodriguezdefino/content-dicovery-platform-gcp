@@ -12,6 +12,6 @@ REGION=$2
 PROJECT=$1
 
 terraform destroy \
-  -var="run_name=${NAME}"           \
-  -var="region=${REGION}"           \
+  -var="run_name=${NAME}"             \
+  -var="region=${REGION}"             \
   -var="project=${PROJECT}"            
