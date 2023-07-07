@@ -80,12 +80,13 @@ resource "google_bigtable_gc_policy" "context_policy" {
 
   gc_rules = <<EOF
   {
+    "mode": "union",
     "rules": [
       {
         "max_version": 5
       },
       {
-        "max_age": "24h"
+        "max_age": "1d"
       }
     ]
   }
