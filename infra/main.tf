@@ -58,27 +58,6 @@ resource "google_service_account" "dataflow_runner_sa" {
   account_id = "${var.run_name}-sa"
 }
 
-resource "google_service_account_key" "sa_key" {
-  service_account_id = google_service_account.dataflow_runner_sa.name
-}
-
-resource "google_secret_manager_secret" "sa_secret" {
-  project    = var.project
-  secret_id  = var.run_name
-
-  replication {
-    automatic = true
-  }
-
-  depends_on = [google_project_service.secret_service]
-}
-
-resource "google_secret_manager_secret_version" "sa_secret_version" {
-  secret = google_secret_manager_secret.sa_secret.id
-
-  secret_data = google_service_account_key.sa_key.private_key
-}
-
 module "data_processing_project_membership_roles" {
   source                  = "terraform-google-modules/iam/google//modules/member_iam"
   service_account_address = google_service_account.dataflow_runner_sa.email
@@ -100,16 +79,8 @@ resource "google_storage_bucket" "content" {
   location      = upper(var.region)
   storage_class = "REGIONAL"
   force_destroy = true
-
-  lifecycle_rule {
-    condition {
-      age = 7
-    }
-    action {
-      type = "Delete"
-    }
-  }
   public_access_prevention = "enforced"
+  uniform_bucket_level_access = true
 }
 
 variable project {}
@@ -146,10 +117,6 @@ output "index_endpoint_id" {
 
 output "index_endpoint_domain" {
   value = data.external.get_indexendpoint_domain.result.index_endpoint_domain
-}
-
-output "secret_credentials" {
-  value = google_secret_manager_secret_version.sa_secret_version.name
 }
 
 output "secret_service_configuration" {

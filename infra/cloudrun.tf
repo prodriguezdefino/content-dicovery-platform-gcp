@@ -12,7 +12,6 @@ locals {
         "bt.contentcolumnfamily" : "${local.content_cf_name}",
         "bt.contentcolumnqualifier.content" : "content",
         "bt.contentcolumnqualifier.link" : "link",
-        "secretmanager.credentials.id" : "${google_secret_manager_secret_version.sa_secret_version.name}",
         "matchingengine.index.id" : "${google_vertex_ai_index.embeddings_index.id}",
         "matchingengine.index.deployment" : "deploy${var.run_name}",
         "matchingengine.indexendpoint.id" : "${data.external.get_indexendpoint_id.result.index_endpoint_id}",
