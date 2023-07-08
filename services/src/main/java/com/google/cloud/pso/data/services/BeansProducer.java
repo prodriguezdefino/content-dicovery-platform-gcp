@@ -28,10 +28,13 @@ import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** */
 @Singleton
 public class BeansProducer {
+  private static final Logger LOG = LoggerFactory.getLogger(BeansProducer.class);
 
   @Inject
   @ConfigProperty(name = "secretmanager.configuration.version")
@@ -63,6 +66,7 @@ public class BeansProducer {
   @PostConstruct
   public void init() {
     var jsonConfig = Utilities.getSecretValue(secretManagerConfigurationVersion).toStringUtf8();
+    LOG.debug("configuration {}", jsonConfig);
     var configuration = new Gson().fromJson(jsonConfig, JsonObject.class);
     projectId = configuration.get("project.id").getAsString();
     region = configuration.get("region").getAsString();

@@ -41,7 +41,7 @@ public class PromptUtilities {
       KB_CONTENT:
        %s
       """;
-  private static final String CHAT_SUMMARY_PROMPT_TEMPLATE = 
+  private static final String CHAT_SUMMARY_PROMPT_TEMPLATE =
       """
       Summarize the following conversation.
       %s
