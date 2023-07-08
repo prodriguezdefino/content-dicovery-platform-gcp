@@ -70,7 +70,9 @@ module "data_processing_project_membership_roles" {
     "roles/pubsub.subscriber", 
     "roles/secretmanager.secretAccessor", 
     "roles/aiplatform.user",
-    "roles/bigtable.user"]
+    "roles/bigtable.user",
+    "roles/iam.serviceAccountUser", 
+    "roles/iam.serviceAccountTokenCreator"]
 }
 
 resource "google_storage_bucket" "content" {

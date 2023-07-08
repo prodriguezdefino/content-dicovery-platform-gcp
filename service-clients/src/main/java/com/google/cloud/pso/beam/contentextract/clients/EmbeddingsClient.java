@@ -30,15 +30,14 @@ public class EmbeddingsClient extends VertexAIClient {
   private final String projectId;
   private final String region;
 
-  EmbeddingsClient(String projectId, String region, String credentialsSecretManagerId) {
-    super(credentialsSecretManagerId);
+  EmbeddingsClient(String projectId, String region) {
+    super();
     this.projectId = projectId;
     this.region = region;
   }
 
-  public static EmbeddingsClient create(
-      String projectId, String region, String credentialsSecretManagerId) {
-    return new EmbeddingsClient(projectId, region, credentialsSecretManagerId);
+  public static EmbeddingsClient create(String projectId, String region) {
+    return new EmbeddingsClient(projectId, region);
   }
 
   public Types.EmbeddingsResponse retrieveEmbeddings(Types.EmbeddingRequest embeddingRequest) {

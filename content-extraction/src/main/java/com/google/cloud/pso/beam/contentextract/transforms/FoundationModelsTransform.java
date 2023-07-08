@@ -116,8 +116,7 @@ public abstract class FoundationModelsTransform
                           options.getMatchingEngineIndexId(),
                           options.getMatchingEngineIndexEndpointId(),
                           options.getMatchingEngineIndexEndpointDomain(),
-                          options.getMatchingEngineIndexEndpointDeploymentName(),
-                          options.getSecretManagerId()))));
+                          options.getMatchingEngineIndexEndpointDeploymentName()))));
 
       // also, we need to store the content and its id into BigTable since the content is later
       // needed to set context for the text prediction model

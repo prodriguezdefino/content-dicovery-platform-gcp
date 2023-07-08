@@ -99,7 +99,7 @@ public class DocContentRetriever implements Serializable {
       return switch (GoogleDriveAPIMimeTypes.get(maybeFile.getMimeType())) {
         case DOCUMENT -> List.of(maybeFile);
         case FOLDER -> {
-          var queryString = String.format("'%s' in parents", id);
+          var queryString = String.format("'%s' in parents", maybeFile.getId());
 
           var files = Lists.<File>newArrayList();
           var queryDone = false;

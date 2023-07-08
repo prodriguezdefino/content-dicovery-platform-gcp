@@ -40,12 +40,6 @@ public interface ContentExtractionOptions extends DataflowPipelineOptions {
 
   void setBucketLocation(String value);
 
-  @Description("The secret identifier to use while accessing credentials.")
-  @Validation.Required
-  String getSecretManagerId();
-
-  void setSecretManagerId(String value);
-
   @Description("The matching engine index identifier.")
   @Validation.Required
   String getMatchingEngineIndexId();
