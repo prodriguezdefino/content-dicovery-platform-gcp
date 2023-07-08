@@ -38,18 +38,18 @@ public class GoogleDocClient implements Serializable {
   private static final Docs DOCS_SERVICE =
       new Docs.Builder(HTTP_TRANSPORT, JSON_FACTORY, null).setApplicationName(APP_NAME).build();
 
-  private final String credentialsSecretManagerId;
+  private final String credentialsPrincipal;
 
-  GoogleDocClient(String credentialsSecretManagerId) {
-    this.credentialsSecretManagerId = credentialsSecretManagerId;
+  public GoogleDocClient(String credentialsPrincipal) {
+    this.credentialsPrincipal = credentialsPrincipal;
   }
 
-  public static GoogleDocClient create(String credentialsSecretManagerId) {
-    return new GoogleDocClient(credentialsSecretManagerId);
+  public static GoogleDocClient create(String credentialsPrincipal) {
+    return new GoogleDocClient(credentialsPrincipal);
   }
 
   String retrieveAccessToken() {
-    return GoogleCredentialsCache.retrieveAccessToken(credentialsSecretManagerId);
+    return GoogleCredentialsCache.retrieveAccessToken(credentialsPrincipal);
   }
 
   public Drive.Files.Get driveFileGetClient(String driveId) throws IOException {

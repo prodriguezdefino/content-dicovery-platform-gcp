@@ -42,9 +42,8 @@ public class MatchingEngineClient extends VertexAIClient {
       String matchingEngineIndexId,
       String matchingEngineIndexEndpointId,
       String matchingEngineIndexEndpointDomain,
-      String matchingEngineIndexDeploymentId,
-      String credentialsSecretManagerId) {
-    super(credentialsSecretManagerId);
+      String matchingEngineIndexDeploymentId) {
+    super();
     this.region = region;
     this.matchingEngineIndexId = matchingEngineIndexId;
     this.matchingEngineIndexEndpointId = matchingEngineIndexEndpointId;
@@ -57,15 +56,13 @@ public class MatchingEngineClient extends VertexAIClient {
       String matchingEngineIndexId,
       String matchingEngineIndexEndpointId,
       String matchingEngineIndexEndpointDomain,
-      String matchingEngineIndexDeploymentId,
-      String credentialsSecretManagerId) {
+      String matchingEngineIndexDeploymentId) {
     return new MatchingEngineClient(
         region,
         matchingEngineIndexId,
         matchingEngineIndexEndpointId,
         matchingEngineIndexEndpointDomain,
-        matchingEngineIndexDeploymentId,
-        credentialsSecretManagerId);
+        matchingEngineIndexDeploymentId);
   }
 
   public Types.DatapointsResponse readIndexDatapoints(List<String> datapointIds) {

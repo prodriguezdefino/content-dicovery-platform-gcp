@@ -23,7 +23,6 @@ import com.google.cloud.pso.beam.contentextract.utils.GoogleDocClient;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -59,8 +58,14 @@ public class DocumentProcessorTransform
 
   @Override
   public DocumentProcessingResult expand(PCollection<PubsubMessage> input) {
-    var options = input.getPipeline().getOptions().as(ContentExtractionOptions.class);
-    var fetcher = DocContentRetriever.create(GoogleDocClient.create(options.getSecretManagerId()));
+    var fetcher =
+        DocContentRetriever.create(
+            GoogleDocClient.create(
+                input
+                    .getPipeline()
+                    .getOptions()
+                    .as(ContentExtractionOptions.class)
+                    .getServiceAccount()));
 
     var maybePubSubMessageContent =
         input.apply(

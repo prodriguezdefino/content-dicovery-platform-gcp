@@ -39,7 +39,6 @@ public class BeansProducer {
 
   private String projectId;
   private String region;
-  private String credentialsSecretManagerId;
   private String pubsubTopic;
   private String matchingEngineIndexId;
   private String matchingEngineIndexEndpointId;
@@ -67,7 +66,6 @@ public class BeansProducer {
     var configuration = new Gson().fromJson(jsonConfig, JsonObject.class);
     projectId = configuration.get("project.id").getAsString();
     region = configuration.get("region").getAsString();
-    credentialsSecretManagerId = configuration.get("secretmanager.credentials.id").getAsString();
     pubsubTopic = configuration.get("pubsub.topic").getAsString();
     matchingEngineIndexId = configuration.get("matchingengine.index.id").getAsString();
     matchingEngineIndexEndpointId =
@@ -91,12 +89,12 @@ public class BeansProducer {
 
   @Produces
   public EmbeddingsClient produceEmbeddingsClient() {
-    return EmbeddingsClient.create(projectId, region, credentialsSecretManagerId);
+    return EmbeddingsClient.create(projectId, region);
   }
 
   @Produces
   public PalmClient producePalmClient() {
-    return PalmClient.create(projectId, region, credentialsSecretManagerId);
+    return PalmClient.create(projectId, region);
   }
 
   @Produces
@@ -106,8 +104,7 @@ public class BeansProducer {
         matchingEngineIndexId,
         matchingEngineIndexEndpointId,
         matchingEngineIndexEndpointDomain,
-        matchingEngineIndexDeploymentId,
-        credentialsSecretManagerId);
+        matchingEngineIndexDeploymentId);
   }
 
   @Produces

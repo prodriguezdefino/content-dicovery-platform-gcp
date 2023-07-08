@@ -30,15 +30,14 @@ public class PalmClient extends VertexAIClient {
   private final String projectId;
   private final String region;
 
-  PalmClient(String projectId, String region, String credentialsSecretManagerId) {
-    super(credentialsSecretManagerId);
+  PalmClient(String projectId, String region) {
+    super();
     this.projectId = projectId;
     this.region = region;
   }
 
-  public static PalmClient create(
-      String projectId, String region, String credentialsSecretManagerId) {
-    return new PalmClient(projectId, region, credentialsSecretManagerId);
+  public static PalmClient create(String projectId, String region) {
+    return new PalmClient(projectId, region);
   }
 
   public Types.PalmChatResponse predictChatAnswer(Types.PalmChatAnswerRequest palmReq) {

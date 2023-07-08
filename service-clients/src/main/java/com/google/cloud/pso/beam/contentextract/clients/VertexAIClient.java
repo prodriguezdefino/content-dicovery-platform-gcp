@@ -30,14 +30,8 @@ public abstract class VertexAIClient implements Serializable {
   static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().build();
   static final Gson GSON = new Gson();
 
-  private final String credentialsSecretManagerId;
-
-  VertexAIClient(String credentialsSecretManagerId) {
-    this.credentialsSecretManagerId = credentialsSecretManagerId;
-  }
-
   String retrieveAccessToken() {
-    return GoogleCredentialsCache.retrieveAccessToken(credentialsSecretManagerId);
+    return GoogleCredentialsCache.retrieveAccessToken("");
   }
 
   public static String formatUpsertDatapoints(Types.UpsertMatchingEngineDatapoints embeddings) {

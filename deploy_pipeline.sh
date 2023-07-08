@@ -74,7 +74,6 @@ LAUNCH_PARAMS=" \
  --matchingEngineIndexEndpointDeploymentName=$INDEX_ENDPOINT_DEPLOYMENT \
  --bigTableInstanceName=$RUN_NAME-instance \
  --serviceAccount=$DF_SA \
- --secretManagerId=$SECRET_CREDENTIALS \
  --usePublicIps=false "
 
 if (( $# == 4 ))

@@ -17,7 +17,6 @@ SUBNET=$(echo $TF_JSON_OUTPUT | jq .subnet.value | tr -d '"')
 INDEX_ENDPOINT_DOMAIN=$(echo $TF_JSON_OUTPUT | jq .index_endpoint_domain.value | tr -d '"')
 INDEX_ENDPOINT_ID=$(echo $TF_JSON_OUTPUT | jq .index_endpoint_id.value | tr -d '"')
 INDEX_ENDPOINT_DEPLOYMENT=deploy$NAME
-SECRET_CREDENTIALS=$(echo $TF_JSON_OUTPUT | jq .secret_credentials.value | tr -d '"')
 SECRET_SERVICE_CONFIG=$(echo $TF_JSON_OUTPUT | jq .secret_service_configuration.value | tr -d '"')
 
 

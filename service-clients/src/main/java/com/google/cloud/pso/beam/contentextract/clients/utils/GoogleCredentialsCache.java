@@ -16,12 +16,14 @@
 package com.google.cloud.pso.beam.contentextract.clients.utils;
 
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ImpersonatedCredentials;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,23 +43,34 @@ public class GoogleCredentialsCache {
           .build(
               new CacheLoader<String, String>() {
                 @Override
-                public String load(String credentialsSecretId) {
-                  try {
-                    var credentials = getDefaultCredentials();
-                    credentials.refreshIfExpired();
-                    var accessToken = credentials.refreshAccessToken();
-                    return accessToken.getTokenValue();
-                  } catch (IOException ex) {
-                    var msg = "Problems while trying to retrieve access token.";
-                    LOG.error(msg, ex);
-                    throw new RuntimeException(msg, ex);
-                  }
+                public String load(String credentialsPrincipal) {
+                  return accessToken(credentialsPrincipal);
                 }
               });
 
+  static String accessToken(String credentialsPrincipal) {
+    try {
+      var credentials =
+          Optional.of(credentialsPrincipal)
+              .filter(p -> !p.isEmpty() && !p.isBlank())
+              .map(p -> getImpersonatedCredentialsWithScopes(p))
+              .orElse(getDefaultCredentials());
+      credentials.refreshIfExpired();
+      var accessToken = credentials.refreshAccessToken();
+      return accessToken.getTokenValue();
+    } catch (IOException ex) {
+      var msg =
+          String.format(
+              "Problems while trying to retrieve access token, principal '%s'.",
+              credentialsPrincipal);
+      LOG.error(msg, ex);
+      throw new RuntimeException(msg, ex);
+    }
+  }
+
   static GoogleCredentials getDefaultCredentials() {
     try {
-      return GoogleCredentials.getApplicationDefault().createScoped(SCOPES);
+      return GoogleCredentials.getApplicationDefault();
     } catch (Exception ex) {
       var errMsg = "errors while trying to create default credentials";
       LOG.error(errMsg, ex);
@@ -65,10 +78,27 @@ public class GoogleCredentialsCache {
     }
   }
 
-  public static String retrieveAccessToken(String secretId) {
+  /**
+   * this method is only available because currently there is no way to add scopes to the default
+   * credentials while using GCE service account.
+   */
+  static GoogleCredentials getImpersonatedCredentialsWithScopes(String targetPrincipal) {
     try {
-      return TOKEN_CACHE.get(secretId);
-    } catch (ExecutionException ex) {
+      return ImpersonatedCredentials.create(
+          GoogleCredentials.getApplicationDefault(), targetPrincipal, null, SCOPES, 3600);
+    } catch (Exception ex) {
+      var errMsg =
+          String.format(
+              "errors while trying to create impersonated '%s' credentials", targetPrincipal);
+      LOG.error(errMsg, ex);
+      throw new RuntimeException(errMsg, ex);
+    }
+  }
+
+  public static String retrieveAccessToken(String credentialsPrincipal) {
+    try {
+      return TOKEN_CACHE.get(credentialsPrincipal);
+    } catch (Exception ex) {
       var msg = "Error while trying to retrieve access token from cache";
       LOG.error(msg, ex);
       throw new RuntimeException(msg, ex);
