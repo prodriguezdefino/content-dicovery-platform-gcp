@@ -17,6 +17,12 @@ locals {
 
 /*       resources           */
 
+resource "google_project_service" "dataflow_service" {
+  project = var.project
+  service = "dataflow.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_project_service" "drive_service" {
   project = var.project
   service = "drive.googleapis.com"
