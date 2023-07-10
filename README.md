@@ -112,7 +112,12 @@ In case of wanting to have a more context-aware type of exchange with the servic
 
 Next an example for a context-aware conversation: 
 ```bash
-$ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://<service-address>/query/content -d $'{"text":"summarize the benefits of using VertexAI foundational models for Generative AI applications?", "sessionId": "some-session-id"}' | jq .
+$ > curl -X POST \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+ https://<service-address>/query/content \
+ -d $'{"text":"summarize the benefits of using VertexAI foundational models for Generative AI applications?", "sessionId": "some-session-id"}' \
+ | jq .
 
 # response from service
 {
@@ -121,7 +126,12 @@ $ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $
   ]
 }
 
-$ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://<service-address>/query/content -d $'{"text":"describe the available LLM models?", "sessionId": "some-session-id"}' | jq .
+$ > curl -X POST \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+ https://<service-address>/query/content \
+ -d $'{"text":"describe the available LLM models?", "sessionId": "some-session-id"}' \
+ | jq .
 
 # response from service
 {
@@ -130,7 +140,12 @@ $ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $
   ]
 }
 
-$ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://<service-address>/query/content -d $'{"text":"do rate limit apply for those LLMs?", "sessionId": "some-session-id"}' | jq .
+$ > curl -X POST \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+ https://<service-address>/query/content \
+ -d $'{"text":"do rate limit apply for those LLMs?", "sessionId": "some-session-id"}' \
+ | jq .
 
 # response from service
 {
@@ -139,7 +154,12 @@ $ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $
   ]
 }
 
-$ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://<service-address>/query/content -d $'{"text":"care to share the price?", "sessionId": "some-session-id"}' | jq .
+$ > curl -X POST \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+ https://<service-address>/query/content \
+ -d $'{"text":"care to share the price?", "sessionId": "some-session-id"}' \
+ | jq .
 
 # response from service
 {
