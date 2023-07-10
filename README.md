@@ -50,7 +50,7 @@ Once the infrastructure is setup, the deployment process will print out instruct
 
 ## Exposed Services
 
-The solution exposes a couple of resources through GCP CloudRun, which can be used to interact for content ingestion and content discovery queries. 
+The solution exposes a couple of resources through GCP CloudRun, which can be used to interact for content ingestion and content discovery queries. In all the examples we use the symbolic `<service-address>` string, which should be replaced by the URL provided by CloudRun after the service deployment is completed.
 
 ### Content Ingestion
 
@@ -60,7 +60,7 @@ This service is capable of ingesting data from documents hosted in Google Drive 
 
 The Google Drive ingestion is done by sending a HTTP request simielar to the next example 
 ```bash
- curl -X POST -H "Content-Type: application/json" \
+$ > curl -X POST -H "Content-Type: application/json" \
     -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
     https://<service-address>/ingest/content/gdrive \
     -d $'{"url":"https://docs.google.com/document/d/somevalid-googledocid"}'
@@ -73,8 +73,78 @@ The request can contain the url of a Google document or a Google Drive folder, i
 
 In the case of wanting to include the content of an article, document, or page that is locally accessible by the ingest client, using the multipart endpoint should be sufficient to ingest the document. See the next `curl` command as an example, the service expects that the `documentId` form field is set to identify and univocally index the content:
 ```bash 
-curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+$ > curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
   -F documentId=<somedocid> \
   -F documentContent=@</some/local/directory/file/to/upload> \
   https://<service-address>/ingest/content/multipart
+```
+
+### Querying for Content
+
+This service exposes the query capability to the platform's users, by sending natural text queries to the services and given there is already content indexes after ingestion in the platform, the service will come back with information summarized through by the LLM model. 
+
+#### Example Query Requests
+
+The interaction with the service can be done through a REST exchange, similar to those for the ingestion part, as seen in the next example. 
+
+```bash
+$ > curl -X POST \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+ https://<service-address>/query/content \
+ -d $'{"text":"summarize the benefits of using VertexAI foundational models for Generative AI applications?", "sessionId": ""}' \
+ | jq .
+
+# response from service
+{
+  "content": "VertexAI foundational models are a set of pre-trained models that can be used to build and deploy machine learning applications. They are available in a variety of languages and frameworks, and can be used for a variety of tasks, including natural language processing, computer vision, and recommendation systems.\n\nVertexAI foundational models are a good choice for Generative AI applications because they provide a starting point for building these types of applications. They can be used to quickly and easily create models that can generate text, images, and other types of content.\n\nIn addition, VertexAI foundational models are scalable and can be used to process large amounts of data. They are also reliable and can be used to create applications that are available 24/7.\n\nOverall, VertexAI foundational models are a powerful tool for building Generative AI applications. They provide a starting point for building these types of applications, and they can be used to quickly and easily create models that can generate text, images, and other types of content.",
+  "sourceLinks": [
+  ]
+}
+```
+
+##### Note:
+There is an special case here, where there is no information stored yet for a particular topic, if that topic falls into the GCP landscape then the model will be acting as an expert since we [setup a prompt](https://github.com/prodriguezdefino/content-dicovery-platform-gcp/blob/main/services/src/main/java/com/google/cloud/pso/data/services/PromptUtilities.java#L33) that indicates that to the model request. 
+
+#### Contextful Exchanges (conversations)
+
+In case of wanting to have a more context-aware type of exchange with the service a session identifier should be provided for the service to use as a conversation exchange key. This conversation key will be used to setup the right context to the model (by summarizing previous exchanges) and keeping track of the last 5 exchanges (at least). Also worth to note that the exchange history will be maitained for 24hrs, this can be changed as part of the gc policies of the BigTable storage in the platform. 
+
+Next an example for a context-aware conversation: 
+```bash
+$ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://<service-address>/query/content -d $'{"text":"summarize the benefits of using VertexAI foundational models for Generative AI applications?", "sessionId": "some-session-id"}' | jq .
+
+# response from service
+{
+  "content": "VertexAI Foundational Models are a suite of pre-trained models that can be used to accelerate the development of Generative AI applications. These models are available in a variety of languages and domains, and they can be used to generate text, images, audio, and other types of content.\n\nUsing VertexAI Foundational Models can help you to:\n\n* Reduce the time and effort required to develop Generative AI applications\n* Improve the accuracy and quality of your models\n* Access the latest research and development in Generative AI\n\nVertexAI Foundational Models are a powerful tool for developers who want to create innovative and engaging Generative AI applications.",
+  "sourceLinks": [
+  ]
+}
+
+$ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://<service-address>/query/content -d $'{"text":"describe the available LLM models?", "sessionId": "some-session-id"}' | jq .
+
+# response from service
+{
+  "content": "The VertexAI Foundational Models suite includes a variety of LLM models, including:\n\n* Text-to-text LLMs: These models can generate text based on a given prompt. They can be used for tasks such as summarization, translation, and question answering.\n* Image-to-text LLMs: These models can generate text based on an image. They can be used for tasks such as image captioning and description generation.\n* Audio-to-text LLMs: These models can generate text based on an audio clip. They can be used for tasks such as speech recognition and transcription.\n\nThese models are available in a variety of languages, including English, Spanish, French, German, and Japanese. They can be used to create a wide range of Generative AI applications, such as chatbots, customer service applications, and creative writing tools.",
+  "sourceLinks": [
+  ]
+}
+
+$ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://<service-address>/query/content -d $'{"text":"do rate limit apply for those LLMs?", "sessionId": "some-session-id"}' | jq .
+
+# response from service
+{
+  "content": "Yes, there are rate limits for the VertexAI Foundational Models. The rate limits are based on the number of requests per second and the total number of requests per day. For more information, please see the [VertexAI Foundational Models documentation](https://cloud.google.com/vertex-ai/docs/foundational-models#rate-limits).",
+  "sourceLinks": [
+  ]
+}
+
+$ > curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://<service-address>/query/content -d $'{"text":"care to share the price?", "sessionId": "some-session-id"}' | jq .
+
+# response from service
+{
+  "content": "The VertexAI Foundational Models are priced based on the number of requests per second and the total number of requests per day. For more information, please see the [VertexAI Foundational Models pricing page](https://cloud.google.com/vertex-ai/pricing#foundational-models).",
+  "sourceLinks": [
+  ]
+}
 ```

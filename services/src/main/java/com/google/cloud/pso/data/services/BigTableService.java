@@ -102,7 +102,7 @@ public class BigTableService {
     return new QAndA(qas[0], qas[1]);
   }
 
-  public record ConverstaionContextBySessionResponse(String session, List<QAndA> exchanges) {}
+  public record ConversationContextBySessionResponse(String session, List<QAndA> exchanges) {}
 
   Row readRowWithRetries(String tableId, String key) {
     return Utilities.executeOperation(
@@ -137,14 +137,14 @@ public class BigTableService {
     return new ContentByKeyResponse(key, content, link);
   }
 
-  public ConverstaionContextBySessionResponse retrieveConversationContext(String session) {
+  public ConversationContextBySessionResponse retrieveConversationContext(String session) {
     if (session.isEmpty() || session.isBlank()) {
       // nothing to be retrieved.
-      return new ConverstaionContextBySessionResponse(session, Lists.newArrayList());
+      return new ConversationContextBySessionResponse(session, Lists.newArrayList());
     }
     var row = readRowWithRetries(queryContextTableName, session);
 
-    return new ConverstaionContextBySessionResponse(
+    return new ConversationContextBySessionResponse(
         session,
         Optional.ofNullable(row)
             .map(
