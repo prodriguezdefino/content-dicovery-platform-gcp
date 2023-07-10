@@ -138,6 +138,10 @@ public class BigTableService {
   }
 
   public ConverstaionContextBySessionResponse retrieveConversationContext(String session) {
+    if (session.isEmpty() || session.isBlank()) {
+      // nothing to be retrieved.
+      return new ConverstaionContextBySessionResponse(session, Lists.newArrayList());
+    }
     var row = readRowWithRetries(queryContextTableName, session);
 
     return new ConverstaionContextBySessionResponse(
@@ -159,6 +163,10 @@ public class BigTableService {
   }
 
   public void storeQueryToContext(String session, String query, String answer) {
+    if (session.isEmpty() || session.isBlank()) {
+      // nothing to be stored.
+      return;
+    }
     RowMutation rowMutation =
         RowMutation.create(queryContextTableName, session)
             .setCell(
