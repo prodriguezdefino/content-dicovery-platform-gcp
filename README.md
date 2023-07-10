@@ -108,7 +108,7 @@ There is an special case here, where there is no information stored yet for a pa
 
 #### Contextful Exchanges (conversations)
 
-In case of wanting to have a more context-aware type of exchange with the service a session identifier should be provided for the service to use as a conversation exchange key. This conversation key will be used to setup the right context to the model (by summarizing previous exchanges) and keeping track of the last 5 exchanges (at least). Also worth to note that the exchange history will be maitained for 24hrs, this can be changed as part of the gc policies of the BigTable storage in the platform. 
+In case of wanting to have a more context-aware type of exchange with the service, a session identifier (`sessionId` property in the JSON request) should be provided for the service to use as a conversation exchange key. This conversation key will be used to setup the right context to the model (by summarizing previous exchanges) and keeping track of the last 5 exchanges (at least). Also worth to note that the exchange history will be maitained for 24hrs, this can be changed as part of the gc policies of the BigTable storage in the platform. 
 
 Next an example for a context-aware conversation: 
 ```bash
