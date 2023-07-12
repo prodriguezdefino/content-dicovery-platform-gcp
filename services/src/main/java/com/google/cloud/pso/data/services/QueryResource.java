@@ -96,25 +96,27 @@ public class QueryResource {
       Preconditions.checkState(query.sessionId() != null, "A valid session id should be provided.");
       Preconditions.checkState(query.text() != null, "A valid question should be provided.");
 
-      // retrieve the previous q and as from the conversation context removing the repeated answers
-      // from the model
+      // retrieve the previous q and as from the conversation context removing the repeated and
+      // negative answers coming from the model
       var qAndAs =
           removeRepeatedAndNegaviteAnswers(
               btService.retrieveConversationContext(query.sessionId()).qAndAs());
 
-      // keep the embeddings context as the last 5 questions (if not summarization becomes too
+      // keep the embeddings context as the last 5 questions (summarization may become too
       // clumsy).
       var lastsQAndAs =
           qAndAs.size() > 5 ? qAndAs.subList(qAndAs.size() - 6, qAndAs.size() - 1) : qAndAs;
 
+      // retrieve the summary of the previous conversation and generate embeddings adding that
+      // context to the user query
       var previousSummarizedConversation = retrievePreviousSummarizedConversation(lastsQAndAs);
-
       var embeddingRequest =
           new Types.EmbeddingRequest(
               Lists.newArrayList(
                   new Types.TextInstance(query.text() + "\n" + previousSummarizedConversation)));
-
       var embResponse = embeddingsService.retrieveEmbeddingsWithRetries(embeddingRequest);
+
+      // retrieve the nearest neighbors using the computed embeddings
       var nnResp =
           matchingEngineService.queryNearestNeighborsWithRetries(
               embResponse.toNearestNeighborRequest(
@@ -126,6 +128,7 @@ public class QueryResource {
                           .flatMap(params -> Optional.ofNullable(params.maxNeighbors))
                           .orElse(Integer.MAX_VALUE))));
 
+      // given the retrieved neighbors, use their ids to retrieve the chunks text content
       var context =
           nnResp.nearestNeighbors().stream()
               .flatMap(n -> n.neighbors().stream())
@@ -143,7 +146,36 @@ public class QueryResource {
                   })
               .toList();
 
+      // given the textual context and the previously retrieved existing conversation request a chat
+      // response to the model using the provided query.
       var contextContent = context.stream().map(ContentAndMetadata::content).toList();
+      var palmRequestContext =
+          PromptUtilities.formatChatContextPrompt(
+              contextContent,
+              Optional.ofNullable(query.parameters)
+                  .flatMap(p -> Optional.ofNullable(p.botContextExpertise())));
+      var currentExchange =
+          Lists.newArrayList(qAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
+      currentExchange.add(new Types.Exchange("user", query.text()));
+      var palmResp =
+          palmService.predictChatAnswerWithRetries(
+              new Types.PalmChatAnswerRequest(
+                  palmRequestParameters(Optional.ofNullable(query.parameters)),
+                  new Types.ChatInstances(
+                      palmRequestContext, PromptUtilities.EXCHANGE_EXAMPLES, currentExchange)));
+
+      // retrieve the model's text response
+      var responseText =
+          palmResp.predictions().stream()
+                  .flatMap(pp -> pp.safetyAttributes().stream())
+                  .anyMatch(saf -> saf.blocked())
+              ? "Response blocked by model, check on provided document links if any available."
+              : palmResp.predictions().stream()
+                  .flatMap(pr -> pr.candidates().stream())
+                  .map(ex -> ex.content())
+                  .collect(Collectors.joining("\n"));
+
+      // the context source links
       var sourceLinks =
           context.stream()
               // discard content
@@ -163,32 +195,6 @@ public class QueryResource {
               .sorted((e1, e2) -> -e1.getValue().compareTo(e2.getValue()))
               .map(e -> new LinkAndDistance(e.getKey(), e.getValue()))
               .toList();
-
-      var palmRequestContext =
-          PromptUtilities.formatChatContextPrompt(
-              contextContent,
-              Optional.ofNullable(query.parameters)
-                  .flatMap(p -> Optional.ofNullable(p.botContextExpertise())));
-      var currentExchange =
-          Lists.newArrayList(qAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
-      currentExchange.add(new Types.Exchange("user", query.text()));
-
-      var palmResp =
-          palmService.predictChatAnswerWithRetries(
-              new Types.PalmChatAnswerRequest(
-                  palmRequestParameters(Optional.ofNullable(query.parameters)),
-                  new Types.ChatInstances(
-                      palmRequestContext, PromptUtilities.EXCHANGE_EXAMPLES, currentExchange)));
-
-      var responseText =
-          palmResp.predictions().stream()
-                  .flatMap(pp -> pp.safetyAttributes().stream())
-                  .anyMatch(saf -> saf.blocked())
-              ? "Response blocked by model, check on provided document links if any available."
-              : palmResp.predictions().stream()
-                  .flatMap(pr -> pr.candidates().stream())
-                  .map(ex -> ex.content())
-                  .collect(Collectors.joining("\n"));
       var responseLinks =
           PromptUtilities.checkNegativeAnswer(responseText)
                   || responseText.contains(PromptUtilities.FOUND_IN_INTERNET)
@@ -198,6 +204,7 @@ public class QueryResource {
       // store the new exchange
       btService.storeQueryToContext(query.sessionId(), query.text(), responseText);
 
+      // to finally return a query response
       return new QueryResult(
           responseText,
           previousSummarizedConversation,
@@ -211,9 +218,9 @@ public class QueryResource {
     }
   }
 
-  record LinkAndDistance(String link, Double distance) {}
+  public record LinkAndDistance(String link, Double distance) {}
 
-  record ContentAndMetadata(String content, String link, Double distance) {
+  public record ContentAndMetadata(String content, String link, Double distance) {
     public LinkAndDistance toLinkAndDistance() {
       return new LinkAndDistance(link(), distance());
     }
