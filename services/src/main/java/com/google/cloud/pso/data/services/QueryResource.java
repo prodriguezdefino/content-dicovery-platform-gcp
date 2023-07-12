@@ -81,6 +81,14 @@ public class QueryResource {
         .summary();
   }
 
+  Types.PalmRequestParameters palmRequestParameters(Optional<QueryParameters> parameters) {
+    return new Types.PalmRequestParameters(
+        parameters.map(p -> p.temperature()).orElse(configuration.temperature()),
+        parameters.map(p -> p.maxOutputTokens()).orElse(configuration.maxOutputTokens()),
+        parameters.map(p -> p.topK()).orElse(configuration.topK()),
+        parameters.map(p -> p.topP()).orElse(configuration.topP()));
+  }
+
   @POST
   @Produces(MediaType.APPLICATION_JSON)
   public QueryResult query(UserQuery query) {
@@ -114,7 +122,9 @@ public class QueryResource {
                   // use min value between statically configured and the request one (if exists)
                   Integer.min(
                       configuration.maxNeighbors(),
-                      Optional.ofNullable(query.maxContextSimilarKeys).orElse(Integer.MAX_VALUE))));
+                      Optional.ofNullable(query.parameters)
+                          .flatMap(params -> Optional.ofNullable(params.maxNeighbors))
+                          .orElse(Integer.MAX_VALUE))));
 
       var context =
           nnResp.nearestNeighbors().stream()
@@ -154,7 +164,11 @@ public class QueryResource {
               .map(e -> new LinkAndDistance(e.getKey(), e.getValue()))
               .toList();
 
-      var palmRequestContext = PromptUtilities.formatChatContextPrompt(contextContent);
+      var palmRequestContext =
+          PromptUtilities.formatChatContextPrompt(
+              contextContent,
+              Optional.ofNullable(query.parameters)
+                  .flatMap(p -> Optional.ofNullable(p.botContextExpertise())));
       var currentExchange =
           Lists.newArrayList(qAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
       currentExchange.add(new Types.Exchange("user", query.text()));
@@ -162,11 +176,7 @@ public class QueryResource {
       var palmResp =
           palmService.predictChatAnswerWithRetries(
               new Types.PalmChatAnswerRequest(
-                  new Types.PalmRequestParameters(
-                      configuration.temperature(),
-                      configuration.maxOutputTokens(),
-                      configuration.topK(),
-                      configuration.topP()),
+                  palmRequestParameters(Optional.ofNullable(query.parameters)),
                   new Types.ChatInstances(
                       palmRequestContext, PromptUtilities.EXCHANGE_EXAMPLES, currentExchange)));
 
@@ -209,7 +219,15 @@ public class QueryResource {
     }
   }
 
-  public record UserQuery(String text, String sessionId, Integer maxContextSimilarKeys) {}
+  public record QueryParameters(
+      String botContextExpertise,
+      Integer maxNeighbors,
+      Double temperature,
+      Integer maxOutputTokens,
+      Integer topK,
+      Double topP) {}
+
+  public record UserQuery(String text, String sessionId, QueryParameters parameters) {}
 
   public record QueryResult(
       String content,
