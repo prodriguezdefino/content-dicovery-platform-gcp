@@ -102,7 +102,7 @@ public class BigTableService {
     return new QAndA(qas[0], qas[1]);
   }
 
-  public record ConversationContextBySessionResponse(String session, List<QAndA> exchanges) {}
+  public record ConversationContextBySessionResponse(String session, List<QAndA> qAndAs) {}
 
   Row readRowWithRetries(String tableId, String key) {
     return Utilities.executeOperation(
@@ -155,7 +155,6 @@ public class BigTableService {
                             ByteString.copyFromUtf8(columnQualifierContext))
                         .stream()
                         .sorted(ORDERED_CELL_COMPARATOR)
-                        .limit(5)
                         .map(rc -> fromAppended(rc.getValue().toStringUtf8()))
                         .filter(qaa -> qaa != null)
                         .toList())

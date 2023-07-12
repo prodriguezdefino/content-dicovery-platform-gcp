@@ -83,7 +83,7 @@ resource "google_bigtable_gc_policy" "context_policy" {
     "mode": "union",
     "rules": [
       {
-        "max_version": 5
+        "max_version": 50
       },
       {
         "max_age": "24h"

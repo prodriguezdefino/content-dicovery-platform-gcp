@@ -22,8 +22,10 @@ import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.data.services.exceptions.QueryResourceException;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import io.vertx.ext.web.RoutingContext;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.enterprise.context.SessionScoped;
 import javax.inject.Inject;
@@ -47,6 +49,38 @@ public class QueryResource {
   @Inject BeansProducer.ResourceConfiguration configuration;
   @Inject RoutingContext routingContext;
 
+  List<BigTableService.QAndA> removeRepeatedAndNegaviteAnswers(
+      List<BigTableService.QAndA> qsAndAs) {
+    var prevAnswers = Sets.<String>newHashSet();
+    var deduplicatedQAndAs = Lists.<BigTableService.QAndA>newArrayList();
+    for (var qaa : qsAndAs) {
+      if (!prevAnswers.contains(qaa.answer())
+          && !PromptUtilities.checkNegativeAnswer(qaa.answer())) {
+        prevAnswers.add(qaa.answer());
+        deduplicatedQAndAs.add(qaa);
+      }
+    }
+    return deduplicatedQAndAs;
+  }
+
+  String retrievePreviousSummarizedConversation(List<BigTableService.QAndA> qsAndAs) {
+    if (qsAndAs.isEmpty()) {
+      return "";
+    }
+    return palmService
+        .predictSummarizationWithRetries(
+            new Types.PalmSummarizationRequest(
+                new Types.PalmRequestParameters(
+                    configuration.temperature(),
+                    configuration.maxOutputTokens(),
+                    configuration.topK(),
+                    configuration.topP()),
+                new Types.SummarizationInstances(
+                    PromptUtilities.formatChatSummaryPrompt(
+                        qsAndAs.stream().flatMap(q -> q.toExchange().stream()).toList()))))
+        .summary();
+  }
+
   @POST
   @Produces(MediaType.APPLICATION_JSON)
   public QueryResult query(UserQuery query) {
@@ -54,38 +88,42 @@ public class QueryResource {
       Preconditions.checkState(query.sessionId() != null, "A valid session id should be provided.");
       Preconditions.checkState(query.text() != null, "A valid question should be provided.");
 
-      var previousExchange =
-          btService.retrieveConversationContext(query.sessionId()).exchanges().stream()
-              .flatMap(qas -> qas.toExchange().stream())
-              .toList();
+      // retrieve the previous q and as from the conversation context removing the repeated answers
+      // from the model
+      var qAndAs =
+          removeRepeatedAndNegaviteAnswers(
+              btService.retrieveConversationContext(query.sessionId()).qAndAs());
 
-      var summarizedConversation =
-          palmService.predictSummarizationWithRetries(
-              new Types.PalmSummarizationRequest(
-                  new Types.PalmRequestParameters(
-                      configuration.temperature(),
-                      configuration.maxOutputTokens(),
-                      configuration.topK(),
-                      configuration.topP()),
-                  new Types.SummarizationInstances(
-                      PromptUtilities.formatChatSummaryPrompt(previousExchange))));
+      // keep the embeddings context as the last 5 questions (if not summarization becomes too
+      // clumsy).
+      var lastsQAndAs =
+          qAndAs.size() > 5 ? qAndAs.subList(qAndAs.size() - 6, qAndAs.size() - 1) : qAndAs;
 
-      var toRetriveEmbeddings = query.text() + "\n\n" + summarizedConversation.summary();
+      var previousSummarizedConversation = retrievePreviousSummarizedConversation(lastsQAndAs);
 
       var embeddingRequest =
-          new Types.EmbeddingRequest(List.of(new Types.TextInstance(toRetriveEmbeddings)));
+          new Types.EmbeddingRequest(
+              Lists.newArrayList(
+                  new Types.TextInstance(query.text() + "\n" + previousSummarizedConversation)));
 
       var embResponse = embeddingsService.retrieveEmbeddingsWithRetries(embeddingRequest);
       var nnResp =
           matchingEngineService.queryNearestNeighborsWithRetries(
               embResponse.toNearestNeighborRequest(
-                  configuration.matchingEngineIndexDeploymentId(), configuration.maxNeighbors()));
+                  configuration.matchingEngineIndexDeploymentId(),
+                  // use min value between statically configured and the request one (if exists)
+                  Integer.min(
+                      configuration.maxNeighbors(),
+                      Optional.ofNullable(query.maxContextSimilarKeys).orElse(Integer.MAX_VALUE))));
 
       var context =
           nnResp.nearestNeighbors().stream()
               .flatMap(n -> n.neighbors().stream())
               // filter out the dummy index initial vector
               .filter(n -> n.distance() < configuration.maxNeighborDistance())
+              .sorted((n1, n2) -> -n1.distance().compareTo(n2.distance()))
+              // we keep only the 3 most relevant context entries
+              .limit(3)
               // capture content and link from storage and preserve distance from original query
               .map(
                   nn -> {
@@ -105,17 +143,20 @@ public class QueryResource {
               // get max distance value per link
               .collect(
                   Collectors.toMap(
-                      LinkAndDistance::link, ld -> ld.distance(), (d1, d2) -> d1 > d2 ? d1 : d2))
+                      LinkAndDistance::link,
+                      LinkAndDistance::distance,
+                      (d1, d2) -> d1 > d2 ? d1 : d2))
               // deduplicate
               .entrySet()
               .stream()
               // order descending by distance
               .sorted((e1, e2) -> -e1.getValue().compareTo(e2.getValue()))
-              .map(e -> e.getKey())
+              .map(e -> new LinkAndDistance(e.getKey(), e.getValue()))
               .toList();
 
       var palmRequestContext = PromptUtilities.formatChatContextPrompt(contextContent);
-      var currentExchange = Lists.newArrayList(previousExchange);
+      var currentExchange =
+          Lists.newArrayList(qAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
       currentExchange.add(new Types.Exchange("user", query.text()));
 
       var palmResp =
@@ -141,13 +182,18 @@ public class QueryResource {
       var responseLinks =
           PromptUtilities.checkNegativeAnswer(responseText)
                   || responseText.contains(PromptUtilities.FOUND_IN_INTERNET)
-              ? List.<String>of()
+              ? List.<LinkAndDistance>of()
               : sourceLinks;
 
       // store the new exchange
       btService.storeQueryToContext(query.sessionId(), query.text(), responseText);
 
-      return new QueryResult(responseText, responseLinks);
+      return new QueryResult(
+          responseText,
+          previousSummarizedConversation,
+          responseLinks,
+          palmResp.predictions().stream().flatMap(pr -> pr.citationMetadata().stream()).toList(),
+          palmResp.predictions().stream().flatMap(pr -> pr.safetyAttributes().stream()).toList());
     } catch (Exception ex) {
       var msg = "Problems while executing the query resource. ";
       LOG.error(msg, ex);
@@ -163,7 +209,12 @@ public class QueryResource {
     }
   }
 
-  public record UserQuery(String text, String sessionId) {}
+  public record UserQuery(String text, String sessionId, Integer maxContextSimilarKeys) {}
 
-  public record QueryResult(String content, List<String> sourceLinks) {}
+  public record QueryResult(
+      String content,
+      String previousConversationSummary,
+      List<LinkAndDistance> sourceLinks,
+      List<Types.CitationMetadata> citationMetadata,
+      List<Types.SafetyAttributes> safetyAttributes) {}
 }
