@@ -46,7 +46,9 @@ Also we have included a `cleanup.sh` script in charge of destroying the infrastr
 
 ### Google Docs Permissions
 
-Once the infrastructure is setup, the deployment process will print out instructions to grant the service account that runs the content extraction pipeline broad permissions to impersonate Google Workspace document access. This is not an ideal setup, but for PoC purposes should be sufficient. Once those permissions are granted, in order to extract the actual content, the service account should have permissions to the documents and Google Drive folders provided as URLs.
+In normal cases the Google Workspace documents will be created on the same organization that host the project where the content ingestion pipeline runs, so in order to grant permissions to those documents adding the service account that runs the pipeline to the documents, or folder of documents, should be sufficient. 
+
+In case of needing to access documents or folders existing outside of the project's organization an additional step should be completed. Once the infrastructure is setup, the deployment process will print out instructions to grant the service account that runs the content extraction pipeline permissions to impersonate Google Workspace document access through domain wide delegation. The information to complete the steps can be seen here: https://developers.google.com/workspace/guides/create-credentials#optional_set_up_domain-wide_delegation_for_a_service_account
 
 ## Exposed Services
 
