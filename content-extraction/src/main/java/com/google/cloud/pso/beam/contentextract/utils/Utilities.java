@@ -68,6 +68,15 @@ public class Utilities {
     return containsId;
   }
 
+  public static Boolean checkIfValidURL(String maybeUrl) {
+    try {
+      new URL(maybeUrl);
+      return true;
+    } catch (MalformedURLException ex) {
+      return false;
+    }
+  }
+
   public static String extractIdFromURL(String url) {
     try {
       var parsedUrl = new URL(url);

@@ -22,6 +22,7 @@ import com.google.cloud.pso.beam.contentextract.Types.*;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -95,7 +96,9 @@ public class DocContentRetriever implements Serializable {
 
   public List<File> retrieveDriveFiles(String id) {
     try {
-      var maybeFile = clientProvider.driveFileGetClient(Utilities.extractIdFromURL(id)).execute();
+      // we check if id is an URL for which we need to extract the id, if not use that id
+      var validId = Utilities.checkIfValidURL(id) ? Utilities.extractIdFromURL(id) : id;
+      var maybeFile = clientProvider.driveFileGetClient(validId).execute();
       return switch (GoogleDriveAPIMimeTypes.get(maybeFile.getMimeType())) {
         case DOCUMENT -> List.of(maybeFile);
         case FOLDER -> {
