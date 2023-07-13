@@ -86,7 +86,7 @@ resource "google_bigtable_gc_policy" "context_policy" {
         "max_version": 50
       },
       {
-        "max_age": "24h"
+        "max_age": "25h"
       }
     ]
   }

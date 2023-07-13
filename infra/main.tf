@@ -59,6 +59,12 @@ resource "google_project_service" "run_service" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "iam_service" {
+  project = var.project
+  service = "iam.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_service_account" "dataflow_runner_sa" {
   project    = var.project
   account_id = "${var.run_name}-sa"

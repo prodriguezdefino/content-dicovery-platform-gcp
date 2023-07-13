@@ -1,17 +1,21 @@
 #!/bin/bash
 set -eu
 
-if [ "$#" -ne 3 ] 
+if [ "$#" -ne 4 ] 
   then
-    echo "Usage : sh tf-apply.sh <gcp project> <region> <run name>"
+    echo "Usage : sh tf-destroy.sh <gcp project> <state bucket> <region> <run name>"
     exit -1
 fi
 
-NAME=$3
-REGION=$2
+NAME=$4
+REGION=$3
+STATE_BUCKET=$2
 PROJECT=$1
 
-terraform destroy \
+terraform init \
+ -backend-config="bucket=$STATE_BUCKET" \
+ -backend-config="prefix=terraform/state/$NAME" \
+ && terraform destroy     \
   -var="run_name=${NAME}"             \
-  -var="region=${REGION}"             \
-  -var="project=${PROJECT}"            
+  -var="project=${PROJECT}"           \
+  -var="region=${REGION}"                 
