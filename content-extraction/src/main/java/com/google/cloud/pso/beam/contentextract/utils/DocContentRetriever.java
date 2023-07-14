@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.beam.contentextract.utils;
 
+import com.google.api.services.docs.v1.model.Paragraph;
 import com.google.api.services.docs.v1.model.TextRun;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
@@ -46,6 +47,18 @@ public class DocContentRetriever implements Serializable {
     return new DocContentRetriever(provider);
   }
 
+  static Optional<String> retrieveParagraphContent(Paragraph p) {
+    return Optional.of(
+        p.getElements().stream()
+            .map(
+                paragraphElement ->
+                    Optional.ofNullable(paragraphElement.getTextRun())
+                        .map(TextRun::getContent)
+                        .orElse(""))
+            .filter(paragraphContent -> !paragraphContent.isEmpty())
+            .collect(Collectors.joining(" ")));
+  }
+
   public KV<String, List<String>> retrieveDocumentContent(String documentId) {
     try {
       var response = clientProvider.documentGetClient(documentId).execute();
@@ -55,22 +68,20 @@ public class DocContentRetriever implements Serializable {
           processedId,
           response.getBody().getContent().stream()
               .map(
-                  a -> {
-                    var paragraph = a.getParagraph();
-                    if (paragraph != null) {
-                      return Optional.of(
-                          paragraph.getElements().stream()
-                              .map(
-                                  paragraphElement ->
-                                      Optional.ofNullable(paragraphElement.getTextRun())
-                                          .map(TextRun::getContent)
-                                          .orElse(""))
-                              .filter(paragraphContent -> !paragraphContent.isEmpty())
-                              .collect(Collectors.joining(" ")));
-                    } else {
-                      return Optional.<String>empty();
-                    }
-                  })
+                  a ->
+                      Optional.ofNullable(a.getParagraph())
+                          .map(p -> retrieveParagraphContent(p))
+                          .orElse(
+                              Optional.ofNullable(a.getTable())
+                                  .map(
+                                      t ->
+                                          t.getTableRows().stream()
+                                              .flatMap(tr -> tr.getTableCells().stream())
+                                              .flatMap(tc -> tc.getContent().stream())
+                                              .map(
+                                                  se -> retrieveParagraphContent(se.getParagraph()))
+                                              .map(maybePar -> maybePar.orElse(""))
+                                              .collect(Collectors.joining(" ")))))
               .filter(Optional::isPresent)
               .map(Optional::get)
               .filter(text -> !text.isBlank())
