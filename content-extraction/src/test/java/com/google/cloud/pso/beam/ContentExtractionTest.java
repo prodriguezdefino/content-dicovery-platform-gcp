@@ -100,7 +100,9 @@ public class ContentExtractionTest {
     var files = fetcher.retrieveDriveFiles(PUBLIC_DOCUMENT_URL);
     files.forEach(
         file -> {
-          var docContent = fetcher.retrieveDocumentContent(file.getId());
+          var docContent =
+              fetcher.retrieveGoogleDriveFileContent(
+                  file.getId(), GoogleDriveAPIMimeTypes.DOCUMENT);
           var jsonLines = Utilities.docContentToKeyedJSONLFormat(docContent);
           System.out.println(docContent.getKey());
           jsonLines.forEach(line -> System.out.println(line.getValue()));

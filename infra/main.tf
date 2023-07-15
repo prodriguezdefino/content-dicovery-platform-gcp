@@ -34,6 +34,16 @@ resource "google_project_service" "docs_service" {
   service = "docs.googleapis.com"
   disable_on_destroy = false
 }
+resource "google_project_service" "sheets_service" {
+  project = var.project
+  service = "sheets.googleapis.com"
+  disable_on_destroy = false
+}
+resource "google_project_service" "slides_service" {
+  project = var.project
+  service = "slides.googleapis.com"
+  disable_on_destroy = false
+}
 
 resource "google_project_service" "servicenetworking_service" {
   project = var.project

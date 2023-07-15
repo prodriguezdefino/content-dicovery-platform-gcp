@@ -22,6 +22,8 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.docs.v1.Docs;
 import com.google.api.services.drive.Drive;
+import com.google.api.services.sheets.v4.Sheets;
+import com.google.api.services.slides.v1.Slides;
 import com.google.cloud.pso.beam.contentextract.clients.utils.GoogleCredentialsCache;
 import java.io.IOException;
 import java.io.Serializable;
@@ -37,6 +39,10 @@ public class GoogleDocClient implements Serializable {
       new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, null).setApplicationName(APP_NAME).build();
   private static final Docs DOCS_SERVICE =
       new Docs.Builder(HTTP_TRANSPORT, JSON_FACTORY, null).setApplicationName(APP_NAME).build();
+  private static final Sheets SHEETS_SERVICE =
+      new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, null).setApplicationName(APP_NAME).build();
+  private static final Slides SLIDES_SERVICE =
+      new Slides.Builder(HTTP_TRANSPORT, JSON_FACTORY, null).setApplicationName(APP_NAME).build();
 
   private final String credentialsPrincipal;
 
@@ -71,5 +77,22 @@ public class GoogleDocClient implements Serializable {
 
   public Docs.Documents.Get documentGetClient(String documentId) throws IOException {
     return DOCS_SERVICE.documents().get(documentId).setAccessToken(retrieveAccessToken());
+  }
+
+  public Sheets.Spreadsheets.Get sheetGetClient(String spreadsheetId) throws IOException {
+    return SHEETS_SERVICE.spreadsheets().get(spreadsheetId).setAccessToken(retrieveAccessToken());
+  }
+
+  public Sheets.Spreadsheets.Values.Get sheetValuesGetClient(
+      String spreadsheetId, String sheetTitle) throws IOException {
+    return SHEETS_SERVICE
+        .spreadsheets()
+        .values()
+        .get(spreadsheetId, sheetTitle)
+        .setAccessToken(retrieveAccessToken());
+  }
+
+  public Slides.Presentations.Get slideGetClient(String slideId) throws IOException {
+    return SLIDES_SERVICE.presentations().get(slideId).setAccessToken(retrieveAccessToken());
   }
 }

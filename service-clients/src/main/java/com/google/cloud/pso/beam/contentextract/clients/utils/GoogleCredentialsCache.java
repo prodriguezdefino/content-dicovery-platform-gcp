@@ -34,6 +34,8 @@ public class GoogleCredentialsCache {
   private static final List<String> SCOPES =
       List.of(
           "https://www.googleapis.com/auth/documents",
+          "https://www.googleapis.com/auth/presentations",
+          "https://www.googleapis.com/auth/spreadsheets",
           "https://www.googleapis.com/auth/drive",
           "https://www.googleapis.com/auth/cloud-platform");
   private static final LoadingCache<String, String> TOKEN_CACHE =

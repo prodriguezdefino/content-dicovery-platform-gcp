@@ -19,11 +19,11 @@ import com.google.api.services.docs.v1.model.Paragraph;
 import com.google.api.services.docs.v1.model.TextRun;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.cloud.pso.beam.contentextract.Types.*;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -59,13 +59,93 @@ public class DocContentRetriever implements Serializable {
             .collect(Collectors.joining(" ")));
   }
 
-  public KV<String, List<String>> retrieveDocumentContent(String documentId) {
+  public KV<String, List<String>> retrieveGoogleDriveFileContent(
+      String fileId, GoogleDriveAPIMimeTypes type) {
+    return switch (type) {
+      case DOCUMENT -> retrieveDocumentContent(fileId);
+      case SHEET -> retrieveSpreadsheetContent(fileId);
+      case SLIDE -> retrievePresentationContent(fileId);
+      default -> throw new IllegalArgumentException("Not supported mime-type: " + type.name());
+    };
+  }
+
+  List<List<Object>> retrieveSpreadsheetSheetValues(String sheetId, Sheet sheet) {
+    try {
+      return clientProvider
+          .sheetValuesGetClient(sheetId, sheet.getProperties().getTitle())
+          .execute()
+          .getValues();
+    } catch (Exception ex) {
+      var errMsg = "errors while trying to retrieve spreadsheet content, id: " + sheetId;
+      LOG.error(errMsg, ex);
+      throw new DocumentContentError(errMsg, ex);
+    }
+  }
+
+  KV<String, List<String>> retrieveSpreadsheetContent(String sheetId) {
+    try {
+      var response = clientProvider.sheetGetClient(sheetId).execute();
+      var file = clientProvider.driveFileGetClient(sheetId).execute();
+      return KV.of(
+          Utilities.newIdFromTitleAndDriveId(file.getName(), response.getSpreadsheetId()),
+          response.getSheets().stream()
+              .flatMap(sheet -> retrieveSpreadsheetSheetValues(sheetId, sheet).stream())
+              .flatMap(valueList -> valueList.stream())
+              .map(
+                  value ->
+                      Optional.ofNullable(value)
+                          .map(v -> v.toString())
+                          .filter(v -> !v.isEmpty() && !v.isBlank())
+                          .map(v -> v.replace("\n", " "))
+                          .orElse(""))
+              .filter(text -> !text.isBlank())
+              .toList());
+    } catch (Exception ex) {
+      var errMsg = "errors while trying to retrieve spreadsheet content, id: " + sheetId;
+      LOG.error(errMsg, ex);
+      throw new DocumentContentError(errMsg, ex);
+    }
+  }
+
+  KV<String, List<String>> retrievePresentationContent(String presentationId) {
+    try {
+      var response = clientProvider.slideGetClient(presentationId).execute();
+      var file = clientProvider.driveFileGetClient(presentationId).execute();
+      return KV.of(
+          Utilities.newIdFromTitleAndDriveId(file.getName(), response.getPresentationId()),
+          response.getSlides().stream()
+              .flatMap(
+                  slide ->
+                      Optional.ofNullable(slide.getPageElements())
+                          .map(List::stream)
+                          .orElse(Stream.empty()))
+              .flatMap(
+                  elems ->
+                      Optional.ofNullable(elems.getShape())
+                          .map(shape -> shape.getText())
+                          .map(tcont -> tcont.getTextElements().stream())
+                          .orElse(Stream.empty()))
+              .map(
+                  textElems ->
+                      Optional.ofNullable(textElems.getTextRun())
+                          .map(trun -> trun.getContent())
+                          .orElse(""))
+              .filter(text -> !text.isBlank())
+              .map(text -> text.replace("\n", ""))
+              .toList());
+    } catch (Exception ex) {
+      var errMsg = "errors while trying to retrieve presentation content, id: " + presentationId;
+      LOG.error(errMsg, ex);
+      throw new DocumentContentError(errMsg, ex);
+    }
+  }
+
+  KV<String, List<String>> retrieveDocumentContent(String documentId) {
     try {
       var response = clientProvider.documentGetClient(documentId).execute();
-      var processedId =
-          Utilities.newIdFromTitleAndDriveId(response.getTitle(), response.getDocumentId());
+      var file = clientProvider.driveFileGetClient(documentId).execute();
       return KV.of(
-          processedId,
+          Utilities.newIdFromTitleAndDriveId(file.getName(), response.getDocumentId()),
           response.getBody().getContent().stream()
               .map(
                   a ->
@@ -111,7 +191,7 @@ public class DocContentRetriever implements Serializable {
       var validId = Utilities.checkIfValidURL(id) ? Utilities.extractIdFromURL(id) : id;
       var maybeFile = clientProvider.driveFileGetClient(validId).execute();
       return switch (GoogleDriveAPIMimeTypes.get(maybeFile.getMimeType())) {
-        case DOCUMENT -> List.of(maybeFile);
+        case SHEET, DOCUMENT, SLIDE -> List.of(maybeFile);
         case FOLDER -> {
           var queryString = String.format("'%s' in parents", maybeFile.getId());
 

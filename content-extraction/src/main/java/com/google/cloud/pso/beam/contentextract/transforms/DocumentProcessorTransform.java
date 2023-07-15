@@ -20,12 +20,14 @@ import com.google.cloud.pso.beam.contentextract.Types;
 import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTransform.DocumentProcessingResult;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
 import com.google.cloud.pso.beam.contentextract.utils.GoogleDocClient;
+import com.google.cloud.pso.beam.contentextract.utils.GoogleDriveAPIMimeTypes;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
@@ -95,7 +97,23 @@ public class DocumentProcessorTransform
                     .via(
                         (Types.Transport t) -> {
                           return fetcher.retrieveDriveFiles(t.contentId()).stream()
-                              .map(file -> new Types.Transport(file.getId(), t.metadata()))
+                              .map(
+                                  file ->
+                                      new Types.Transport(
+                                          file.getId(),
+                                          // add the mime-type to the transport map so we can
+                                          // predicate later on which content retriever to use
+                                          Stream.of(
+                                                  t.metadata(),
+                                                  Map.of(
+                                                      GoogleDriveAPIMimeTypes.MIME_TYPE_KEY,
+                                                      file.getMimeType()))
+                                              .flatMap(map -> map.entrySet().stream())
+                                              .collect(
+                                                  Collectors.toMap(
+                                                      Map.Entry::getKey,
+                                                      Map.Entry::getValue,
+                                                      (e1, e2) -> e1))))
                               .toList();
                         })
                     .exceptionsVia(new ErrorHandlingTransform.ErrorHandler<>()));
@@ -110,7 +128,9 @@ public class DocumentProcessorTransform
                         TypeDescriptors.kvs(
                             TypeDescriptors.strings(),
                             TypeDescriptors.lists(TypeDescriptors.strings())))
-                    .via((Types.Transport t) -> fetcher.retrieveDocumentContent(t.contentId()))
+                    .via(
+                        (Types.Transport t) ->
+                            fetcher.retrieveGoogleDriveFileContent(t.contentId(), t.mimeType()))
                     .exceptionsVia(new ErrorHandlingTransform.ErrorHandler<>()));
 
     var outputContent =

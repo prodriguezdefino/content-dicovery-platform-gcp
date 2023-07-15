@@ -84,6 +84,10 @@ public class Utilities {
       Preconditions.checkState(!path.isEmpty(), "The URL path should not be empty");
       if (path.contains("/document/d/")) {
         return extractIdByPattern(path, "/document/d/");
+      } else if (path.contains("/presentation/d/")) {
+        return extractIdByPattern(path, "/presentation/d/");
+      } else if (path.contains("/spreadsheets/d/")) {
+        return extractIdByPattern(path, "/spreadsheets/d/");
       } else if (path.contains("/drive/folders/")) {
         return extractIdByPattern(path, "/drive/folders/");
       } else {

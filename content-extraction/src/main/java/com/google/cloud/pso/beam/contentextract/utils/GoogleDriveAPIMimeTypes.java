@@ -38,6 +38,8 @@ public enum GoogleDriveAPIMimeTypes {
   UNKNOWN("application/vnd.google-apps.unknown"),
   VIDEO("application/vnd.google-apps.video");
 
+  public static final String MIME_TYPE_KEY = "mime-type";
+
   public static GoogleDriveAPIMimeTypes get(String value) {
     return Arrays.stream(GoogleDriveAPIMimeTypes.values())
         .filter(val -> val.mimeType().equals(value))

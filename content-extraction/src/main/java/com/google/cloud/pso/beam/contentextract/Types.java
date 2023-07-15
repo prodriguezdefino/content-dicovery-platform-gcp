@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.beam.contentextract;
 
+import com.google.cloud.pso.beam.contentextract.utils.GoogleDriveAPIMimeTypes;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.gson.JsonObject;
@@ -46,6 +47,12 @@ public class Types {
 
     Integer retriesCount(Map<String, String> map) {
       return Optional.ofNullable(map.get(RETRY_COUNT_KEY)).map(Integer::valueOf).orElse(0);
+    }
+
+    public GoogleDriveAPIMimeTypes mimeType() {
+      return Optional.ofNullable(metadata.get(GoogleDriveAPIMimeTypes.MIME_TYPE_KEY))
+          .map(GoogleDriveAPIMimeTypes::get)
+          .orElse(GoogleDriveAPIMimeTypes.UNKNOWN);
     }
 
     public Map<String, String> incrementRetriesCountOnMap(Map<String, String> map) {
