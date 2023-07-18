@@ -75,6 +75,24 @@ resource "google_project_service" "iam_service" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "apigateway_service" {
+  project = var.project
+  service = "apigateway.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "servicemgmnt_service" {
+  project = var.project
+  service = "servicemanagement.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "svccntrl_service" {
+  project = var.project
+  service = "servicecontrol.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_service_account" "dataflow_runner_sa" {
   project    = var.project
   account_id = "${var.run_name}-sa"
@@ -119,6 +137,14 @@ variable zone {
   default = "us-central1-a"
 }
 
+variable gcloud_audiences {
+  default = "32555940559.apps.googleusercontent.com"
+}
+
+variable workspace_domain {
+  default = "google.com"
+}
+
 output "df_sa" {
   value = google_service_account.dataflow_runner_sa.email
 }
@@ -147,6 +173,10 @@ output "secret_service_configuration" {
   value = google_secret_manager_secret_version.service_config_version.name
 }
 
-output "service_url" {
+output "backend_service_url" {
   value = google_cloud_run_v2_service.services.uri
+}
+
+output "service_url" {
+  value = google_api_gateway_gateway.gateway.default_hostname
 }

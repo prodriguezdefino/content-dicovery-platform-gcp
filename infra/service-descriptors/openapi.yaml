@@ -1,0 +1,195 @@
+swagger: '2.0'
+info:
+  title: googledoc-content-services API
+  version: '0.1'
+x-google-backend:
+  address: "${backend_service_url}"
+securityDefinitions:
+  google_id_token:
+    authorizationUrl: ""
+    flow: "implicit"
+    type: "oauth2"
+    x-google-issuer: "https://accounts.google.com"
+    x-google-jwks_uri: "https://www.googleapis.com/oauth2/v3/certs"
+    x-google-audiences: "${gcloud_audiences}"
+paths:
+  /ingest/content/gdrive:
+    post:
+      security:
+        - google_id_token: []
+      operationId: ingest-content-gdrive
+      tags:
+        - Ingestion Resource
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/IngestionResponse'
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/GoogleDriveIngestionRequest'
+      consumes:
+        - application/json
+      produces:
+        - application/json
+  /ingest/content/multipart:
+    post:
+      security:
+        - google_id_token: []
+      operationId: ingest-content-multipart
+      tags:
+        - Ingestion Resource
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/IngestionResponse'
+      parameters:
+        - name: documentId
+          in: formData
+          type: string
+        - name: content
+          in: formData
+          format: binary
+          type: string
+      consumes:
+        - multipart/form-data
+      produces:
+        - application/json
+  /query/content:
+    options:
+      operationId: query-content-opts
+      tags:
+        - Query Resource
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/QueryResult'
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/UserQuery'
+      consumes:
+        - application/json
+      produces:
+        - application/json
+    post:
+      security:
+        - google_id_token: []
+      operationId: query-content
+      tags:
+        - Query Resource
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/QueryResult'
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/UserQuery'
+      consumes:
+        - application/json
+      produces:
+        - application/json
+definitions:
+  CitationMetadata:
+    type: object
+    properties:
+      citations:
+        type: array
+        items:
+          type: string
+  GoogleDriveIngestionRequest:
+    type: object
+    properties:
+      url:
+        type: string
+  IngestionResponse:
+    type: object
+    properties:
+      status:
+        type: string
+  LinkAndDistance:
+    type: object
+    properties:
+      link:
+        type: string
+      distance:
+        format: double
+        type: number
+  MultipartContentIngestionRequest:
+    type: object
+    properties:
+      documentId:
+        type: string
+      content:
+        format: binary
+        type: string
+  QueryParameters:
+    type: object
+    properties:
+      botContextExpertise:
+        type: string
+      maxNeighbors:
+        format: int32
+        type: integer
+      temperature:
+        format: double
+        type: number
+      maxOutputTokens:
+        format: int32
+        type: integer
+      topK:
+        format: int32
+        type: integer
+      topP:
+        format: double
+        type: number
+  QueryResult:
+    type: object
+    properties:
+      content:
+        type: string
+      previousConversationSummary:
+        type: string
+      sourceLinks:
+        type: array
+        items:
+          $ref: '#/definitions/LinkAndDistance'
+      citationMetadata:
+        type: array
+        items:
+          $ref: '#/definitions/CitationMetadata'
+      safetyAttributes:
+        type: array
+        items:
+          $ref: '#/definitions/SafetyAttributes'
+  SafetyAttributes:
+    type: object
+    properties:
+      categories:
+        type: array
+        items:
+          type: string
+      scores:
+        type: array
+        items:
+          format: double
+          type: number
+      blocked:
+        type: boolean
+  UserQuery:
+    type: object
+    properties:
+      text:
+        type: string
+      sessionId:
+        type: string
+      parameters:
+        $ref: '#/definitions/QueryParameters'

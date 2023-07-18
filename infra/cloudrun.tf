@@ -41,6 +41,7 @@ resource "google_cloud_run_v2_service" "services" {
   name     = "${var.run_name}-service"
   location = var.region
   project  = var.project
+  ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
     service_account = google_service_account.dataflow_runner_sa.email
@@ -89,18 +90,68 @@ resource "google_cloud_run_v2_service" "services" {
   }
 }
 
-resource "google_cloud_run_service_iam_member" "google_domain_permission" {
-  location = var.region
-  project = var.project
-  service = google_cloud_run_v2_service.services.name
-  role = "roles/run.invoker"
-  member = "domain:google.com"
-}
-
-resource "google_cloud_run_service_iam_member" "sa_permission" {
+resource "google_cloud_run_service_iam_member" "gateway_permission" {
   location = var.region
   project = var.project
   service = google_cloud_run_v2_service.services.name
   role = "roles/run.invoker"
   member = "serviceAccount:${google_service_account.dataflow_runner_sa.email}"
+}
+
+resource "google_cloud_run_service_iam_member" "workspace_domain_permission" {
+  location = var.region
+  project = var.project
+  service = google_cloud_run_v2_service.services.name
+  role = "roles/run.invoker"
+  member = "domain:${var.workspace_domain}"
+}
+
+resource "google_api_gateway_api" "api_gateway" {
+  project = var.project
+  provider = google-beta
+  api_id       = var.run_name
+  display_name = "${var.run_name}-gateway-api"
+}
+
+resource "google_api_gateway_api_config" "gateway_cfg" {
+  project = var.project
+  provider = google-beta
+  api           = google_api_gateway_api.api_gateway.api_id
+  api_config_id = "${var.run_name}-config"
+
+  gateway_config {
+    backend_config {
+      google_service_account = google_service_account.dataflow_runner_sa.email
+    }
+  }
+
+  openapi_documents {
+    document {
+      path = "openapi.yaml"
+      contents = base64encode(
+        templatefile(
+          "service-descriptors/openapi.yaml", 
+          {
+            backend_service_url = google_cloud_run_v2_service.services.uri, 
+            gcloud_audiences = var.gcloud_audiences
+          }
+        )
+      ) 
+    }
+  }
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "google_api_gateway_gateway" "gateway" {
+  project      = var.project
+  provider     = google-beta
+  region       = var.region
+  api_config   = google_api_gateway_api_config.gateway_cfg.id
+  gateway_id   = var.run_name
+  display_name = "${var.run_name}-gateway-service"
+
+  depends_on = [google_api_gateway_api_config.gateway_cfg]
 }
