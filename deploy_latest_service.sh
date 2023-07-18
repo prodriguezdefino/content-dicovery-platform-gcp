@@ -7,10 +7,15 @@ if [ "$#" -ne 3 ]
     exit -1
 fi
 
-
 GCP_PROJECT=$1
 RUN_NAME=$2
 GCP_REGION=$3
+
+pushd services
+
+mvn clean install -DskipTests &&  sh create_container.sh $GCP_PROJECT $RUN_NAME $GCP_REGION
+
+popd 
 
 gcloud run services update $RUN_NAME-service \
     --project $GCP_PROJECT \
