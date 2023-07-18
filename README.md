@@ -52,7 +52,11 @@ In case of needing to access documents or folders existing outside of the projec
 
 ## Exposed Services
 
-The solution exposes a couple of resources through GCP CloudRun, which can be used to interact for content ingestion and content discovery queries. In all the examples we use the symbolic `<service-address>` string, which should be replaced by the URL provided by CloudRun after the service deployment is completed.
+The solution exposes a couple of resources through GCP CloudRun and API Gateway, which can be used to interact for content ingestion and content discovery queries. In all the examples we use the symbolic `<service-address>` string, which should be replaced by the URL provided by CloudRun (`backend_service_url` from Terraform output) or API Gateway (`sevice_url` from Terraform output) after the service deployment is completed.
+
+#### Note on CORS
+
+When needing CORS interactions the API Gateway endpoints may be used when looking to complete a preflight protocol. CloudRun currently does not support non-authenticated `OPTIONS` commands, but those paths exposed through API Gateway do support them.
 
 ### Content Ingestion
 
