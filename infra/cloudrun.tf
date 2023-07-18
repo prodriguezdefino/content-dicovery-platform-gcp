@@ -111,6 +111,8 @@ resource "google_api_gateway_api" "api_gateway" {
   provider = google-beta
   api_id       = var.run_name
   display_name = "${var.run_name}-gateway-api"
+
+  depends_on = [google_project_service.apigateway_service]
 }
 
 resource "google_api_gateway_api_config" "gateway_cfg" {
