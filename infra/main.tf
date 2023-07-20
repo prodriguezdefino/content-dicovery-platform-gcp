@@ -93,6 +93,12 @@ resource "google_project_service" "svccntrl_service" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "policytroubleshooter_service" {
+  project = var.project
+  service = "policytroubleshooter.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_service_account" "dataflow_runner_sa" {
   project    = var.project
   account_id = "${var.run_name}-sa"
@@ -112,7 +118,8 @@ module "data_processing_project_membership_roles" {
     "roles/aiplatform.user",
     "roles/bigtable.user",
     "roles/iam.serviceAccountUser", 
-    "roles/iam.serviceAccountTokenCreator"]
+    "roles/iam.serviceAccountTokenCreator",
+    "roles/iam.securityReviewer"]
 }
 
 resource "google_storage_bucket" "content" {

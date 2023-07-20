@@ -1,8 +1,10 @@
 locals {
+    service_name = "${var.run_name}-service"
     configuration = <<EOL
       {
         "project.id" : "${var.project}",
         "region" : "${var.region}",
+        "cloudrun.service.id" : "//run.googleapis.com/projects/${var.project}/locations/${var.region}/services/${local.service_name}",
         "pubsub.topic" : "${google_pubsub_topic.topic.id}",
         "bt.instance" : "${google_bigtable_instance.instance.name}",
         "bt.contexttable" : "${local.query_context_table_name}",
@@ -38,7 +40,7 @@ resource "google_secret_manager_secret_version" "service_config_version" {
 }
 
 resource "google_cloud_run_v2_service" "services" {
-  name     = "${var.run_name}-service"
+  name     = local.service_name
   location = var.region
   project  = var.project
   ingress  = "INGRESS_TRAFFIC_ALL"

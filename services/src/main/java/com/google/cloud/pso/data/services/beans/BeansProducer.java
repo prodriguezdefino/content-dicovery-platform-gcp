@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.data.services;
+package com.google.cloud.pso.data.services.beans;
 
 import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
@@ -26,6 +26,7 @@ import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -42,6 +43,7 @@ public class BeansProducer {
 
   private String projectId;
   private String region;
+  private String cloudRunServiceId;
   private String pubsubTopic;
   private String matchingEngineIndexId;
   private String matchingEngineIndexEndpointId;
@@ -70,6 +72,7 @@ public class BeansProducer {
     var configuration = new Gson().fromJson(jsonConfig, JsonObject.class);
     projectId = configuration.get("project.id").getAsString();
     region = configuration.get("region").getAsString();
+    cloudRunServiceId = configuration.get("cloudrun.service.id").getAsString();
     pubsubTopic = configuration.get("pubsub.topic").getAsString();
     matchingEngineIndexId = configuration.get("matchingengine.index.id").getAsString();
     matchingEngineIndexEndpointId =
@@ -89,6 +92,12 @@ public class BeansProducer {
         configuration.get("bt.contentcolumnqualifier.link").getAsString();
     bigTableContentColumnQualifierContext =
         configuration.get("bt.contextcolumnqualifier").getAsString();
+  }
+
+  @Produces
+  @Named("cloudrun.service.id")
+  public String cloudRunServiceId() {
+    return cloudRunServiceId;
   }
 
   @Produces

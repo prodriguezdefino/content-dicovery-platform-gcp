@@ -13,13 +13,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.data.services;
+package com.google.cloud.pso.data.services.resources;
 
 import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
+import com.google.cloud.pso.data.services.beans.BeansProducer;
+import com.google.cloud.pso.data.services.beans.BigTableService;
 import com.google.cloud.pso.data.services.exceptions.QueryResourceException;
+import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;

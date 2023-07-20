@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.data.services;
+package com.google.cloud.pso.data.services.utils;
 
 import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.common.collect.Lists;

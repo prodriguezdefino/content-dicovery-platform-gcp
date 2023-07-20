@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.data.services;
+package com.google.cloud.pso.data.services.beans;
 
 import autovalue.shaded.com.google.common.collect.Lists;
 import com.google.api.gax.rpc.ApiException;
