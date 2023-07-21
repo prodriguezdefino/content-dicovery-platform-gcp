@@ -21,6 +21,7 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.cloud.pso.beam.contentextract.Types.*;
+import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.Serializable;
@@ -183,6 +184,28 @@ public class DocContentRetriever implements Serializable {
       LOG.error(msg, ex);
       throw new RuntimeException(msg, ex);
     }
+  }
+
+  public GoogleDriveAPIMimeTypes retrieveFileType(String contentId) {
+    return retrieveDriveFiles(contentId).stream()
+        .findFirst()
+        .map(f -> f.getMimeType())
+        .map(type -> GoogleDriveAPIMimeTypes.get(type))
+        .orElse(GoogleDriveAPIMimeTypes.UNKNOWN);
+  }
+
+  Optional<File> shouldRefreshContent(String contentId, Long lastProcessedInMillis) {
+    return retrieveDriveFiles(contentId).stream()
+        .filter(file -> file.getModifiedTime().getValue() > lastProcessedInMillis)
+        .findFirst();
+  }
+
+  public List<File> filterFilesUpForRefresh(List<Types.ContentProcessed> files) {
+    return files.stream()
+        .map(content -> shouldRefreshContent(content.contentId(), content.processedAtInMillis()))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .toList();
   }
 
   public List<File> retrieveDriveFiles(String id) {

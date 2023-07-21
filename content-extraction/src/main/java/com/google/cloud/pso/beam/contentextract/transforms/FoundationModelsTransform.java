@@ -19,6 +19,8 @@ import com.google.bigtable.v2.Mutation;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
+import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
+import com.google.cloud.pso.beam.contentextract.utils.GoogleDocClient;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
@@ -58,6 +60,7 @@ public abstract class FoundationModelsTransform
     @SuppressWarnings("deprecation")
     public PDone expand(PCollection<KV<String, List<String>>> input) {
       var options = input.getPipeline().getOptions().as(ContentExtractionOptions.class);
+      var fetcher = DocContentRetriever.create(GoogleDocClient.create(options.getServiceAccount()));
 
       var keyedContentAndEmbeddings =
           input
@@ -121,9 +124,10 @@ public abstract class FoundationModelsTransform
       // also, we need to store the content and its id into BigTable since the content is later
       // needed to set context for the text prediction model
       keyedContentAndEmbeddings
-          .apply("ToBigTableMutations", ParDo.of(new EmbeddingsToMutationsDoFn()))
           .apply(
-              "WriteOnBigTable",
+              "ToBigTableContentMutations", ParDo.of(new EmbeddingsToContentMutationsDoFn(fetcher)))
+          .apply(
+              "WriteContentOnBigTable",
               BigtableIO.write()
                   .withProjectId(options.getProject())
                   .withInstanceId(options.getBigTableInstanceName())
@@ -132,13 +136,18 @@ public abstract class FoundationModelsTransform
       return PDone.in(input.getPipeline());
     }
 
-    private static class EmbeddingsToMutationsDoFn
+    private static class EmbeddingsToContentMutationsDoFn
         extends DoFn<
             List<KV<String, KV<String, List<Double>>>>, KV<ByteString, Iterable<Mutation>>> {
 
       private final String columnFamilyName = "data";
       private final String columnQualifierContent = "content";
       private final String columnQualifierLink = "link";
+      private final DocContentRetriever fetcher;
+
+      public EmbeddingsToContentMutationsDoFn(DocContentRetriever fetcher) {
+        this.fetcher = fetcher;
+      }
 
       @ProcessElement
       public void processElement(ProcessContext context) {
@@ -171,7 +180,10 @@ public abstract class FoundationModelsTransform
                                                 ByteString.copyFromUtf8(
                                                     Utilities
                                                         .reconstructDocumentLinkFromEmbeddingsId(
-                                                            kv.getKey())))
+                                                            kv.getKey(),
+                                                            fetcher.retrieveFileType(
+                                                                Utilities.fileIdFromContentId(
+                                                                    kv.getKey())))))
                                             .setColumnQualifier(
                                                 ByteString.copyFromUtf8(columnQualifierLink))
                                             .setFamilyName(columnFamilyName)

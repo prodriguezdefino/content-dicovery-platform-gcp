@@ -189,13 +189,25 @@ public class Utilities {
     };
   }
 
-  public static String reconstructDocumentLinkFromEmbeddingsId(String embeddingsId) {
-    var embeddingsIdParts = embeddingsId.split(CONTENT_KEY_SEPARATOR);
+  public static String fileIdFromContentId(String contentId) {
+    var embeddingsIdParts = contentId.split(CONTENT_KEY_SEPARATOR);
     if (embeddingsIdParts.length != 3) {
-      LOG.warn("Expected a 3 part embeddings id, got {}. Returning empty string.", embeddingsId);
+      LOG.warn("Expected a 3 part embeddings id, got {}. Returning empty string.", contentId);
       return "";
     }
-    // we only keep the document id part, discarding doc name and embeddings sequence
-    return "https://docs.google.com/document/d/" + embeddingsIdParts[1];
+    // we only keep the file id part, discarding doc name and embeddings sequence
+    return embeddingsIdParts[1];
+  }
+
+  public static String reconstructDocumentLinkFromEmbeddingsId(
+      String embeddingsId, GoogleDriveAPIMimeTypes type) {
+    var fileId = fileIdFromContentId(embeddingsId);
+    return switch (type) {
+          case DOCUMENT -> "https://docs.google.com/document/d/";
+          case SHEET -> "https://docs.google.com/spreadsheet/d/";
+          case SLIDE -> "https://docs.google.com/slide/d/";
+          default -> "NA ";
+        }
+        + fileId;
   }
 }

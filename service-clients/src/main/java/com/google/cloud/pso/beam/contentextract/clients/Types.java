@@ -112,4 +112,6 @@ public class Types {
   }
 
   public record UpsertMatchingEngineDatapoints(List<Types.Datapoint> datapoints) {}
+
+  public record ContentProcessed(String contentId, Long processedAtInMillis) {}
 }
