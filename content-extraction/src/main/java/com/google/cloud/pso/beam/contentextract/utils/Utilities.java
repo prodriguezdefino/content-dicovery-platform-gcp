@@ -205,7 +205,7 @@ public class Utilities {
     return switch (type) {
           case DOCUMENT -> "https://docs.google.com/document/d/";
           case SHEET -> "https://docs.google.com/spreadsheet/d/";
-          case SLIDE -> "https://docs.google.com/slide/d/";
+          case SLIDE -> "https://docs.google.com/presentation/d/";
           default -> "NA ";
         }
         + fileId;
