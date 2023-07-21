@@ -59,7 +59,11 @@ public class GoogleDocClient implements Serializable {
   }
 
   public Drive.Files.Get driveFileGetClient(String driveId) throws IOException {
-    return DRIVE_SERVICE.files().get(driveId).setOauthToken(retrieveAccessToken());
+    return DRIVE_SERVICE
+        .files()
+        .get(driveId)
+        .setOauthToken(retrieveAccessToken())
+        .setFields("id, mimeType, modifiedTime, name, webViewLink");
   }
 
   public Drive.Files.List driveFileListClient(String queryString, String pageToken)

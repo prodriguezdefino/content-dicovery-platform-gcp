@@ -196,16 +196,18 @@ public class DocContentRetriever implements Serializable {
 
   Optional<File> shouldRefreshContent(String contentId, Long lastProcessedInMillis) {
     return retrieveDriveFiles(contentId).stream()
-        .filter(file -> file.getModifiedTime().getValue() > lastProcessedInMillis)
+        .map(
+            file ->
+                Optional.ofNullable(file.getModifiedTime())
+                    .filter(modTime -> modTime.getValue() > lastProcessedInMillis)
+                    .map(modTime -> file))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
         .findFirst();
   }
 
-  public List<File> filterFilesUpForRefresh(List<Types.ContentProcessed> files) {
-    return files.stream()
-        .map(content -> shouldRefreshContent(content.contentId(), content.processedAtInMillis()))
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .toList();
+  public Optional<File> filterFilesUpForRefresh(Types.ContentProcessed content) {
+    return shouldRefreshContent(content.contentId(), content.processedAtInMillis());
   }
 
   public List<File> retrieveDriveFiles(String id) {

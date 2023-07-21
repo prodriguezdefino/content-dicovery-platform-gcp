@@ -19,6 +19,7 @@ import com.google.cloud.pso.beam.contentextract.Types.*;
 import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTransform;
 import com.google.cloud.pso.beam.contentextract.transforms.ErrorHandlingTransform;
 import com.google.cloud.pso.beam.contentextract.transforms.FoundationModelsTransform;
+import com.google.cloud.pso.beam.contentextract.transforms.RefreshContentTransform;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -102,6 +103,10 @@ public class ContentExtractionPipeline {
     maybeDocsContents
         .failures()
         .apply("ProcessErrorAndMaybeRetry", ErrorHandlingTransform.create());
+
+    // finally we add the content refresh process that should periodically check for edited docs
+    // since last ingestion.
+    pipeline.apply("RefreshContent", RefreshContentTransform.create());
 
     pipeline.run();
   }
