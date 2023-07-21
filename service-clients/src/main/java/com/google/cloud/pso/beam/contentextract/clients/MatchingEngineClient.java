@@ -88,6 +88,41 @@ public class MatchingEngineClient extends VertexAIClient {
     }
   }
 
+  public void deleteVectorDBDatapoints(Types.DeleteMatchingEngineDatapoints deleteRequest) {
+    try {
+      var uriStr =
+          String.format(
+              "https://%s-aiplatform.googleapis.com/v1/%s:removeDatapoints",
+              region, matchingEngineIndexId);
+
+      var body = GSON.toJson(deleteRequest);
+      var request = createHTTPBasedRequest(uriStr, body);
+      var response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() != 200)
+        throw new RuntimeException(
+            String.format(
+                "Error returned by matching engine index upsert: %s \nRequest payload: %s ",
+                response.toString(), request.toString()));
+      else
+        LOG.info(
+            "Deleted {} datapoints with ids: {}.",
+            deleteRequest.datapointIds().size(),
+            deleteRequest.datapointIds().toString());
+    } catch (IOException | InterruptedException | URISyntaxException ex) {
+      var msg = "Error while trying to upsert data in matching engine index.";
+      throw new MatchingEngineException(msg, ex);
+    }
+  }
+
+  public void deleteVectorDBDatapointsWithRetries(
+      Types.DeleteMatchingEngineDatapoints deleteRequest) {
+    executeOperation(
+        buildRetriableExecutorForOperation(
+            "deleteVectorDBDatapoints", Lists.newArrayList(MatchingEngineException.class)),
+        () -> deleteVectorDBDatapoints(deleteRequest));
+  }
+
   public void upsertVectorDBDataPoints(Types.UpsertMatchingEngineDatapoints upsertRequest) {
     try {
       var uriStr =
@@ -111,8 +146,17 @@ public class MatchingEngineClient extends VertexAIClient {
             upsertRequest.datapoints().stream().map(emb -> emb.datapointId()).toList().toString());
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to upsert data in matching engine index.";
-      throw new RuntimeException(msg, ex);
+      throw new MatchingEngineException(msg, ex);
     }
+  }
+
+  public void upsertVectorDBDataPointsWithRetries(
+      Types.UpsertMatchingEngineDatapoints upsertRequest) {
+
+    executeOperation(
+        buildRetriableExecutorForOperation(
+            "upsertVectorDBDatapoints", Lists.newArrayList(MatchingEngineException.class)),
+        () -> upsertVectorDBDataPoints(upsertRequest));
   }
 
   public Types.NearestNeighborsResponse queryNearestNeighbors(

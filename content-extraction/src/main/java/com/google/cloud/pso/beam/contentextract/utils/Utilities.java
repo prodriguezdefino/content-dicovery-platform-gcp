@@ -118,7 +118,7 @@ public class Utilities {
     return KV.of(content.getKey(), content.getValue().stream().collect(Collectors.joining("\n")));
   }
 
-  public static List<KV<String, KV<String, List<Double>>>> addEmbeddingsIdentifiers(
+  public static List<IndexableContent> addEmbeddingsIdentifiers(
       KV<String, Iterable<KV<String, Iterable<Double>>>> content) {
     var embeddings =
         StreamSupport.stream(content.getValue().spliterator(), false)
@@ -129,13 +129,13 @@ public class Utilities {
                         StreamSupport.stream(val.getValue().spliterator(), false).toList()))
             .toList();
     return IntStream.range(0, embeddings.size())
-        .mapToObj(i -> KV.of(content.getKey() + CONTENT_KEY_SEPARATOR + i, embeddings.get(i)))
+        .mapToObj(
+            i ->
+                new IndexableContent(
+                    content.getKey() + CONTENT_KEY_SEPARATOR + i,
+                    embeddings.get(i).getKey(),
+                    embeddings.get(i).getValue()))
         .toList();
-  }
-
-  public static List<KV<String, List<Double>>> removeContentFromEmbeddingsKV(
-      List<KV<String, KV<String, List<Double>>>> content) {
-    return content.stream().map(kv -> KV.of(kv.getKey(), kv.getValue().getValue())).toList();
   }
 
   public static List<Transport> extractContentId(PubsubMessage msg) {
@@ -187,6 +187,16 @@ public class Utilities {
       res.append(compression.getSuggestedSuffix());
       return res.toString();
     };
+  }
+
+  public static String prefixIdFromContentId(String contentId) {
+    var embeddingsIdParts = contentId.split(CONTENT_KEY_SEPARATOR);
+    if (embeddingsIdParts.length != 3) {
+      LOG.warn("Expected a 3 part embeddings id, got {}. Returning empty string.", contentId);
+      return "";
+    }
+    // we only keep the file id part, discarding doc name and embeddings sequence
+    return embeddingsIdParts[0] + CONTENT_KEY_SEPARATOR + embeddingsIdParts[1];
   }
 
   public static String fileIdFromContentId(String contentId) {

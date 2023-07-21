@@ -20,6 +20,7 @@ import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTran
 import com.google.cloud.pso.beam.contentextract.transforms.ErrorHandlingTransform;
 import com.google.cloud.pso.beam.contentextract.transforms.FoundationModelsTransform;
 import com.google.cloud.pso.beam.contentextract.transforms.RefreshContentTransform;
+import com.google.cloud.pso.beam.contentextract.transforms.StoreEmbeddingsResults;
 import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -95,7 +96,8 @@ public class ContentExtractionPipeline {
     // and then they will be stored in MatchingEngine
     maybeDocsContents
         .output()
-        .apply("ProcessAndStoreEmbeddings", FoundationModelsTransform.processAndStoreEmbeddings());
+        .apply("ProcessEmbeddings", FoundationModelsTransform.processEmbeddings())
+        .apply("StoreEmbeddings", StoreEmbeddingsResults.create());
 
     // also little bit of error handling.
     // if the error is retriable (like lack of permissions on the docs) the events will be sent to

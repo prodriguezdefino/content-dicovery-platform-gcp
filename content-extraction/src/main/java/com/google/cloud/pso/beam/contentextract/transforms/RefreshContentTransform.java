@@ -81,7 +81,7 @@ public class RefreshContentTransform extends PTransform<PBegin, PDone> {
                 new ReadFromTableFn(
                     options.getProject(),
                     options.getBigTableInstanceName(),
-                    "content_per_embedding")))
+                    options.getBigTableTableName())))
         .apply("Flatten", Flatten.iterables())
         .apply("AddKeys", WithKeys.of(id -> id))
         .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))

@@ -113,5 +113,7 @@ public class Types {
 
   public record UpsertMatchingEngineDatapoints(List<Types.Datapoint> datapoints) {}
 
+  public record DeleteMatchingEngineDatapoints(List<String> datapointIds) {}
+
   public record ContentProcessed(String contentId, Long processedAtInMillis) {}
 }

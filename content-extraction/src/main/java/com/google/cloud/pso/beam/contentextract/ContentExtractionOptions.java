@@ -16,6 +16,7 @@
 package com.google.cloud.pso.beam.contentextract;
 
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 
@@ -69,6 +70,12 @@ public interface ContentExtractionOptions extends DataflowPipelineOptions {
   String getBigTableInstanceName();
 
   void setBigTableInstanceName(String value);
+
+  @Description("The BigTable table name to store embedding ids and content.")
+  @Default.String("content_per_embedding")
+  String getBigTableTableName();
+
+  void setBigTableTableName(String value);
 
   @Description("The local expansion server url in the form of 'localhost:PORT'.")
   @Validation.Required

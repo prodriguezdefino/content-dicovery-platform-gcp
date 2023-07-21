@@ -34,7 +34,7 @@ public abstract class VertexAIClient implements Serializable {
     return GoogleCredentialsCache.retrieveAccessToken("");
   }
 
-  public static String formatUpsertDatapoints(Types.UpsertMatchingEngineDatapoints embeddings) {
+  public static String formatUpsertDatapoints(Types.UpsertMatchingEngineDatapoints request) {
     var datapointTemplate =
         """
         {
@@ -42,7 +42,7 @@ public abstract class VertexAIClient implements Serializable {
           "feature_vector" : %s
         }""";
     var datapoints =
-        embeddings.datapoints().stream()
+        request.datapoints().stream()
             .map(
                 emb ->
                     String.format(

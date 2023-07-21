@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.beam.sdk.coders.CoderException;
@@ -129,4 +130,15 @@ public class Types {
       return new PubsubMessage(json.toString().getBytes(), metadata());
     }
   }
+
+  public enum Operation {
+    UPSERT,
+    DELETE
+  }
+
+  public record IndexableContent(String key, String content, List<Double> embedding)
+      implements Serializable {}
+
+  public record IndexableContentOperation(IndexableContent content, Operation operation)
+      implements Serializable {}
 }

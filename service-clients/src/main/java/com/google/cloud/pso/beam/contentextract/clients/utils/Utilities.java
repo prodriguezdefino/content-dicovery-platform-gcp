@@ -24,9 +24,9 @@ import dev.failsafe.Failsafe;
 import dev.failsafe.FailsafeExecutor;
 import dev.failsafe.RetryPolicy;
 import dev.failsafe.function.CheckedRunnable;
+import dev.failsafe.function.CheckedSupplier;
 import java.time.Duration;
 import java.util.List;
-import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +77,7 @@ public class Utilities {
   }
 
   public static <T> T executeOperation(
-      FailsafeExecutor<T> failsafeExecutor, Supplier<T> operation) {
+      FailsafeExecutor<T> failsafeExecutor, CheckedSupplier<T> operation) {
     return failsafeExecutor.get(() -> operation.get());
   }
 
