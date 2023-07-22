@@ -49,15 +49,18 @@ public class DocContentRetriever implements Serializable {
   }
 
   static Optional<String> retrieveParagraphContent(Paragraph p) {
-    return Optional.of(
-        p.getElements().stream()
-            .map(
-                paragraphElement ->
-                    Optional.ofNullable(paragraphElement.getTextRun())
-                        .map(TextRun::getContent)
-                        .orElse(""))
-            .filter(paragraphContent -> !paragraphContent.isEmpty())
-            .collect(Collectors.joining(" ")));
+    return Optional.ofNullable(p)
+        .flatMap(par -> Optional.ofNullable(par.getElements()))
+        .map(
+            elems ->
+                elems.stream()
+                    .map(
+                        paragraphElement ->
+                            Optional.ofNullable(paragraphElement.getTextRun())
+                                .map(TextRun::getContent)
+                                .orElse(""))
+                    .filter(paragraphContent -> !paragraphContent.isEmpty())
+                    .collect(Collectors.joining(" ")));
   }
 
   public KV<String, List<String>> retrieveGoogleDriveFileContent(
