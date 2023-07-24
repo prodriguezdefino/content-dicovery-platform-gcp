@@ -87,7 +87,9 @@ public class Types {
 
   public record SafetyAttributes(List<String> categories, List<Double> scores, Boolean blocked) {}
 
-  public record CitationMetadata(List<String> citations) {}
+  public record Citation(Integer startIndex, Integer endIndex, String url) {}
+
+  public record CitationMetadata(List<Citation> citations) {}
 
   public record PalmChatPrediction(
       List<SafetyAttributes> safetyAttributes,
