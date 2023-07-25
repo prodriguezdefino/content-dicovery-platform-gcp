@@ -59,7 +59,6 @@ public class PalmClient extends VertexAIClient {
             String.format(
                 "Error returned by PaLM: %d, %s \nRequest payload: %s ",
                 response.statusCode(), response.body(), request.toString()));
-      LOG.info(response.body());
       return GSON.fromJson(response.body(), Types.PalmChatResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve prompt response from PaLM.";
@@ -92,7 +91,6 @@ public class PalmClient extends VertexAIClient {
                 "Error returned by PaLM: %d, %s \nRequest payload: %s ",
                 response.statusCode(), response.body(), request.toString()));
 
-      LOG.info(response.body());
       return GSON.fromJson(response.body(), Types.PalmSummarizationResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve prompt response from PaLM.";
