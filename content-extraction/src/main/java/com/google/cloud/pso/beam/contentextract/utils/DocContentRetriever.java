@@ -67,8 +67,8 @@ public class DocContentRetriever implements Serializable {
       String fileId, GoogleDriveAPIMimeTypes type) {
     return switch (type) {
       case DOCUMENT -> retrieveDocumentContent(fileId);
-      case SHEET -> retrieveSpreadsheetContent(fileId);
-      case SLIDE -> retrievePresentationContent(fileId);
+      case SPREADSHEET -> retrieveSpreadsheetContent(fileId);
+      case PRESENTATION -> retrievePresentationContent(fileId);
       default -> throw new IllegalArgumentException("Not supported mime-type: " + type.name());
     };
   }
@@ -219,7 +219,7 @@ public class DocContentRetriever implements Serializable {
       var validId = Utilities.checkIfValidURL(id) ? Utilities.extractIdFromURL(id) : id;
       var maybeFile = clientProvider.driveFileGetClient(validId).execute();
       return switch (GoogleDriveAPIMimeTypes.get(maybeFile.getMimeType())) {
-        case SHEET, DOCUMENT, SLIDE -> List.of(maybeFile);
+        case SPREADSHEET, DOCUMENT, PRESENTATION -> List.of(maybeFile);
         case FOLDER -> {
           var queryString = String.format("'%s' in parents", maybeFile.getId());
 

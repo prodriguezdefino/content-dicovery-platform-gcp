@@ -214,8 +214,8 @@ public class Utilities {
     var fileId = fileIdFromContentId(embeddingsId);
     return switch (type) {
           case DOCUMENT -> "https://docs.google.com/document/d/";
-          case SHEET -> "https://docs.google.com/spreadsheets/d/";
-          case SLIDE -> "https://docs.google.com/presentation/d/";
+          case SPREADSHEET -> "https://docs.google.com/spreadsheets/d/";
+          case PRESENTATION -> "https://docs.google.com/presentation/d/";
           default -> "NA ";
         }
         + fileId;

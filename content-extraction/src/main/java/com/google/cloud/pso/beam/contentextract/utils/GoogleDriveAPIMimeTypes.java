@@ -30,11 +30,11 @@ public enum GoogleDriveAPIMimeTypes {
   JAMBOARD("application/vnd.google-apps.jam"),
   MAP("application/vnd.google-apps.map"),
   PHOTO("application/vnd.google-apps.photo"),
-  SLIDE("application/vnd.google-apps.presentation"),
+  PRESENTATION("application/vnd.google-apps.presentation"),
   APP_SCRIPT("application/vnd.google-apps.script"),
   SHORTCUT("application/vnd.google-apps.shortcut"),
   SITE("application/vnd.google-apps.site"),
-  SHEET("application/vnd.google-apps.spreadsheet"),
+  SPREADSHEET("application/vnd.google-apps.spreadsheet"),
   UNKNOWN("application/vnd.google-apps.unknown"),
   VIDEO("application/vnd.google-apps.video");
 
