@@ -18,4 +18,4 @@ fi
 
 DOCKER_SERVICES_IMAGE="gcr.io/${GCP_PROJECT}/${GCP_REGION}/$RUN_NAME-services:latest"
 
-gcloud builds submit --tag $DOCKER_SERVICES_IMAGE
+gcloud builds submit --tag $DOCKER_SERVICES_IMAGE --project $GCP_PROJECT --region $GCP_REGION
