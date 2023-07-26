@@ -17,4 +17,4 @@ fi
 
 DOCKER_PYTHON_IMAGE="gcr.io/${GCP_PROJECT}/${GCP_REGION}/beam-embeddings:latest"
 
-gcloud builds submit --tag $DOCKER_PYTHON_IMAGE
+gcloud builds submit --tag $DOCKER_PYTHON_IMAGE --project $GCP_PROJECT --region $GCP_REGION
