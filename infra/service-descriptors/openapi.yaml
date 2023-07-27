@@ -13,6 +13,18 @@ securityDefinitions:
     x-google-jwks_uri: "https://www.googleapis.com/oauth2/v3/certs"
     x-google-audiences: "${gcloud_audiences}"
 paths:
+  /q/openapi:
+    get:
+      security:
+        - google_id_token: []
+      operationId: open-api-def
+      tags:
+        - API Metadata
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
   /ingest/content/gdrive:
     post:
       security:
