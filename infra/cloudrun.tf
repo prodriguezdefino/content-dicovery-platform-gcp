@@ -92,12 +92,22 @@ resource "google_cloud_run_v2_service" "services" {
   }
 }
 
-resource "google_cloud_run_service_iam_member" "gateway_permission" {
+resource "google_cloud_run_service_iam_member" "cloudrun_permission_robotsa" {
   location = var.region
   project = var.project
   service = google_cloud_run_v2_service.services.name
   role = "roles/run.invoker"
   member = "serviceAccount:${google_service_account.dataflow_runner_sa.email}"
+}
+
+resource "google_cloud_run_service_iam_member" "additional_permissions" {
+  location = var.region
+  project = var.project
+  service = google_cloud_run_v2_service.services.name
+  role = "roles/run.invoker"
+  
+  for_each = var.additional_authz_cloudrunservice
+  member = each.value
 }
 
 resource "google_cloud_run_service_iam_member" "workspace_domain_permission" {
