@@ -152,6 +152,12 @@ variable workspace_domain {
   default = "google.com"
 }
 
+variable additional_authz_cloudrunservice {
+  description = "the values on the set should contain the special identifier prefixes, besides the actual email of the subject to grant the acess (example: 'serviceAccount:email' or 'user:email', etc)"
+  type = set(string)
+  default = []
+}
+
 output "df_sa" {
   value = google_service_account.dataflow_runner_sa.email
 }
