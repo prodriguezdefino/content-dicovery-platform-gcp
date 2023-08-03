@@ -50,13 +50,13 @@ public class IAMCheckSecurityFilter {
   @ServerRequestFilter
   public Optional<RestResponse<ForbiddenReason>> postFilter(ContainerRequestContext ctx) {
     /**
-     * At the point, only already authenticated requests will reach. If the request is being served
+     * At this point, only already authenticated requests will reach. If the request is being served
      * directly from CloudRun it was already authorized since we only enable access to an email
      * domain (for users) and the solution's service account, so we should let it pass returning an
-     * empty Optional. If the request is being served by API Gateway, then we should see
-     * 'x-apigateway-api-userinfo' as part of the headers including a value and we should check then
-     * if the email authenticated does have permissions to access the service before authorizing the
-     * access.
+     * empty Optional. If the request is being served by API Gateway, then we should check
+     * 'x-apigateway-api-userinfo' as part of the headers if it includes a value and we should check
+     * then if the email authenticated does have permissions to access the service before
+     * authorizing the access.
      */
     return Optional.ofNullable(ctx.getHeaders().getFirst(API_GATEWAY_USERINFO_HEADER))
         .map(encodedUserInfo -> new JsonObject(new String(Codec.base64Decode(encodedUserInfo))))
