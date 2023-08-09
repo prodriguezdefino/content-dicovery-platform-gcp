@@ -18,11 +18,27 @@ package com.google.cloud.pso.data.services.exceptions;
 /** Represents errors occurred while interacting with the query resource. */
 public class QueryResourceException extends RuntimeException {
 
-  public QueryResourceException(String message) {
+  private final String queryText;
+  private final String sessionId;
+
+  public QueryResourceException(String message, String queryText, String sessionId) {
     super(message);
+    this.queryText = queryText;
+    this.sessionId = sessionId;
   }
 
-  public QueryResourceException(String message, Throwable cause) {
+  public QueryResourceException(
+      String message, String queryText, String sessionId, Throwable cause) {
     super(message, cause);
+    this.queryText = queryText;
+    this.sessionId = sessionId;
+  }
+
+  public String getQueryText() {
+    return queryText;
+  }
+
+  public String getSessionId() {
+    return sessionId;
   }
 }

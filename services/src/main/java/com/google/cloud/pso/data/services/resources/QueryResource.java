@@ -96,7 +96,8 @@ public class QueryResource {
   @Produces(MediaType.APPLICATION_JSON)
   public QueryResult query(UserQuery query) {
     try {
-      Preconditions.checkState(query.sessionId() != null, "A valid session id should be provided.");
+      Preconditions.checkState(
+          query.sessionId() != null, "Session id should be present, even if empty.");
       Preconditions.checkState(query.text() != null, "A valid question should be provided.");
 
       // retrieve the previous q and as from the conversation context removing the repeated and
@@ -217,7 +218,7 @@ public class QueryResource {
     } catch (Exception ex) {
       var msg = "Problems while executing the query resource. ";
       LOG.error(msg, ex);
-      throw new QueryResourceException(msg + ex.getMessage());
+      throw new QueryResourceException(msg + ex.getMessage(), query.text, query.sessionId, ex);
     }
   }
 
