@@ -158,6 +158,18 @@ variable additional_authz_cloudrunservice {
   default = []
 }
 
+variable bot_context_expertise {
+  description = "sets the bot's expertise domain, this is directly used as part of the prompt generation on user query resolution."
+  type = string
+  default = ""
+}
+
+variable bot_include_own_knowledge {
+  description = "sets if the bot should include its own knowledge to enrich responses."
+  type = bool
+  default = true
+}
+  
 output "df_sa" {
   value = google_service_account.dataflow_runner_sa.email
 }

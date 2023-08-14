@@ -22,6 +22,7 @@ import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.IOException;
+import java.util.Optional;
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
@@ -65,6 +66,9 @@ public class BeansProducer {
   private final Integer topK = 20;
   private final Double topP = 0.5;
 
+  private String configuredBotContextExpertise = "";
+  private Boolean includeOwnKnowledgeEnrichment = true;
+
   @PostConstruct
   public void init() {
     var jsonConfig = Utilities.getSecretValue(secretManagerConfigurationVersion).toStringUtf8();
@@ -92,6 +96,14 @@ public class BeansProducer {
         configuration.get("bt.contentcolumnqualifier.link").getAsString();
     bigTableContentColumnQualifierContext =
         configuration.get("bt.contextcolumnqualifier").getAsString();
+    configuredBotContextExpertise =
+        Optional.ofNullable(configuration.get("bot.contextexpertise"))
+            .map(jse -> jse.getAsString())
+            .orElse("");
+    includeOwnKnowledgeEnrichment =
+        Optional.ofNullable(configuration.get("bot.includeownknowledge"))
+            .map(jse -> jse.getAsBoolean())
+            .orElse(true);
   }
 
   @Produces
@@ -167,5 +179,17 @@ public class BeansProducer {
     var psService = new PubSubService(pubsubTopic);
     psService.init();
     return psService;
+  }
+
+  @Produces
+  @Named("botContextExpertise")
+  public String configuredBotContextExpertise() {
+    return configuredBotContextExpertise;
+  }
+
+  @Produces
+  @Named("includeOwnKnowledgeEnrichment")
+  public Boolean includeOwnKnowledgeEnrichment() {
+    return includeOwnKnowledgeEnrichment;
   }
 }

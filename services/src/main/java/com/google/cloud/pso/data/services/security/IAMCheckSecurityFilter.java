@@ -43,7 +43,7 @@ public class IAMCheckSecurityFilter {
 
   @Inject
   @Named("cloudrun.service.id")
-  private String cloudRunServiceId;
+  String cloudRunServiceId;
 
   private IamCheckerClient checkerClient;
 

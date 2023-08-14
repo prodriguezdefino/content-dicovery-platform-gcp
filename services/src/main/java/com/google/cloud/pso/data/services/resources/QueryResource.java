@@ -26,12 +26,12 @@ import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import io.vertx.ext.web.RoutingContext;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.enterprise.context.SessionScoped;
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -50,7 +50,14 @@ public class QueryResource {
   @Inject MatchingEngineClient matchingEngineService;
   @Inject PalmClient palmService;
   @Inject BeansProducer.ResourceConfiguration configuration;
-  @Inject RoutingContext routingContext;
+
+  @Inject
+  @Named("botContextExpertise")
+  String configuredBotContextExpertise;
+
+  @Inject
+  @Named("includeOwnKnowledgeEnrichment")
+  Boolean includeOwnKnowledgeEnrichment;
 
   List<BigTableService.QAndA> removeRepeatedAndNegaviteAnswers(
       List<BigTableService.QAndA> qsAndAs) {
@@ -99,6 +106,7 @@ public class QueryResource {
       Preconditions.checkState(
           query.sessionId() != null, "Session id should be present, even if empty.");
       Preconditions.checkState(query.text() != null, "A valid question should be provided.");
+      Preconditions.checkState(!query.text().trim().isEmpty(), "Provided query is empty.");
 
       // retrieve the previous q and as from the conversation context removing the repeated and
       // negative answers coming from the model
@@ -156,8 +164,17 @@ public class QueryResource {
       var palmRequestContext =
           PromptUtilities.formatChatContextPrompt(
               contextContent,
+              // if there is a query param knowledge setup we use that
               Optional.ofNullable(query.parameters)
-                  .flatMap(p -> Optional.ofNullable(p.botContextExpertise())));
+                  .map(p -> Optional.ofNullable(p.botContextExpertise()))
+                  // or default to whatever was configured, if anything
+                  .orElse(Optional.ofNullable(configuredBotContextExpertise)),
+              // also use the query configured knowledge enrichment, if tis there.
+              Optional.ofNullable(query.parameters)
+                  .flatMap(p -> Optional.ofNullable(p.includeOwnKnowledgeEnrichment))
+                  // or default to whatever was configured, if anything
+                  .orElse(Optional.ofNullable(includeOwnKnowledgeEnrichment).orElse(true)));
+
       var currentExchange =
           Lists.newArrayList(qAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
       currentExchange.add(new Types.Exchange("user", query.text()));
@@ -232,6 +249,7 @@ public class QueryResource {
 
   public record QueryParameters(
       String botContextExpertise,
+      Boolean includeOwnKnowledgeEnrichment,
       Integer maxNeighbors,
       Double temperature,
       Integer maxOutputTokens,

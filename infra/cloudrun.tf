@@ -17,7 +17,9 @@ locals {
         "matchingengine.index.id" : "${google_vertex_ai_index.embeddings_index.id}",
         "matchingengine.index.deployment" : "deploy${var.run_name}",
         "matchingengine.indexendpoint.id" : "${data.external.get_indexendpoint_id.result.index_endpoint_id}",
-        "matchingengine.indexendpoint.domain" : "${data.external.get_indexendpoint_domain.result.index_endpoint_domain}"
+        "matchingengine.indexendpoint.domain" : "${data.external.get_indexendpoint_domain.result.index_endpoint_domain}",
+        "bot.contextexpertise" : "${var.bot_context_expertise}",
+        "bot.includeownknowledge" : "${var.bot_include_own_knowledge}"
       }
 EOL
 }
