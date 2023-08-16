@@ -17,11 +17,11 @@ package com.google.cloud.pso.beam.contentextract.transforms;
 
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTransform.DocumentProcessingResult;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
-import com.google.cloud.pso.beam.contentextract.utils.GoogleDocClient;
-import com.google.cloud.pso.beam.contentextract.utils.GoogleDriveAPIMimeTypes;
-import com.google.cloud.pso.beam.contentextract.utils.Utilities;
+import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.util.Base64;
@@ -62,7 +62,7 @@ public class DocumentProcessorTransform
   public DocumentProcessingResult expand(PCollection<PubsubMessage> input) {
     var fetcher =
         DocContentRetriever.create(
-            GoogleDocClient.create(
+            GoogleDriveClient.create(
                 input
                     .getPipeline()
                     .getOptions()
@@ -84,7 +84,7 @@ public class DocumentProcessorTransform
             .apply(
                 "ExtractContentId",
                 FlatMapElements.into(TypeDescriptor.of(Types.Transport.class))
-                    .via(Utilities::extractContentId)
+                    .via(ExtractionUtils::extractContentId)
                     .exceptionsVia(new ErrorHandlingTransform.ErrorHandler<>()));
 
     // In case the identifier is a folder then we need to crawl it an extract all the docs in there

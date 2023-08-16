@@ -21,7 +21,10 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.cloud.pso.beam.contentextract.Types.*;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
+import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.Serializable;
@@ -38,13 +41,13 @@ public class DocContentRetriever implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(DocContentRetriever.class);
 
-  private final GoogleDocClient clientProvider;
+  private final GoogleDriveClient clientProvider;
 
-  private DocContentRetriever(GoogleDocClient serviceClientProvider) {
+  private DocContentRetriever(GoogleDriveClient serviceClientProvider) {
     this.clientProvider = serviceClientProvider;
   }
 
-  public static DocContentRetriever create(GoogleDocClient provider) {
+  public static DocContentRetriever create(GoogleDriveClient provider) {
     return new DocContentRetriever(provider);
   }
 

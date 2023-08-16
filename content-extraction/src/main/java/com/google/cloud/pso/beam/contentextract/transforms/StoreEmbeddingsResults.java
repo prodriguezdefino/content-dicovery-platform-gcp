@@ -21,12 +21,12 @@ import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types.DeleteMatchingEngineDatapoints;
 import com.google.cloud.pso.beam.contentextract.clients.Types.UpsertMatchingEngineDatapoints;
+import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
-import com.google.cloud.pso.beam.contentextract.utils.GoogleDocClient;
-import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import java.util.List;
@@ -54,7 +54,7 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
   @Override
   public PDone expand(PCollection<List<IndexableContent>> input) {
     var options = input.getPipeline().getOptions().as(ContentExtractionOptions.class);
-    var fetcher = DocContentRetriever.create(GoogleDocClient.create(options.getServiceAccount()));
+    var fetcher = DocContentRetriever.create(GoogleDriveClient.create(options.getServiceAccount()));
     var matchingEngineClient =
         MatchingEngineClient.create(
             options.getRegion(),

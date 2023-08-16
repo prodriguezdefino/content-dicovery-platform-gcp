@@ -19,7 +19,8 @@ locals {
         "matchingengine.indexendpoint.id" : "${data.external.get_indexendpoint_id.result.index_endpoint_id}",
         "matchingengine.indexendpoint.domain" : "${data.external.get_indexendpoint_domain.result.index_endpoint_domain}",
         "bot.contextexpertise" : "${var.bot_context_expertise}",
-        "bot.includeownknowledge" : "${var.bot_include_own_knowledge}"
+        "bot.includeownknowledge" : "${var.bot_include_own_knowledge}",
+        "service.account" : "${google_service_account.dataflow_runner_sa.email}"
       }
 EOL
 }

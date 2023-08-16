@@ -16,9 +16,12 @@
 package com.google.cloud.pso.data.services.beans;
 
 import autovalue.shaded.com.google.common.collect.Lists;
+import com.google.api.core.ApiFutures;
 import com.google.api.gax.rpc.ApiException;
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
+import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowCell;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
@@ -177,6 +180,29 @@ public class BigTableService {
         Utilities.buildRetriableExecutorForOperation(
             "storeQueryContext", Lists.newArrayList(ApiException.class)),
         () -> bigTableClient.mutateRow(rowMutation));
+  }
+
+  public void deleteRowsByKeys(List<String> rowKeys) {
+    try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceName)) {
+      // remove all the content rows with the provided keys, blocking until all of them are
+      // completed
+      ApiFutures.allAsList(
+              rowKeys.stream()
+                  .map(key -> tableAdminClient.dropRowRangeAsync(contentTableName, key))
+                  .toList())
+          .get();
+    } catch (Exception ex) {
+      LOG.error("problems while removing content ids from BigTable.", ex);
+      throw new RuntimeException(ex);
+    }
+  }
+
+  public List<String> retrieveAllContentEntries() {
+    var contentKeys = Lists.<String>newArrayList();
+    for (var row : bigTableClient.readRows(Query.create(contentTableName))) {
+      contentKeys.add(row.getKey().toStringUtf8());
+    }
+    return contentKeys;
   }
 
   @PreDestroy

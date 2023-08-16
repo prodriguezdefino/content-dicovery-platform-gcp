@@ -15,7 +15,7 @@
  */
 package com.google.cloud.pso.beam.contentextract;
 
-import com.google.cloud.pso.beam.contentextract.utils.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.gson.JsonObject;

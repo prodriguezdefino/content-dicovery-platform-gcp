@@ -21,7 +21,7 @@ import com.google.cloud.pso.beam.contentextract.transforms.ErrorHandlingTransfor
 import com.google.cloud.pso.beam.contentextract.transforms.FoundationModelsTransform;
 import com.google.cloud.pso.beam.contentextract.transforms.RefreshContentTransform;
 import com.google.cloud.pso.beam.contentextract.transforms.StoreEmbeddingsResults;
-import com.google.cloud.pso.beam.contentextract.utils.Utilities;
+import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileIO;
@@ -76,7 +76,7 @@ public class ContentExtractionPipeline {
             "ToJSONLFormat",
             FlatMapElements.into(
                     TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
-                .via(Utilities::docContentToKeyedJSONLFormat))
+                .via(ExtractionUtils::docContentToKeyedJSONLFormat))
         .apply(
             "WriteJSONLToGCS",
             FileIO.<String, KV<String, String>>writeDynamic()
@@ -90,7 +90,9 @@ public class ContentExtractionPipeline {
                 .to(options.getBucketLocation())
                 .withNaming(
                     Contextful.fn(
-                        name -> Utilities.documentAndIdNaming("jsonl_content/" + name, ".jsonl"))));
+                        name ->
+                            ExtractionUtils.documentAndIdNaming(
+                                "jsonl_content/" + name, ".jsonl"))));
 
     // also we grab the content an create document chunks that will be used to extract embeddings
     // and then they will be stored in MatchingEngine

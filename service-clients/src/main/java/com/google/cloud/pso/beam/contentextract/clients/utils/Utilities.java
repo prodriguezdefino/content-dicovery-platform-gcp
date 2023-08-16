@@ -15,7 +15,10 @@
  */
 package com.google.cloud.pso.beam.contentextract.clients.utils;
 
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.Preconditions;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.common.collect.Lists;
@@ -25,6 +28,11 @@ import dev.failsafe.FailsafeExecutor;
 import dev.failsafe.RetryPolicy;
 import dev.failsafe.function.CheckedRunnable;
 import dev.failsafe.function.CheckedSupplier;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.security.GeneralSecurityException;
+import java.text.Normalizer;
 import java.time.Duration;
 import java.util.List;
 import org.slf4j.Logger;
@@ -32,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 /** Utilities that support the usage of the different clients. */
 public class Utilities {
+  public static final String CONTENT_KEY_SEPARATOR = "___";
   private static final Logger LOG = LoggerFactory.getLogger(Utilities.class);
   static final Long BACKOFF_DELAY_IN_SECONDS = 5L;
   static final Long BACKOFF_MAX_DELAY_IN_MINUTES = 5L;
@@ -84,5 +93,106 @@ public class Utilities {
   public static <T> void executeOperation(
       FailsafeExecutor<T> failsafeExecutor, CheckedRunnable runnable) {
     failsafeExecutor.run(runnable);
+  }
+
+  public static NetHttpTransport createTransport() {
+    try {
+      return GoogleNetHttpTransport.newTrustedTransport();
+    } catch (GeneralSecurityException | IOException ex) {
+      var errMsg = "Errors while trying to create a transport object.";
+      LOG.error(errMsg, ex);
+      throw new RuntimeException(ex);
+    }
+  }
+
+  static String extractIdByPattern(String path, String itemPattern) {
+    var pathParts = path.split(itemPattern);
+    if (pathParts.length < 2) {
+      throw new IllegalArgumentException(
+          "The path does not contain a Google Drive id, path: " + path);
+    }
+    var containsId = pathParts[1].split("/")[0];
+    if (containsId.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Wrong path pattern, path: " + path + ", pattern: " + itemPattern);
+    }
+    return containsId;
+  }
+
+  public static Boolean checkIfValidURL(String maybeUrl) {
+    try {
+      new URL(maybeUrl);
+      return true;
+    } catch (MalformedURLException ex) {
+      return false;
+    }
+  }
+
+  public static String extractIdFromURL(String url) {
+    try {
+      var parsedUrl = new URL(url);
+      var path = parsedUrl.getPath();
+      Preconditions.checkState(!path.isEmpty(), "The URL path should not be empty");
+      if (path.contains("/document/d/")) {
+        return extractIdByPattern(path, "/document/d/");
+      } else if (path.contains("/presentation/d/")) {
+        return extractIdByPattern(path, "/presentation/d/");
+      } else if (path.contains("/spreadsheets/d/")) {
+        return extractIdByPattern(path, "/spreadsheets/d/");
+      } else if (path.contains("/drive/folders/")) {
+        return extractIdByPattern(path, "/drive/folders/");
+      } else {
+        throw new IllegalArgumentException(
+            "The shared URL is not a document or drive folder one: " + url);
+      }
+    } catch (MalformedURLException ex) {
+      var msg = "Problems while parsing the Google drive URL: " + url;
+      LOG.error(msg, ex);
+      throw new IllegalArgumentException(msg, ex);
+    }
+  }
+
+  public static String newIdFromTitleAndDriveId(String title, String driveId) {
+    var normalized = Normalizer.normalize(title, Normalizer.Form.NFD);
+    return normalized
+            .replaceAll("[ ]{1,}", "_")
+            .replaceAll("[\\[\\]]", "")
+            .replaceAll("[\\(\\)]", "")
+            .replaceAll("[\\n\\r]", "")
+            .toLowerCase()
+        + CONTENT_KEY_SEPARATOR
+        + driveId;
+  }
+
+  public static String prefixIdFromContentId(String contentId) {
+    var embeddingsIdParts = contentId.split(CONTENT_KEY_SEPARATOR);
+    if (embeddingsIdParts.length != 3) {
+      LOG.warn("Expected a 3 part embeddings id, got {}. Returning empty string.", contentId);
+      return "";
+    }
+    // we only keep the file id part, discarding doc name and embeddings sequence
+    return embeddingsIdParts[0] + CONTENT_KEY_SEPARATOR + embeddingsIdParts[1];
+  }
+
+  public static String fileIdFromContentId(String contentId) {
+    var embeddingsIdParts = contentId.split(CONTENT_KEY_SEPARATOR);
+    if (embeddingsIdParts.length != 3) {
+      LOG.warn("Expected a 3 part embeddings id, got {}. Returning empty string.", contentId);
+      return "";
+    }
+    // we only keep the file id part, discarding doc name and embeddings sequence
+    return embeddingsIdParts[1];
+  }
+
+  public static String reconstructDocumentLinkFromEmbeddingsId(
+      String embeddingsId, GoogleDriveAPIMimeTypes type) {
+    var fileId = fileIdFromContentId(embeddingsId);
+    return switch (type) {
+          case DOCUMENT -> "https://docs.google.com/document/d/";
+          case SPREADSHEET -> "https://docs.google.com/spreadsheets/d/";
+          case PRESENTATION -> "https://docs.google.com/presentation/d/";
+          default -> "NA ";
+        }
+        + fileId;
   }
 }

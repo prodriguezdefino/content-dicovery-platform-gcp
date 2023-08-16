@@ -17,7 +17,7 @@ package com.google.cloud.pso.beam.contentextract.transforms;
 
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types;
-import com.google.cloud.pso.beam.contentextract.utils.Utilities;
+import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.coders.DoubleCoder;
@@ -59,7 +59,7 @@ public abstract class FoundationModelsTransform
               "PrepContent",
               MapElements.into(
                       TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
-                  .via(Utilities::contentToKeyedParagraphs))
+                  .via(ExtractionUtils::contentToKeyedParagraphs))
           .apply("ConsolidateContent", Reshuffle.viaRandomKey())
           .apply(
               "GenerateEmbeddings",
@@ -85,7 +85,7 @@ public abstract class FoundationModelsTransform
               "FormatEmbeddingsResults",
               MapElements.into(
                       TypeDescriptors.lists(TypeDescriptor.of(Types.IndexableContent.class)))
-                  .via(Utilities::addEmbeddingsIdentifiers));
+                  .via(ExtractionUtils::addEmbeddingsIdentifiers));
     }
   }
 }

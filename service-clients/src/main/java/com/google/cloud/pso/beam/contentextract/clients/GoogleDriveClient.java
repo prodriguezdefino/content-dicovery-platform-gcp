@@ -13,9 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.contentextract.utils;
-
-import static com.google.cloud.pso.beam.contentextract.utils.Utilities.createTransport;
+package com.google.cloud.pso.beam.contentextract.clients;
 
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -25,14 +23,15 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.slides.v1.Slides;
 import com.google.cloud.pso.beam.contentextract.clients.utils.GoogleCredentialsCache;
+import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Optional;
 
 /** */
-public class GoogleDocClient implements Serializable {
+public class GoogleDriveClient implements Serializable {
 
-  private static final NetHttpTransport HTTP_TRANSPORT = createTransport();
+  private static final NetHttpTransport HTTP_TRANSPORT = Utilities.createTransport();
   private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
   private static final String APP_NAME = "DocContentExtractor";
   private static final Drive DRIVE_SERVICE =
@@ -46,12 +45,12 @@ public class GoogleDocClient implements Serializable {
 
   private final String credentialsPrincipal;
 
-  public GoogleDocClient(String credentialsPrincipal) {
+  public GoogleDriveClient(String credentialsPrincipal) {
     this.credentialsPrincipal = credentialsPrincipal;
   }
 
-  public static GoogleDocClient create(String credentialsPrincipal) {
-    return new GoogleDocClient(credentialsPrincipal);
+  public static GoogleDriveClient create(String credentialsPrincipal) {
+    return new GoogleDriveClient(credentialsPrincipal);
   }
 
   String retrieveAccessToken() {

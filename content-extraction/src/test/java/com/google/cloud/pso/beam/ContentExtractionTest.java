@@ -25,10 +25,11 @@ import com.google.api.services.docs.v1.model.TextRun;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
+import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
-import com.google.cloud.pso.beam.contentextract.utils.GoogleDocClient;
-import com.google.cloud.pso.beam.contentextract.utils.GoogleDriveAPIMimeTypes;
-import com.google.cloud.pso.beam.contentextract.utils.Utilities;
+import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
 import java.io.IOException;
 import java.util.List;
 import org.apache.beam.sdk.values.KV;
@@ -71,7 +72,7 @@ public class ContentExtractionTest {
     return new FileList().setIncompleteSearch(false).setFiles(List.of(createMockFile()));
   }
 
-  GoogleDocClient createMockClientProvider() throws IOException {
+  GoogleDriveClient createMockClientProvider() throws IOException {
     var docGet = Mockito.mock(Docs.Documents.Get.class);
     Mockito.when(docGet.execute()).thenReturn(createMockDocument());
 
@@ -81,7 +82,7 @@ public class ContentExtractionTest {
     var driveFileGet = Mockito.mock(Drive.Files.Get.class);
     Mockito.when(driveFileGet.execute()).thenReturn(createMockFile());
 
-    var mockedProvider = Mockito.mock(GoogleDocClient.class);
+    var mockedProvider = Mockito.mock(GoogleDriveClient.class);
     Mockito.when(mockedProvider.documentGetClient(ArgumentMatchers.any())).thenReturn(docGet);
     Mockito.when(mockedProvider.driveFileGetClient(ArgumentMatchers.any()))
         .thenReturn(driveFileGet);
@@ -103,7 +104,7 @@ public class ContentExtractionTest {
           var docContent =
               fetcher.retrieveGoogleDriveFileContent(
                   file.getId(), GoogleDriveAPIMimeTypes.DOCUMENT);
-          var jsonLines = Utilities.docContentToKeyedJSONLFormat(docContent);
+          var jsonLines = ExtractionUtils.docContentToKeyedJSONLFormat(docContent);
           System.out.println(docContent.getKey());
           jsonLines.forEach(line -> System.out.println(line.getValue()));
         });
@@ -116,7 +117,7 @@ public class ContentExtractionTest {
             "someid",
             List.of(KV.of("1", List.of(3.5, 4.5, 0.9)), KV.of("2", List.of(1.2, 4.2, 3.1))));
 
-    var res = Utilities.addEmbeddingsIdentifiers(kv);
+    var res = ExtractionUtils.addEmbeddingsIdentifiers(kv);
     System.out.println(res);
   }
 

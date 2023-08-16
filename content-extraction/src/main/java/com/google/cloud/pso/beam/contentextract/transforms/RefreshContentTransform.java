@@ -18,10 +18,10 @@ package com.google.cloud.pso.beam.contentextract.transforms;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
+import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
-import com.google.cloud.pso.beam.contentextract.utils.GoogleDocClient;
-import com.google.cloud.pso.beam.contentextract.utils.Utilities;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
@@ -65,7 +65,7 @@ public class RefreshContentTransform extends PTransform<PBegin, PDone> {
     var hours = 6;
     var fetcher =
         DocContentRetriever.create(
-            GoogleDocClient.create(
+            GoogleDriveClient.create(
                 input
                     .getPipeline()
                     .getOptions()

@@ -16,6 +16,7 @@
 package com.google.cloud.pso.data.services.beans;
 
 import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
+import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
@@ -58,6 +59,7 @@ public class BeansProducer {
   private String bigTableContentColumnQualifierContent;
   private String bigTableContentColumnQualifierLink;
   private String bigTableContentColumnQualifierContext;
+  private String serviceAccount;
 
   private final Integer maxNeighbors = 5;
   private final Double maxNeighborDistance = 10.0;
@@ -104,6 +106,13 @@ public class BeansProducer {
         Optional.ofNullable(configuration.get("bot.includeownknowledge"))
             .map(jse -> jse.getAsBoolean())
             .orElse(true);
+    serviceAccount =
+        Optional.ofNullable(configuration.get("service.account"))
+            .map(jse -> jse.getAsString())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Service Account not present in the configuration."));
   }
 
   @Produces
@@ -179,6 +188,13 @@ public class BeansProducer {
     var psService = new PubSubService(pubsubTopic);
     psService.init();
     return psService;
+  }
+
+  @Produces
+  @ApplicationScoped
+  public GoogleDriveClient produceGoogleDriveClient() throws IOException {
+    // we will use the default credentials from the runtime
+    return new GoogleDriveClient(serviceAccount);
   }
 
   @Produces
