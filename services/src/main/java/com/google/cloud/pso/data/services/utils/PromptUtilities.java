@@ -24,7 +24,8 @@ import java.util.stream.Collectors;
 /** */
 public class PromptUtilities {
 
-  public static final String NEGATIVE_ANSWER_1 = "That isn't something I know about yet, but I'm always learning so please try asking me again later!";
+  public static final String NEGATIVE_ANSWER_1 =
+      "That isn't something I know about yet, but I'm always learning so please try asking me again later!";
   public static final List<String> NEGATIVE_ANSWERS =
       List.of(NEGATIVE_ANSWER_1, "I'm not sure", "I am not sure");
   public static final String FOUND_IN_INTERNET =
