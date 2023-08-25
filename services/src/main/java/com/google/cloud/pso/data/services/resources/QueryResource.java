@@ -61,12 +61,12 @@ public class QueryResource {
 
   List<BigTableService.QAndA> removeRepeatedAndNegaviteAnswers(
       List<BigTableService.QAndA> qsAndAs) {
-    var prevAnswers = Sets.<String>newHashSet();
+    var prevQuestions = Sets.<String>newHashSet();
     var deduplicatedQAndAs = Lists.<BigTableService.QAndA>newArrayList();
     for (var qaa : qsAndAs) {
-      if (!prevAnswers.contains(qaa.answer())
+      if (!prevQuestions.contains(qaa.question())
           && !PromptUtilities.checkNegativeAnswer(qaa.answer())) {
-        prevAnswers.add(qaa.answer());
+        prevQuestions.add(qaa.question());
         deduplicatedQAndAs.add(qaa);
       }
     }
@@ -176,7 +176,7 @@ public class QueryResource {
                   .orElse(Optional.ofNullable(includeOwnKnowledgeEnrichment).orElse(true)));
 
       var currentExchange =
-          Lists.newArrayList(qAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
+          Lists.newArrayList(lastsQAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
       currentExchange.add(new Types.Exchange("user", query.text()));
       var palmResp =
           palmService.predictChatAnswerWithRetries(
