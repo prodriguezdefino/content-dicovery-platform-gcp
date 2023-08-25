@@ -84,11 +84,12 @@ public class MatchingEngineClient extends VertexAIClient {
       return GSON.fromJson(response.body(), Types.DatapointsResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve datapoints from matching engine index.";
-      throw new RuntimeException(msg, ex);
+      LOG.error(msg, ex);
+      throw new MatchingEngineException(msg, ex);
     }
   }
 
-  public void deleteVectorDBDatapoints(Types.DeleteMatchingEngineDatapoints deleteRequest) {
+  void deleteVectorDBDatapoints(Types.DeleteMatchingEngineDatapoints deleteRequest) {
     try {
       var uriStr =
           String.format(
@@ -111,6 +112,7 @@ public class MatchingEngineClient extends VertexAIClient {
             deleteRequest.datapointIds().toString());
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to upsert data in matching engine index.";
+      LOG.error(msg, ex);
       throw new MatchingEngineException(msg, ex);
     }
   }
@@ -123,7 +125,7 @@ public class MatchingEngineClient extends VertexAIClient {
         () -> deleteVectorDBDatapoints(deleteRequest));
   }
 
-  public void upsertVectorDBDataPoints(Types.UpsertMatchingEngineDatapoints upsertRequest) {
+  void upsertVectorDBDataPoints(Types.UpsertMatchingEngineDatapoints upsertRequest) {
     try {
       var uriStr =
           String.format(
@@ -146,6 +148,7 @@ public class MatchingEngineClient extends VertexAIClient {
             upsertRequest.datapoints().stream().map(emb -> emb.datapointId()).toList().toString());
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to upsert data in matching engine index.";
+      LOG.error(msg, ex);
       throw new MatchingEngineException(msg, ex);
     }
   }
@@ -159,8 +162,7 @@ public class MatchingEngineClient extends VertexAIClient {
         () -> upsertVectorDBDataPoints(upsertRequest));
   }
 
-  public Types.NearestNeighborsResponse queryNearestNeighbors(
-      Types.NearestNeighborRequest nnRequest) {
+  Types.NearestNeighborsResponse queryNearestNeighbors(Types.NearestNeighborRequest nnRequest) {
 
     try {
       var uriStr =
@@ -180,6 +182,7 @@ public class MatchingEngineClient extends VertexAIClient {
       return GSON.fromJson(response.body(), Types.NearestNeighborsResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve nearest neighbors from matching engine index.";
+      LOG.error(msg, ex);
       throw new MatchingEngineException(msg, ex);
     }
   }

@@ -43,7 +43,7 @@ public class PalmClient extends VertexAIClient {
     return new PalmClient(projectId, region);
   }
 
-  public Types.PalmChatResponse predictChatAnswer(Types.PalmChatAnswerRequest palmReq) {
+  Types.PalmChatResponse predictChatAnswer(Types.PalmChatAnswerRequest palmReq) {
 
     try {
       var uriStr =
@@ -62,6 +62,7 @@ public class PalmClient extends VertexAIClient {
       return GSON.fromJson(response.body(), Types.PalmChatResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve prompt response from PaLM.";
+      LOG.error(msg, ex);
       throw new PalmException(msg, ex);
     }
   }
@@ -73,8 +74,7 @@ public class PalmClient extends VertexAIClient {
         () -> predictChatAnswer(palmReq));
   }
 
-  public Types.PalmSummarizationResponse predictSummarization(
-      Types.PalmSummarizationRequest palmReq) {
+  Types.PalmSummarizationResponse predictSummarization(Types.PalmSummarizationRequest palmReq) {
 
     try {
       var uriStr =
@@ -94,6 +94,7 @@ public class PalmClient extends VertexAIClient {
       return GSON.fromJson(response.body(), Types.PalmSummarizationResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve prompt response from PaLM.";
+      LOG.error(msg, ex);
       throw new PalmException(msg, ex);
     }
   }

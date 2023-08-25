@@ -23,9 +23,12 @@ import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A minimal REST based client to interact with the embeddings model in VertexAI. */
 public class EmbeddingsClient extends VertexAIClient {
+  private static final Logger LOG = LoggerFactory.getLogger(EmbeddingsClient.class);
 
   private final String projectId;
   private final String region;
@@ -40,7 +43,7 @@ public class EmbeddingsClient extends VertexAIClient {
     return new EmbeddingsClient(projectId, region);
   }
 
-  public Types.EmbeddingsResponse retrieveEmbeddings(Types.EmbeddingRequest embeddingRequest) {
+  Types.EmbeddingsResponse retrieveEmbeddings(Types.EmbeddingRequest embeddingRequest) {
     try {
       var uriStr =
           String.format(
@@ -59,6 +62,7 @@ public class EmbeddingsClient extends VertexAIClient {
       return GSON.fromJson(response.body(), Types.EmbeddingsResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve embeddings from model.";
+      LOG.error(msg, ex);
       throw new EmbeddingsException(msg, ex);
     }
   }

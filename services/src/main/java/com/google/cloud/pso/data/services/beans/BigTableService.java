@@ -110,7 +110,7 @@ public class BigTableService {
   Row readRowWithRetries(String tableId, String key) {
     return Utilities.executeOperation(
         Utilities.buildRetriableExecutorForOperation(
-            "retrieveEmbeddings", Lists.newArrayList(ApiException.class)),
+            "readRow", Lists.newArrayList(ApiException.class)),
         () -> bigTableClient.readRow(tableId, key));
   }
 
