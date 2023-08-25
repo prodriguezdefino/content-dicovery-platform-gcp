@@ -4,6 +4,7 @@ info:
   version: '0.1'
 x-google-backend:
   address: "${backend_service_url}"
+  deadline: 30.0
 securityDefinitions:
   google_id_token:
     authorizationUrl: ""
