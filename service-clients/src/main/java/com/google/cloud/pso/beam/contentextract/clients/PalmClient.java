@@ -62,7 +62,7 @@ public class PalmClient extends VertexAIClient {
       return GSON.fromJson(response.body(), Types.PalmChatResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve prompt response from PaLM.";
-      throw new RuntimeException(msg, ex);
+      throw new PalmException(msg, ex);
     }
   }
 
@@ -94,7 +94,7 @@ public class PalmClient extends VertexAIClient {
       return GSON.fromJson(response.body(), Types.PalmSummarizationResponse.class);
     } catch (IOException | InterruptedException | URISyntaxException ex) {
       var msg = "Error while trying to retrieve prompt response from PaLM.";
-      throw new RuntimeException(msg, ex);
+      throw new PalmException(msg, ex);
     }
   }
 
