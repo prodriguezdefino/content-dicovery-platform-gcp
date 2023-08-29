@@ -111,6 +111,13 @@ public class Types {
     public String summary() {
       return predictions.stream().map(sum -> sum.content()).collect(Collectors.joining(" "));
     }
+
+    public Boolean isBlockedResponse() {
+      return predictions.stream()
+          .filter(sum -> sum.safetyAttributes().blocked())
+          .findAny()
+          .isPresent();
+    }
   }
 
   public record UpsertMatchingEngineDatapoints(List<Types.Datapoint> datapoints) {}

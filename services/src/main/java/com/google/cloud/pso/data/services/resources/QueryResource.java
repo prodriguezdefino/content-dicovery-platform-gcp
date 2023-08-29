@@ -28,6 +28,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.enterprise.context.SessionScoped;
 import javax.inject.Inject;
@@ -73,12 +74,13 @@ public class QueryResource {
     return deduplicatedQAndAs;
   }
 
-  String retrievePreviousSummarizedConversation(List<BigTableService.QAndA> qsAndAs) {
+  Optional<Types.PalmSummarizationResponse> retrievePreviousSummarizedConversation(
+      List<BigTableService.QAndA> qsAndAs) {
     if (qsAndAs.isEmpty()) {
-      return "";
+      return Optional.empty();
     }
-    return palmService
-        .predictSummarizationWithRetries(
+    return Optional.of(
+        palmService.predictSummarizationWithRetries(
             new Types.PalmSummarizationRequest(
                 new Types.PalmRequestParameters(
                     configuration.temperature(),
@@ -87,8 +89,7 @@ public class QueryResource {
                     configuration.topP()),
                 new Types.SummarizationInstances(
                     PromptUtilities.formatChatSummaryPrompt(
-                        qsAndAs.stream().flatMap(q -> q.toExchange().stream()).toList()))))
-        .summary();
+                        qsAndAs.stream().flatMap(q -> q.toExchange().stream()).toList())))));
   }
 
   Types.PalmRequestParameters palmRequestParameters(Optional<QueryParameters> parameters) {
@@ -116,12 +117,36 @@ public class QueryResource {
 
       // keep the embeddings context as the last 5 questions (summarization may become too
       // clumsy).
-      var lastsQAndAs =
+      var lastsQAndAsBeforeSumm =
           qAndAs.size() > 5 ? qAndAs.subList(qAndAs.size() - 6, qAndAs.size() - 1) : qAndAs;
 
       // retrieve the summary of the previous conversation and generate embeddings adding that
       // context to the user query
-      var previousSummarizedConversation = retrievePreviousSummarizedConversation(lastsQAndAs);
+      var summarizationResponse = retrievePreviousSummarizedConversation(lastsQAndAsBeforeSumm);
+
+      // in case of the summarization response to be blocked, we will remove the previous exchange
+      // entirely. This is not ideal, but it will make the models to return non-expected responses
+      // if those exchanges are included in the previous conversations
+      var lastsQAndAs =
+          summarizationResponse
+              .filter(resp -> !resp.isBlockedResponse())
+              .map(r -> lastsQAndAsBeforeSumm)
+              .orElse(List.of());
+
+      var previousSummarizedConversation =
+          summarizationResponse
+              .filter(resp -> !resp.isBlockedResponse())
+              .map(r -> r.summary())
+              .orElse("");
+
+      // clear out the session on a separated thread, in case of a blocked response from the
+      // summarization
+      summarizationResponse
+          .filter(resp -> resp.isBlockedResponse())
+          .ifPresent(
+              r ->
+                  CompletableFuture.runAsync(() -> btService.removeSessionInfo(query.sessionId())));
+
       var embeddingRequest =
           new Types.EmbeddingRequest(
               Lists.newArrayList(
@@ -176,7 +201,8 @@ public class QueryResource {
                   .orElse(Optional.ofNullable(includeOwnKnowledgeEnrichment).orElse(true)));
 
       var currentExchange =
-          Lists.newArrayList(lastsQAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
+          Lists.newArrayList(
+              lastsQAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
       currentExchange.add(new Types.Exchange("user", query.text()));
       var palmResp =
           palmService.predictChatAnswerWithRetries(

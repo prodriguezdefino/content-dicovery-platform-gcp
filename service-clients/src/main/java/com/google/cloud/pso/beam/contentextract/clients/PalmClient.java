@@ -103,7 +103,7 @@ public class PalmClient extends VertexAIClient {
       Types.PalmSummarizationRequest palmReq) {
     return executeOperation(
         buildRetriableExecutorForOperation(
-            "retrieveEmbeddings", Lists.newArrayList(PalmException.class)),
+            "predictSummarization", Lists.newArrayList(PalmException.class)),
         () -> predictSummarization(palmReq));
   }
 }

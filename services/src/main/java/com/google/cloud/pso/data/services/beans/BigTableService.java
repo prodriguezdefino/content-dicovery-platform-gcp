@@ -186,13 +186,18 @@ public class BigTableService {
     try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceName)) {
       // remove all the content rows with the provided keys, blocking until all of them are
       // completed
-      ApiFutures.allAsList(
-              rowKeys.stream()
-                  .map(key -> tableAdminClient.dropRowRangeAsync(contentTableName, key))
-                  .toList())
-          .get();
+      rowKeys.forEach(key -> tableAdminClient.dropRowRange(contentTableName, key));
     } catch (Exception ex) {
       LOG.error("problems while removing content ids from BigTable.", ex);
+      throw new RuntimeException(ex);
+    }
+  }
+
+  public void removeSessionInfo(String sessionId) {
+    try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceName)) {
+      tableAdminClient.dropRowRange(queryContextTableName, sessionId);
+    } catch (Exception ex) {
+      LOG.error("problems while removing session ids from BigTable.", ex);
       throw new RuntimeException(ex);
     }
   }
