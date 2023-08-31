@@ -16,7 +16,6 @@
 package com.google.cloud.pso.data.services.beans;
 
 import autovalue.shaded.com.google.common.collect.Lists;
-import com.google.api.core.ApiFutures;
 import com.google.api.gax.rpc.ApiException;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
@@ -33,11 +32,16 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import javax.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.metrics.MetricUnits;
+import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** */
+@ApplicationScoped
 public class BigTableService {
   private static final Logger LOG = LoggerFactory.getLogger(BigTableService.class);
 
@@ -56,27 +60,19 @@ public class BigTableService {
 
   private BigtableDataClient bigTableClient;
 
-  public BigTableService(
-      String instanceName,
-      String queryContextTableName,
-      String queryContextColumnFamily,
-      String contentTableName,
-      String contentColumnFamily,
-      String columnQualifierContent,
-      String columnQualifierLink,
-      String columnQualifierContext,
-      String projectId) {
-    this.instanceName = instanceName;
-    this.contentTableName = contentTableName;
-    this.queryContextTableName = queryContextTableName;
-    this.contentColumnFamily = contentColumnFamily;
-    this.queryContextColumnFamily = queryContextColumnFamily;
-    this.columnQualifierContent = columnQualifierContent;
-    this.columnQualifierLink = columnQualifierLink;
-    this.columnQualifierContext = columnQualifierContext;
-    this.projectId = projectId;
+  public BigTableService(ServiceTypes.BigTableConfiguration config) {
+    this.instanceName = config.instanceName();
+    this.contentTableName = config.contentTableName();
+    this.queryContextTableName = config.queryContextTableName();
+    this.contentColumnFamily = config.contentColumnFamily();
+    this.queryContextColumnFamily = config.queryContextColumnFamily();
+    this.columnQualifierContent = config.columnQualifierContent();
+    this.columnQualifierLink = config.columnQualifierLink();
+    this.columnQualifierContext = config.columnQualifierContext();
+    this.projectId = config.projectId();
   }
 
+  @PostConstruct
   public void init() throws IOException {
     bigTableClient =
         BigtableDataClient.create(
@@ -114,6 +110,7 @@ public class BigTableService {
         () -> bigTableClient.readRow(tableId, key));
   }
 
+  @Timed(name = "bt.retrieve.content", unit = MetricUnits.MILLISECONDS)
   public ContentByKeyResponse queryByPrefix(String key) {
     var row = readRowWithRetries(contentTableName, key);
 
@@ -140,6 +137,7 @@ public class BigTableService {
     return new ContentByKeyResponse(key, content, link);
   }
 
+  @Timed(name = "bt.retrieve.exchanges", unit = MetricUnits.MILLISECONDS)
   public ConversationContextBySessionResponse retrieveConversationContext(String session) {
     if (session.isEmpty() || session.isBlank()) {
       // nothing to be retrieved.
@@ -164,6 +162,7 @@ public class BigTableService {
             .orElse(Lists.newArrayList()));
   }
 
+  @Timed(name = "bt.store.exchange", unit = MetricUnits.MILLISECONDS)
   public void storeQueryToContext(String session, String query, String answer) {
     if (session.isEmpty() || session.isBlank()) {
       // nothing to be stored.
@@ -182,6 +181,7 @@ public class BigTableService {
         () -> bigTableClient.mutateRow(rowMutation));
   }
 
+  @Timed(name = "bt.delete.content", unit = MetricUnits.MILLISECONDS)
   public void deleteRowsByKeys(List<String> rowKeys) {
     try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceName)) {
       // remove all the content rows with the provided keys, blocking until all of them are
@@ -193,6 +193,7 @@ public class BigTableService {
     }
   }
 
+  @Timed(name = "bt.delete.session", unit = MetricUnits.MILLISECONDS)
   public void removeSessionInfo(String sessionId) {
     try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceName)) {
       tableAdminClient.dropRowRange(queryContextTableName, sessionId);
@@ -202,6 +203,7 @@ public class BigTableService {
     }
   }
 
+  @Timed(name = "bt.retrieve.allcontent", unit = MetricUnits.MILLISECONDS)
   public List<String> retrieveAllContentEntries() {
     var contentKeys = Lists.<String>newArrayList();
     for (var row : bigTableClient.readRows(Query.create(contentTableName))) {

@@ -15,19 +15,23 @@
  */
 package com.google.cloud.pso.data.services.resources;
 
-import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
-import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
-import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
-import com.google.cloud.pso.data.services.beans.BeansProducer;
 import com.google.cloud.pso.data.services.beans.BigTableService;
+import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentAndMetadata;
+import com.google.cloud.pso.data.services.beans.ServiceTypes.LinkAndDistance;
+import com.google.cloud.pso.data.services.beans.ServiceTypes.QueryResult;
+import com.google.cloud.pso.data.services.beans.ServiceTypes.ResourceConfiguration;
+import com.google.cloud.pso.data.services.beans.ServiceTypes.UserQuery;
+import com.google.cloud.pso.data.services.beans.VertexAIService;
 import com.google.cloud.pso.data.services.exceptions.QueryResourceException;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.gson.Gson;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.enterprise.context.SessionScoped;
@@ -37,6 +41,8 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import org.eclipse.microprofile.metrics.MetricUnits;
+import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,12 +51,11 @@ import org.slf4j.LoggerFactory;
 public class QueryResource {
 
   private static final Logger LOG = LoggerFactory.getLogger(QueryResource.class);
+  private static final Gson GSON = new Gson();
 
   @Inject BigTableService btService;
-  @Inject EmbeddingsClient embeddingsService;
-  @Inject MatchingEngineClient matchingEngineService;
-  @Inject PalmClient palmService;
-  @Inject BeansProducer.ResourceConfiguration configuration;
+  @Inject ResourceConfiguration configuration;
+  @Inject VertexAIService vertexaiService;
 
   @Inject
   @Named("botContextExpertise")
@@ -74,34 +79,20 @@ public class QueryResource {
     return deduplicatedQAndAs;
   }
 
-  Optional<Types.PalmSummarizationResponse> retrievePreviousSummarizedConversation(
-      List<BigTableService.QAndA> qsAndAs) {
-    if (qsAndAs.isEmpty()) {
-      return Optional.empty();
+  void logInteraction(UserQuery query, QueryResult response) {
+    if (!configuration.logInteractions()) {
+      return;
     }
-    return Optional.of(
-        palmService.predictSummarizationWithRetries(
-            new Types.PalmSummarizationRequest(
-                new Types.PalmRequestParameters(
-                    configuration.temperature(),
-                    configuration.maxOutputTokens(),
-                    configuration.topK(),
-                    configuration.topP()),
-                new Types.SummarizationInstances(
-                    PromptUtilities.formatChatSummaryPrompt(
-                        qsAndAs.stream().flatMap(q -> q.toExchange().stream()).toList())))));
-  }
-
-  Types.PalmRequestParameters palmRequestParameters(Optional<QueryParameters> parameters) {
-    return new Types.PalmRequestParameters(
-        parameters.map(p -> p.temperature()).orElse(configuration.temperature()),
-        parameters.map(p -> p.maxOutputTokens()).orElse(configuration.maxOutputTokens()),
-        parameters.map(p -> p.topK()).orElse(configuration.topK()),
-        parameters.map(p -> p.topP()).orElse(configuration.topP()));
+    LOG.info(
+        "Interaction id : {}\n, Request: {}\n, Response: {}\n",
+        UUID.randomUUID().toString(),
+        GSON.toJsonTree(query).toString(),
+        GSON.toJsonTree(response).toString());
   }
 
   @POST
   @Produces(MediaType.APPLICATION_JSON)
+  @Timed(name = "content.query", unit = MetricUnits.MILLISECONDS)
   public QueryResult query(UserQuery query) {
     try {
       Preconditions.checkState(
@@ -122,7 +113,8 @@ public class QueryResource {
 
       // retrieve the summary of the previous conversation and generate embeddings adding that
       // context to the user query
-      var summarizationResponse = retrievePreviousSummarizedConversation(lastsQAndAsBeforeSumm);
+      var summarizationResponse =
+          vertexaiService.retrievePreviousSummarizedConversation(lastsQAndAsBeforeSumm);
 
       // in case of the summarization response to be blocked, we will remove the previous exchange
       // entirely. This is not ideal, but it will make the models to return non-expected responses
@@ -147,23 +139,12 @@ public class QueryResource {
               r ->
                   CompletableFuture.runAsync(() -> btService.removeSessionInfo(query.sessionId())));
 
-      var embeddingRequest =
-          new Types.EmbeddingRequest(
-              Lists.newArrayList(
-                  new Types.TextInstance(query.text() + "\n" + previousSummarizedConversation)));
-      var embResponse = embeddingsService.retrieveEmbeddingsWithRetries(embeddingRequest);
+      // given the query and previous conversation summary, retrieve embeddings
+      Types.EmbeddingsResponse embResponse =
+          vertexaiService.retrieveEmbeddings(query, previousSummarizedConversation);
 
-      // retrieve the nearest neighbors using the computed embeddings
-      var nnResp =
-          matchingEngineService.queryNearestNeighborsWithRetries(
-              embResponse.toNearestNeighborRequest(
-                  configuration.matchingEngineIndexDeploymentId(),
-                  // use min value between statically configured and the request one (if exists)
-                  Integer.min(
-                      configuration.maxNeighbors(),
-                      Optional.ofNullable(query.parameters)
-                          .flatMap(params -> Optional.ofNullable(params.maxNeighbors))
-                          .orElse(Integer.MAX_VALUE))));
+      Types.NearestNeighborsResponse nnResp =
+          vertexaiService.retrieveNearestNeighbors(embResponse, query);
 
       // given the retrieved neighbors, use their ids to retrieve the chunks text content
       var context =
@@ -172,8 +153,8 @@ public class QueryResource {
               // filter out the dummy index initial vector
               .filter(n -> n.distance() < configuration.maxNeighborDistance())
               .sorted((n1, n2) -> -n1.distance().compareTo(n2.distance()))
-              // we keep only the 3 most relevant context entries
-              .limit(3)
+              // we keep only the most relevant context entries
+              .limit(configuration.maxNeighbors())
               // capture content and link from storage and preserve distance from original query
               .map(
                   nn -> {
@@ -190,26 +171,17 @@ public class QueryResource {
           PromptUtilities.formatChatContextPrompt(
               contextContent,
               // if there is a query param knowledge setup we use that
-              Optional.ofNullable(query.parameters)
+              Optional.ofNullable(query.parameters())
                   .map(p -> Optional.ofNullable(p.botContextExpertise()))
                   // or default to whatever was configured, if anything
                   .orElse(Optional.ofNullable(configuredBotContextExpertise)),
               // also use the query configured knowledge enrichment, if tis there.
-              Optional.ofNullable(query.parameters)
-                  .flatMap(p -> Optional.ofNullable(p.includeOwnKnowledgeEnrichment))
+              Optional.ofNullable(query.parameters())
+                  .flatMap(p -> Optional.ofNullable(p.includeOwnKnowledgeEnrichment()))
                   // or default to whatever was configured, if anything
                   .orElse(Optional.ofNullable(includeOwnKnowledgeEnrichment).orElse(true)));
 
-      var currentExchange =
-          Lists.newArrayList(
-              lastsQAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
-      currentExchange.add(new Types.Exchange("user", query.text()));
-      var palmResp =
-          palmService.predictChatAnswerWithRetries(
-              new Types.PalmChatAnswerRequest(
-                  palmRequestParameters(Optional.ofNullable(query.parameters)),
-                  new Types.ChatInstances(
-                      palmRequestContext, PromptUtilities.EXCHANGE_EXAMPLES, currentExchange)));
+      var palmResp = vertexaiService.retrieveChatResponse(lastsQAndAs, query, palmRequestContext);
 
       // retrieve the model's text response
       var responseText =
@@ -252,42 +224,24 @@ public class QueryResource {
       btService.storeQueryToContext(query.sessionId(), query.text(), responseText);
 
       // to finally return a query response
-      return new QueryResult(
-          responseText,
-          previousSummarizedConversation,
-          responseLinks,
-          palmResp.predictions().stream().flatMap(pr -> pr.citationMetadata().stream()).toList(),
-          palmResp.predictions().stream().flatMap(pr -> pr.safetyAttributes().stream()).toList());
+      var response =
+          new QueryResult(
+              responseText,
+              previousSummarizedConversation,
+              responseLinks,
+              palmResp.predictions().stream()
+                  .flatMap(pr -> pr.citationMetadata().stream())
+                  .toList(),
+              palmResp.predictions().stream()
+                  .flatMap(pr -> pr.safetyAttributes().stream())
+                  .toList());
+
+      logInteraction(query, response);
+      return response;
     } catch (Exception ex) {
       var msg = "Problems while executing the query resource. ";
       LOG.error(msg, ex);
-      throw new QueryResourceException(msg + ex.getMessage(), query.text, query.sessionId, ex);
+      throw new QueryResourceException(msg + ex.getMessage(), query.text(), query.sessionId(), ex);
     }
   }
-
-  public record LinkAndDistance(String link, Double distance) {}
-
-  public record ContentAndMetadata(String content, String link, Double distance) {
-    public LinkAndDistance toLinkAndDistance() {
-      return new LinkAndDistance(link(), distance());
-    }
-  }
-
-  public record QueryParameters(
-      String botContextExpertise,
-      Boolean includeOwnKnowledgeEnrichment,
-      Integer maxNeighbors,
-      Double temperature,
-      Integer maxOutputTokens,
-      Integer topK,
-      Double topP) {}
-
-  public record UserQuery(String text, String sessionId, QueryParameters parameters) {}
-
-  public record QueryResult(
-      String content,
-      String previousConversationSummary,
-      List<LinkAndDistance> sourceLinks,
-      List<Types.CitationMetadata> citationMetadata,
-      List<Types.SafetyAttributes> safetyAttributes) {}
 }

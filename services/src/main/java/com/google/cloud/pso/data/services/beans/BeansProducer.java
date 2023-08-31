@@ -60,8 +60,9 @@ public class BeansProducer {
   private String bigTableContentColumnQualifierLink;
   private String bigTableContentColumnQualifierContext;
   private String serviceAccount;
+  private Boolean logInteraction;
 
-  private final Integer maxNeighbors = 5;
+  private final Integer maxNeighbors = 3;
   private final Double maxNeighborDistance = 10.0;
   private final Double temperature = 0.1;
   private final Integer maxOutputTokens = 1024;
@@ -113,6 +114,10 @@ public class BeansProducer {
                 () ->
                     new IllegalArgumentException(
                         "Service Account not present in the configuration."));
+    logInteraction =
+        Optional.ofNullable(configuration.get("log.interactions"))
+            .map(jse -> jse.getAsBoolean())
+            .orElse(false);
   }
 
   @Produces
@@ -143,36 +148,9 @@ public class BeansProducer {
 
   @Produces
   @ApplicationScoped
-  public BigTableService produceBigTableService() throws IOException {
-
-    var btService =
-        new BigTableService(
-            bigTableInstanceName,
-            bigTableQueryContextTableName,
-            bigTableQueryContextColumnFamily,
-            bigTableContentTableName,
-            bigTableContentColumnFamily,
-            bigTableContentColumnQualifierContent,
-            bigTableContentColumnQualifierLink,
-            bigTableContentColumnQualifierContext,
-            projectId);
-    btService.init();
-    return btService;
-  }
-
-  public record ResourceConfiguration(
-      String matchingEngineIndexDeploymentId,
-      Integer maxNeighbors,
-      Double maxNeighborDistance,
-      Double temperature,
-      Integer maxOutputTokens,
-      Integer topK,
-      Double topP) {}
-
-  @Produces
-  @ApplicationScoped
-  public ResourceConfiguration produceResourceConfiguration() {
-    return new ResourceConfiguration(
+  public ServiceTypes.ResourceConfiguration produceResourceConfiguration() {
+    return new ServiceTypes.ResourceConfiguration(
+        logInteraction,
         matchingEngineIndexDeploymentId,
         maxNeighbors,
         maxNeighborDistance,
@@ -180,6 +158,21 @@ public class BeansProducer {
         maxOutputTokens,
         topK,
         topP);
+  }
+
+  @Produces
+  @ApplicationScoped
+  public ServiceTypes.BigTableConfiguration produceBigTableConfiguration() {
+    return new ServiceTypes.BigTableConfiguration(
+        bigTableInstanceName,
+        bigTableContentTableName,
+        bigTableQueryContextTableName,
+        bigTableContentColumnFamily,
+        bigTableQueryContextColumnFamily,
+        bigTableContentColumnQualifierContent,
+        bigTableContentColumnQualifierLink,
+        bigTableContentColumnQualifierContext,
+        projectId);
   }
 
   @Produces

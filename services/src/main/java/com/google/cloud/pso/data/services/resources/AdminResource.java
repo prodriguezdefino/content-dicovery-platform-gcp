@@ -19,9 +19,12 @@ import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.data.services.beans.BigTableService;
+import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentInfo;
+import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentKeys;
+import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentUrl;
+import com.google.cloud.pso.data.services.beans.ServiceTypes.Info;
 import com.google.common.collect.Lists;
 import java.io.IOException;
-import java.util.List;
 import java.util.stream.Collectors;
 import javax.enterprise.context.SessionScoped;
 import javax.inject.Inject;
@@ -31,6 +34,8 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import org.eclipse.microprofile.metrics.MetricUnits;
+import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +60,7 @@ public class AdminResource {
   @GET
   @Path("/infos")
   @Produces(MediaType.APPLICATION_JSON)
+  @Timed(name = "content.admin.retrieveall.info", unit = MetricUnits.MILLISECONDS)
   public ContentInfo retrieveAllContentInfo() {
     return new ContentInfo(
         btService.retrieveAllContentEntries().stream()
@@ -76,6 +82,7 @@ public class AdminResource {
   @GET
   @Path("/urls")
   @Produces(MediaType.APPLICATION_JSON)
+  @Timed(name = "content.admin.retrieveall.urls", unit = MetricUnits.MILLISECONDS)
   public ContentUrl retrieveAllContentURls() {
     return new ContentUrl(
         btService.retrieveAllContentEntries().stream()
@@ -108,6 +115,7 @@ public class AdminResource {
   @DELETE
   @Path("/ids")
   @Consumes(MediaType.APPLICATION_JSON)
+  @Timed(name = "content.admin.delete.key", unit = MetricUnits.MILLISECONDS)
   public void deleteContentKey(ContentKeys contentKeys) {
     matchingEngineService.deleteVectorDBDatapointsWithRetries(
         new Types.DeleteMatchingEngineDatapoints(contentKeys.keys()));
@@ -117,6 +125,7 @@ public class AdminResource {
   @DELETE
   @Path("/info")
   @Consumes(MediaType.APPLICATION_JSON)
+  @Timed(name = "content.admin.delete.info", unit = MetricUnits.MILLISECONDS)
   public void deleteAllContentWithInfo(ContentInfo contentInfo) {
     var contentIdsToDelete = Lists.<String>newArrayList();
     var prefixesToCheck =
@@ -138,12 +147,4 @@ public class AdminResource {
         new Types.DeleteMatchingEngineDatapoints(contentIdsToDelete));
     btService.deleteRowsByKeys(contentIdsToDelete);
   }
-
-  public record ContentKeys(List<String> keys) {}
-
-  public record ContentInfo(List<Info> content) {}
-
-  public record ContentUrl(List<String> urls) {}
-
-  public record Info(String name, String driveId) {}
 }
