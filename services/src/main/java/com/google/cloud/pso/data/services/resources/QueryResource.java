@@ -17,6 +17,7 @@ package com.google.cloud.pso.data.services.resources;
 
 import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.data.services.beans.BigTableService;
+import com.google.cloud.pso.data.services.beans.ServiceTypes;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentAndMetadata;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.LinkAndDistance;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.QueryResult;
@@ -65,10 +66,9 @@ public class QueryResource {
   @Named("includeOwnKnowledgeEnrichment")
   Boolean includeOwnKnowledgeEnrichment;
 
-  List<BigTableService.QAndA> removeRepeatedAndNegaviteAnswers(
-      List<BigTableService.QAndA> qsAndAs) {
+  List<ServiceTypes.QAndA> removeRepeatedAndNegaviteAnswers(List<ServiceTypes.QAndA> qsAndAs) {
     var prevQuestions = Sets.<String>newHashSet();
-    var deduplicatedQAndAs = Lists.<BigTableService.QAndA>newArrayList();
+    var deduplicatedQAndAs = Lists.<ServiceTypes.QAndA>newArrayList();
     for (var qaa : qsAndAs) {
       if (!prevQuestions.contains(qaa.question())
           && !PromptUtilities.checkNegativeAnswer(qaa.answer())) {

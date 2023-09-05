@@ -124,4 +124,22 @@ public class ServiceTypes {
       String columnQualifierLink,
       String columnQualifierContext,
       String projectId) {}
+
+  public record ContentByKeyResponse(String key, String content, String sourceLink) {
+
+    public static ContentByKeyResponse empty() {
+      return empty("");
+    }
+
+    public static ContentByKeyResponse empty(String key) {
+      return new ContentByKeyResponse(key, "", "");
+    }
+  }
+
+  public record QAndA(String question, String answer) {
+
+    public List<Types.Exchange> toExchange() {
+      return List.of(new Types.Exchange("user", question), new Types.Exchange("bot", answer));
+    }
+  }
 }

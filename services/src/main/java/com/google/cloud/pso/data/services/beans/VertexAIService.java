@@ -39,7 +39,7 @@ public class VertexAIService {
 
   @Timed(name = "palm.exchanges.summarization", unit = MetricUnits.MILLISECONDS)
   public Optional<Types.PalmSummarizationResponse> retrievePreviousSummarizedConversation(
-      List<BigTableService.QAndA> qsAndAs) {
+      List<ServiceTypes.QAndA> qsAndAs) {
     if (qsAndAs.isEmpty()) {
       return Optional.empty();
     }
@@ -58,7 +58,7 @@ public class VertexAIService {
 
   @Timed(name = "palm.chat.prediction", unit = MetricUnits.MILLISECONDS)
   public Types.PalmChatResponse retrieveChatResponse(
-      List<BigTableService.QAndA> lastsQAndAs,
+      List<ServiceTypes.QAndA> lastsQAndAs,
       ServiceTypes.UserQuery query,
       String palmRequestContext) {
     var currentExchange =

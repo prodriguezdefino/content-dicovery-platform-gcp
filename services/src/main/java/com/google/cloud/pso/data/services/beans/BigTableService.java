@@ -24,7 +24,6 @@ import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowCell;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
-import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
@@ -82,26 +81,17 @@ public class BigTableService {
                 .build());
   }
 
-  public record ContentByKeyResponse(String key, String content, String sourceLink) {}
-
-  public record QAndA(String question, String answer) {
-
-    public List<Types.Exchange> toExchange() {
-      return Lists.newArrayList(
-          new Types.Exchange("user", question), new Types.Exchange("bot", answer));
-    }
-  }
-
-  static QAndA fromAppended(String appended) {
+  static ServiceTypes.QAndA fromAppended(String appended) {
     var qas = appended.split("___");
     if (qas.length != 2) {
       LOG.warn("will be skipping previous non valid QAndA content: " + appended);
       return null;
     }
-    return new QAndA(qas[0], qas[1]);
+    return new ServiceTypes.QAndA(qas[0], qas[1]);
   }
 
-  public record ConversationContextBySessionResponse(String session, List<QAndA> qAndAs) {}
+  public record ConversationContextBySessionResponse(
+      String session, List<ServiceTypes.QAndA> qAndAs) {}
 
   Row readRowWithRetries(String tableId, String key) {
     return Utilities.executeOperation(
@@ -111,30 +101,23 @@ public class BigTableService {
   }
 
   @Timed(name = "bt.retrieve.content", unit = MetricUnits.MILLISECONDS)
-  public ContentByKeyResponse queryByPrefix(String key) {
+  public ServiceTypes.ContentByKeyResponse queryByPrefix(String key) {
     var row = readRowWithRetries(contentTableName, key);
 
-    var content =
-        Optional.ofNullable(row)
-            .map(
-                r ->
+    return Optional.ofNullable(row)
+        .map(
+            r ->
+                new ServiceTypes.ContentByKeyResponse(
+                    key,
                     r.getCells(contentColumnFamily, columnQualifierContent).stream()
                         .max(ORDERED_CELL_COMPARATOR)
                         .map(rc -> rc.getValue().toStringUtf8())
-                        .orElse(""))
-            .orElse("");
-
-    var link =
-        Optional.ofNullable(row)
-            .map(
-                r ->
+                        .orElse(""),
                     r.getCells(contentColumnFamily, columnQualifierLink).stream()
                         .max(ORDERED_CELL_COMPARATOR)
                         .map(rc -> rc.getValue().toStringUtf8())
-                        .orElse(""))
-            .orElse("");
-
-    return new ContentByKeyResponse(key, content, link);
+                        .orElse("")))
+        .orElse(ServiceTypes.ContentByKeyResponse.empty(key));
   }
 
   @Timed(name = "bt.retrieve.exchanges", unit = MetricUnits.MILLISECONDS)
