@@ -90,9 +90,6 @@ public class BigTableService {
     return new ServiceTypes.QAndA(qas[0], qas[1]);
   }
 
-  public record ConversationContextBySessionResponse(
-      String session, List<ServiceTypes.QAndA> qAndAs) {}
-
   Row readRowWithRetries(String tableId, String key) {
     return Utilities.executeOperation(
         Utilities.buildRetriableExecutorForOperation(
@@ -121,14 +118,15 @@ public class BigTableService {
   }
 
   @Timed(name = "bt.retrieve.exchanges", unit = MetricUnits.MILLISECONDS)
-  public ConversationContextBySessionResponse retrieveConversationContext(String session) {
+  public ServiceTypes.ConversationContextBySessionResponse retrieveConversationContext(
+      String session) {
     if (session.isEmpty() || session.isBlank()) {
       // nothing to be retrieved.
-      return new ConversationContextBySessionResponse(session, Lists.newArrayList());
+      return new ServiceTypes.ConversationContextBySessionResponse(session, Lists.newArrayList());
     }
     var row = readRowWithRetries(queryContextTableName, session);
 
-    return new ConversationContextBySessionResponse(
+    return new ServiceTypes.ConversationContextBySessionResponse(
         session,
         Optional.ofNullable(row)
             .map(

@@ -142,4 +142,6 @@ public class ServiceTypes {
       return List.of(new Types.Exchange("user", question), new Types.Exchange("bot", answer));
     }
   }
+
+  public record ConversationContextBySessionResponse(String session, List<QAndA> qAndAs) {}
 }
