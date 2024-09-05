@@ -1,6 +1,6 @@
-FROM apache/beam_python3.11_sdk:2.48.0
+FROM apache/beam_python3.9_sdk:2.48.0
 
-# just in case lets upgrade pip 
+# just in case lets upgrade pip
 RUN pip install --upgrade pip
 # pre install known dependencies
 RUN pip install 'apache_beam[gcp]==2.48.0' 'google-cloud-aiplatform==1.25' 'pandas'
@@ -10,5 +10,5 @@ COPY . /tmp/install/
 RUN for x in `ls /tmp/install/libs/*.whl`; do pip install /tmp/install/libs/$x; done
 # install embeddings module on the container
 RUN pip install /tmp/install/
-# clean up 
+# clean up
 RUN rm -rf /tmp/install

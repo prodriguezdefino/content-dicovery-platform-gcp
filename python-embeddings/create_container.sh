@@ -2,13 +2,13 @@
 set -eu
 if [ "$#" -ne 1 ] && [ "$#" -ne 2 ]
   then
-    echo "Usage : sh create_container.sh <gcp project> <gcp region>" 
+    echo "Usage : sh create_container.sh <gcp project> <gcp region>"
     exit -1
 fi
 
 GCP_PROJECT=$1
 
-if [ "$#" -eq 1 ] 
+if [ "$#" -eq 1 ]
   then
     GCP_REGION="us-central1"
   else

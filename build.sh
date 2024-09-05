@@ -1,9 +1,9 @@
 #!/bin/bash
 set -eu
 
-if [ "$#" -ne 3 ] 
+if [ "$#" -ne 3 ]
   then
-    echo "Usage : sh build.sh <gcp project> <run name> <gcp region> " 
+    echo "Usage : sh build.sh <gcp project> <run name> <gcp region> "
     exit -1
 fi
 

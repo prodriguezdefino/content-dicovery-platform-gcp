@@ -16,8 +16,8 @@ locals {
         "bt.contentcolumnqualifier.link" : "link",
         "matchingengine.index.id" : "${google_vertex_ai_index.embeddings_index.id}",
         "matchingengine.index.deployment" : "deploy${var.run_name}",
-        "matchingengine.indexendpoint.id" : "${data.external.get_indexendpoint_id.result.index_endpoint_id}",
-        "matchingengine.indexendpoint.domain" : "${data.external.get_indexendpoint_domain.result.index_endpoint_domain}",
+        "matchingengine.indexendpoint.id" : "${google_vertex_ai_index_endpoint.vertex_index_endpoint.id}",
+        "matchingengine.indexendpoint.domain" : "${google_vertex_ai_index_endpoint.vertex_index_endpoint.public_endpoint_domain_name}",
         "bot.contextexpertise" : "${var.bot_context_expertise}",
         "bot.includeownknowledge" : "${var.bot_include_own_knowledge}",
         "service.account" : "${google_service_account.dataflow_runner_sa.email}"
@@ -30,7 +30,7 @@ resource "google_secret_manager_secret" "service_config" {
   secret_id = "service-configuration-${var.run_name}"
 
   replication {
-    automatic = true
+    auto {}
   }
 
   depends_on = [google_project_service.secret_service]
@@ -108,7 +108,7 @@ resource "google_cloud_run_service_iam_member" "additional_permissions" {
   project = var.project
   service = google_cloud_run_v2_service.services.name
   role = "roles/run.invoker"
-  
+
   for_each = var.additional_authz_cloudrunservice
   member = each.value
 }
@@ -147,16 +147,16 @@ resource "google_api_gateway_api_config" "gateway_cfg" {
       path = "openapi.yaml"
       contents = base64encode(
         templatefile(
-          "service-descriptors/openapi.yaml", 
+          "service-descriptors/openapi.yaml",
           {
-            backend_service_url = google_cloud_run_v2_service.services.uri, 
+            backend_service_url = google_cloud_run_v2_service.services.uri,
             gcloud_audiences = var.gcloud_audiences
           }
         )
-      ) 
+      )
     }
   }
-  
+
   lifecycle {
     create_before_destroy = true
   }

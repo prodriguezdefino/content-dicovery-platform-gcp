@@ -40,75 +40,25 @@ resource "google_vertex_ai_index" "embeddings_index" {
   depends_on = [google_storage_bucket_object.dummy_data]
 }
 
-resource "null_resource" "create_index_endpoint" {
-
-  triggers = {
-    project     = var.project
-    region      = var.region
-    run_name    = var.run_name
-    network     = local.network
-    index_id    = google_vertex_ai_index.embeddings_index.id
-    min_replica = 1
-    max_replica = 5
-  }
-
-  provisioner "local-exec" {
-    when       = create
-    command    = "${path.module}/scripts/vertexai-endpoint-apply.sh ${self.triggers.project} ${self.triggers.region} ${self.triggers.run_name} ${self.triggers.network}"
-    on_failure = fail
-  }
+resource "google_vertex_ai_index_endpoint" "vertex_index_endpoint" {
+  project      = var.project
+  display_name = "endpoint-${var.run_name}"
+  description  = "The endpoint for vector search"
+  region       = var.region
+  public_endpoint_enabled = true
 }
 
-resource "null_resource" "create_index_deployment" {
+resource "google_vertex_ai_index_endpoint_deployed_index" "basic_deployed_index" {
+  index_endpoint        = google_vertex_ai_index_endpoint.vertex_index_endpoint.id
+  index                 = google_vertex_ai_index.embeddings_index.id
+  deployed_index_id     = "deploy${var.run_name}"
+  enable_access_logging = false
+  display_name          = "deploy${var.run_name}"
 
-  triggers = {
-    project     = var.project
-    region      = var.region
-    run_name    = var.run_name
-    network     = local.network
-    index_id    = google_vertex_ai_index.embeddings_index.id
-    min_replica = 1
-    max_replica = 5
+  automatic_resources {
+    min_replica_count = 1
+    max_replica_count = 4
   }
 
-  provisioner "local-exec" {
-    when       = create
-    command    = "${path.module}/scripts/vertexai-deploy-apply.sh ${self.triggers.project} ${self.triggers.region} ${self.triggers.run_name} ${self.triggers.network} ${self.triggers.index_id} ${self.triggers.min_replica} ${self.triggers.max_replica}"
-    on_failure = fail
-  }
-
-  depends_on = [null_resource.create_index_endpoint]
+  depends_on = [ google_vertex_ai_index_endpoint.vertex_index_endpoint]
 }
-
-resource "null_resource" "delete_endpoint_deployment" {
-
-  triggers = {
-    endpoint    = null_resource.create_index_endpoint.id
-    deployment  = null_resource.create_index_deployment.id
-    project   = var.project
-    region    = var.region
-    run_name  = var.run_name
-    network   = local.network
-  }
-
-  provisioner "local-exec" {
-    when       = destroy
-    command    = "${path.module}/scripts/vertexai-destroy.sh ${self.triggers.project} ${self.triggers.region} ${self.triggers.run_name}"
-    on_failure = fail
-  }
-
-  depends_on = [null_resource.create_index_endpoint, null_resource.delete_endpoint_deployment]
-}
-
-data "external" "get_indexendpoint_domain" {
-  program = ["${path.module}/scripts/retrieve-indexendpoint-domain.sh","${var.region}","${var.run_name}"]
-
-  depends_on = [null_resource.delete_endpoint_deployment]
-}
-
-data "external" "get_indexendpoint_id" {
-  program = ["${path.module}/scripts/retrieve-indexendpoint-id.sh","${var.region}","${var.run_name}"]
-
-  depends_on = [null_resource.create_index_endpoint]
-}
-

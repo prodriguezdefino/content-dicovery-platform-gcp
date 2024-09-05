@@ -3,7 +3,7 @@ set -eu
 
 if [ "$#" -ne 3 ] && [ "$#" -ne 4 ]
   then
-    echo "Usage : sh start.sh <gcp project> <state-bucket-name> <a run name> <optional params>" 
+    echo "Usage : sh start.sh <gcp project> <state-bucket-name> <a run name> <optional params>"
     exit -1
 fi
 

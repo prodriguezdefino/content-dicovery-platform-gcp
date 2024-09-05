@@ -1,6 +1,6 @@
 # Content Discovery Platform - GenAI
 
-This repository contains the code and automation needed to build a simple content discovery platform powered by VertexAI fundational models. This platform should be capable of capturing documents content (initially Google Docs), and with that content generate embeddings vectors to be stored in a vector database powered by VertexAI Matching Engine, later this embeddings can be utilized to contextualize an external consumer general question and with that context request an answer to a VertexAI fundational model to get an answer. 
+This repository contains the code and automation needed to build a simple content discovery platform powered by VertexAI fundational models. This platform should be capable of capturing documents content (initially Google Docs), and with that content generate embeddings vectors to be stored in a vector database powered by VertexAI Matching Engine, later this embeddings can be utilized to contextualize an external consumer general question and with that context request an answer to a VertexAI fundational model to get an answer.
 
 ## Platform Components
 
@@ -20,33 +20,33 @@ The next image shows how the different components of the architecture and techno
 
 This platform uses Terraform for the setup of all its components. For those that currently does not have native support we have created null_resource wrappers, this are good workarounds but they tend to have very rough edges so be aware of potential errors.
 
-The complete deployment as of today (June 2023) can take up to 90 mintues to complete, the biggest culprit being the Matching Engine related components that take the majority of that time to be created and readily available. With time this extended runtimes will only improve. 
+The complete deployment as of today (June 2023) can take up to 90 mintues to complete, the biggest culprit being the Matching Engine related components that take the majority of that time to be created and readily available. With time this extended runtimes will only improve.
 
-## First setup 
+## First setup
 
-The setup should be executable from the scripts included in the repository. 
+The setup should be executable from the scripts included in the repository.
 
 ### Requirements
 
-There are a few requirements needed to be fulfilled to deploy this platform being those: 
+There are a few requirements needed to be fulfilled to deploy this platform being those:
 
 * A gcloud installation
-* A services account or user configured in gcloud with enough permissions to create the needed resources 
-* A python 3.11 installation
+* A services account or user configured in gcloud with enough permissions to create the needed resources
+* A python 3.9 installation (3.12 is not supported for this prototype, setuptools is deprecated)
 * A Java 17 installation
 * A Terraform 0.12+ installation
 
-### Triggering a deployment 
+### Triggering a deployment
 
-In order to have all the components deployed in GCP we need to build, create infrastructure and later on deploy the services and pipelines. 
+In order to have all the components deployed in GCP we need to build, create infrastructure and later on deploy the services and pipelines.
 
-To achieve this we included the script `start.sh` which basically orchestrate the other included scripts to accomplish the full deployment goal. 
+To achieve this we included the script `start.sh` which basically orchestrate the other included scripts to accomplish the full deployment goal.
 
-Also we have included a `cleanup.sh` script in charge of destroying the infrastructure and clean up the collected data. 
+Also we have included a `cleanup.sh` script in charge of destroying the infrastructure and clean up the collected data.
 
 ### Google Docs Permissions
 
-In normal cases the Google Workspace documents will be created on the same organization that host the project where the content ingestion pipeline runs, so in order to grant permissions to those documents adding the service account that runs the pipeline to the documents, or folder of documents, should be sufficient. 
+In normal cases the Google Workspace documents will be created on the same organization that host the project where the content ingestion pipeline runs, so in order to grant permissions to those documents adding the service account that runs the pipeline to the documents, or folder of documents, should be sufficient.
 
 In case of needing to access documents or folders existing outside of the project's organization an additional step should be completed. Once the infrastructure is setup, the deployment process will print out instructions to grant the service account that runs the content extraction pipeline permissions to impersonate Google Workspace document access through domain wide delegation. The information to complete the steps can be seen here: https://developers.google.com/workspace/guides/create-credentials#optional_set_up_domain-wide_delegation_for_a_service_account
 
@@ -60,11 +60,11 @@ When needing CORS interactions the API Gateway endpoints may be used when lookin
 
 ### Content Ingestion
 
-This service is capable of ingesting data from documents hosted in Google Drive or self contained multi-part requests which contain a document identifier and the document's content encoded as binary. 
+This service is capable of ingesting data from documents hosted in Google Drive or self contained multi-part requests which contain a document identifier and the document's content encoded as binary.
 
 #### Google Drive Content Ingestion
 
-The Google Drive ingestion is done by sending a HTTP request simielar to the next example 
+The Google Drive ingestion is done by sending a HTTP request simielar to the next example
 ```bash
 $ > curl -X POST -H "Content-Type: application/json" \
     -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
@@ -78,7 +78,7 @@ The request can contain the url of a Google document or a Google Drive folder, i
 #### Multipart Content Ingestion
 
 In the case of wanting to include the content of an article, document, or page that is locally accessible by the ingest client, using the multipart endpoint should be sufficient to ingest the document. See the next `curl` command as an example, the service expects that the `documentId` form field is set to identify and univocally index the content:
-```bash 
+```bash
 $ > curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
   -F documentId=<somedocid> \
   -F documentContent=@</some/local/directory/file/to/upload> \
@@ -87,11 +87,11 @@ $ > curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
 
 ### Querying for Content
 
-This service exposes the query capability to the platform's users, by sending natural text queries to the services and given there is already content indexes after ingestion in the platform, the service will come back with information summarized through by the LLM model. 
+This service exposes the query capability to the platform's users, by sending natural text queries to the services and given there is already content indexes after ingestion in the platform, the service will come back with information summarized through by the LLM model.
 
 #### Example Query Requests
 
-The interaction with the service can be done through a REST exchange, similar to those for the ingestion part, as seen in the next example. 
+The interaction with the service can be done through a REST exchange, similar to those for the ingestion part, as seen in the next example.
 
 ```bash
 $ > curl -X POST \
@@ -110,13 +110,13 @@ $ > curl -X POST \
 ```
 
 ##### Note:
-There is an special case here, where there is no information stored yet for a particular topic, if that topic falls into the GCP landscape then the model will be acting as an expert since we [setup a prompt](https://github.com/prodriguezdefino/content-dicovery-platform-gcp/blob/main/services/src/main/java/com/google/cloud/pso/data/services/PromptUtilities.java#L33) that indicates that to the model request. 
+There is an special case here, where there is no information stored yet for a particular topic, if that topic falls into the GCP landscape then the model will be acting as an expert since we [setup a prompt](https://github.com/prodriguezdefino/content-dicovery-platform-gcp/blob/main/services/src/main/java/com/google/cloud/pso/data/services/PromptUtilities.java#L33) that indicates that to the model request.
 
 #### Contextful Exchanges (conversations)
 
-In case of wanting to have a more context-aware type of exchange with the service, a session identifier (`sessionId` property in the JSON request) should be provided for the service to use as a conversation exchange key. This conversation key will be used to setup the right context to the model (by summarizing previous exchanges) and keeping track of the last 5 exchanges (at least). Also worth to note that the exchange history will be maitained for 24hrs, this can be changed as part of the gc policies of the BigTable storage in the platform. 
+In case of wanting to have a more context-aware type of exchange with the service, a session identifier (`sessionId` property in the JSON request) should be provided for the service to use as a conversation exchange key. This conversation key will be used to setup the right context to the model (by summarizing previous exchanges) and keeping track of the last 5 exchanges (at least). Also worth to note that the exchange history will be maitained for 24hrs, this can be changed as part of the gc policies of the BigTable storage in the platform.
 
-Next an example for a context-aware conversation: 
+Next an example for a context-aware conversation:
 ```bash
 $ > curl -X POST \
  -H "Content-Type: application/json" \

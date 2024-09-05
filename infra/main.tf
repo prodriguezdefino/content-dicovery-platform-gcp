@@ -1,10 +1,23 @@
 terraform {
   backend "gcs" {
   }
+  required_providers {
+    google = {
+        version = "5.43.1"
+    }
+    google-beta = {
+        version = "5.43.1"
+    }
+  }
 }
 
+provider "google" {
+  project = var.project
+  region  = var.region
+}
 provider "google-beta" {
   project = var.project
+  region  = var.region
 }
 
 /*       Local Variables     */
@@ -109,21 +122,21 @@ module "data_processing_project_membership_roles" {
   service_account_address = google_service_account.dataflow_runner_sa.email
   project_id              = var.project
   project_roles           = [
-    "roles/dataflow.worker", 
-    "roles/storage.objectAdmin", 
-    "roles/pubsub.viewer", 
-    "roles/pubsub.publisher", 
-    "roles/pubsub.subscriber", 
-    "roles/secretmanager.secretAccessor", 
+    "roles/dataflow.worker",
+    "roles/storage.objectAdmin",
+    "roles/pubsub.viewer",
+    "roles/pubsub.publisher",
+    "roles/pubsub.subscriber",
+    "roles/secretmanager.secretAccessor",
     "roles/aiplatform.user",
     "roles/bigtable.user",
-    "roles/iam.serviceAccountUser", 
+    "roles/iam.serviceAccountUser",
     "roles/iam.serviceAccountTokenCreator",
     "roles/iam.securityReviewer"]
 }
 
 resource "google_storage_bucket" "content" {
-  project       = var.project 
+  project       = var.project
   name          = "${var.run_name}-content-${var.project}"
   location      = upper(var.region)
   storage_class = "REGIONAL"
@@ -169,7 +182,7 @@ variable bot_include_own_knowledge {
   type = bool
   default = true
 }
-  
+
 output "df_sa" {
   value = google_service_account.dataflow_runner_sa.email
 }
@@ -187,11 +200,11 @@ output "subnet" {
 }
 
 output "index_endpoint_id" {
-  value = data.external.get_indexendpoint_id.result.index_endpoint_id
+  value = google_vertex_ai_index_endpoint.vertex_index_endpoint.id
 }
 
 output "index_endpoint_domain" {
-  value = data.external.get_indexendpoint_domain.result.index_endpoint_domain
+  value = google_vertex_ai_index_endpoint.vertex_index_endpoint.public_endpoint_domain_name
 }
 
 output "secret_service_configuration" {
