@@ -27,7 +27,7 @@ echo " "
 
 echo "install python transforms"
 pushd python-embeddings
-pip3 install . --break-system-packages
+pip3 install .
 popd
 echo " "
 echo " "
