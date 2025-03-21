@@ -13,7 +13,7 @@ REGION=$3
 
 echo " "
 echo "********************************************"
-echo "Build and deploy source code"
+echo "Build source code"
 echo "********************************************"
 echo " "
 echo " "
@@ -25,18 +25,9 @@ echo " "
 echo " "
 echo " "
 
-echo "compile and install python transforms"
+echo "install python transforms"
 pushd python-embeddings
-source create_container.sh $PROJECT_ID $REGION
-pip3 install .
-popd
-echo " "
-echo " "
-echo " "
-
-echo "create service container"
-pushd services
-source create_container.sh $PROJECT_ID $RUN_NAME $REGION
+pip3 install . --break-system-packages
 popd
 echo " "
 echo " "

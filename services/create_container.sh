@@ -16,6 +16,6 @@ if [ "$#" -eq 2 ]
     GCP_REGION=$3
 fi
 
-DOCKER_SERVICES_IMAGE="gcr.io/${GCP_PROJECT}/${GCP_REGION}/$RUN_NAME-services:latest"
+DOCKER_SERVICES_IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/content-dicovery-platform-${RUN_NAME}/${RUN_NAME}-services:latest"
 
 gcloud builds submit --tag $DOCKER_SERVICES_IMAGE --project $GCP_PROJECT --region $GCP_REGION

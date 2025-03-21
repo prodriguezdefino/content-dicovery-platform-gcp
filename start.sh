@@ -18,8 +18,8 @@ then
   OTHER=$4
 fi
 
-source build.sh $PROJECT_ID $RUN_NAME $REGION
-
 source deploy_infra.sh $PROJECT_ID $STATE_BUCKET $RUN_NAME $REGION
+
+source build.sh $PROJECT_ID $RUN_NAME $REGION 
 
 source deploy_pipeline.sh $PROJECT_ID $RUN_NAME $REGION $OTHER
