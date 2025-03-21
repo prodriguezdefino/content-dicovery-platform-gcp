@@ -12,8 +12,8 @@ setup(
     packages = ['beam.embeddings'],
     py_modules = ['beam_embeddings'],
     install_requires=[
-        'apache_beam[gcp]==2.48.0', 
-        'google-cloud-aiplatform==1.25', 
+        'apache_beam[gcp]==2.63.0', 
+        'google-cloud-aiplatform==1.81.0', 
         'pandas'],
 
     classifiers=[

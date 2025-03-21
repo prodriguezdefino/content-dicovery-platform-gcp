@@ -51,7 +51,7 @@ resource "google_cloud_run_v2_service" "services" {
   template {
     service_account = google_service_account.dataflow_runner_sa.email
     containers {
-      image = "gcr.io/${var.project}/${var.region}/${var.run_name}-services:latest"
+      image ="${var.region}-docker.pkg.dev/${var.project}/content-dicovery-platform-${var.run_name}/${var.run_name}-services:latest"
       startup_probe {
           initial_delay_seconds = 5
           timeout_seconds = 1
@@ -93,6 +93,8 @@ resource "google_cloud_run_v2_service" "services" {
       launch_stage,
     ]
   }
+
+  depends_on = [null_resource.build_and_push_services_image]
 }
 
 resource "google_cloud_run_service_iam_member" "cloudrun_permission_robotsa" {
