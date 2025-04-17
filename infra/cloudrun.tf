@@ -71,8 +71,8 @@ resource "google_cloud_run_v2_service" "services" {
           }
         }
         env {
-            name = "JAVA_OPTS_APPEND"
-            value = "-Dsecretmanager.configuration.version=${google_secret_manager_secret_version.service_config_version.name}"
+            name = "JAVA_OPTS"
+            value = "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dsecretmanager.configuration.version=${google_secret_manager_secret_version.service_config_version.name}"
         }
       resources {
         limits = {
