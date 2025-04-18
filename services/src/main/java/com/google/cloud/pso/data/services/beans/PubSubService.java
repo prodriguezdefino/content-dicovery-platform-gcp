@@ -18,10 +18,10 @@ package com.google.cloud.pso.data.services.beans;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 
 /** */
 public class PubSubService {

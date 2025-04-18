@@ -27,21 +27,22 @@
     <packaging>pom</packaging>
 
     <properties>
-        <java.version>17</java.version>
-        <beam.version>2.48.0</beam.version>
+        <java.version>21</java.version>
+        <beam.version>2.64.0</beam.version>
         <bigquery.version>v2-rev20220924-2.0.0</bigquery.version>
         <google-api-client.version>2.0.0</google-api-client.version>
         <guava.version>31.1-jre</guava.version>
-        <junit.version>4.13.1</junit.version>
+        <junit.version>4.13.2</junit.version>
+        <jackson.version>2.14.1</jackson.version>
         <libraries-bom.version>26.8.0</libraries-bom.version>
         <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
         <maven-exec-plugin.version>1.6.0</maven-exec-plugin.version>
         <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
         <maven-shade-plugin.version>3.1.0</maven-shade-plugin.version>
         <mockito.version>3.7.7</mockito.version>
-        <slf4j.version>1.7.30</slf4j.version>
-        <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
-        <spotless.version>2.36.0</spotless.version>
+        <slf4j.version>2.0.16</slf4j.version>
+        <maven-surefire-plugin.version>3.5.1</maven-surefire-plugin.version>
+        <spotless.version>2.43.0</spotless.version>
     </properties>
 
     <repositories>
@@ -160,11 +161,6 @@
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>com.google.guava</groupId>
-                <artifactId>guava</artifactId>
-                <version>${guava.version}</version>  <!-- "-jre" for Java 8 or higher -->
-            </dependency>
             <!-- GCP libraries BOM sets the version for google http client -->
             <dependency>
                 <groupId>com.google.cloud</groupId>
@@ -185,9 +181,13 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
-                <version>2.14.1</version>
+                <version>${jackson.version}</version>
             </dependency>
-
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jdk8</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
             <dependency>
                 <groupId>net.bytebuddy</groupId>
                 <artifactId>byte-buddy</artifactId>

@@ -22,7 +22,7 @@ import com.google.api.services.docs.v1.Docs;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.slides.v1.Slides;
-import com.google.cloud.pso.beam.contentextract.clients.utils.GoogleCredentialsCache;
+import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import java.io.IOException;
 import java.io.Serializable;

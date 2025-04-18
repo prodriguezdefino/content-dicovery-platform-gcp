@@ -22,7 +22,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Base64;
 import java.util.List;
-import javax.ws.rs.FormParam;
+import jakarta.ws.rs.FormParam;
 
 /** */
 public class ServiceTypes {
