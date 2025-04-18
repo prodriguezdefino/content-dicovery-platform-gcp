@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.contentextract.clients.utils;
+package com.google.cloud.pso.rag.common;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ImpersonatedCredentials;
@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,6 +100,16 @@ public class GoogleCredentialsCache {
   public static String retrieveAccessToken(String credentialsPrincipal) {
     try {
       return TOKEN_CACHE.get(credentialsPrincipal);
+    } catch (Exception ex) {
+      var msg = "Error while trying to retrieve access token from cache";
+      LOG.error(msg, ex);
+      throw new RuntimeException(msg, ex);
+    }
+  }
+
+  public static String retrieveAccessToken(Supplier<String> credentialsPrincipal) {
+    try {
+      return TOKEN_CACHE.get(credentialsPrincipal.get());
     } catch (Exception ex) {
       var msg = "Error while trying to retrieve access token from cache";
       LOG.error(msg, ex);

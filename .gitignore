@@ -32,3 +32,5 @@ python-embeddings/libs/*
 */build
 *.egg-info
 application.properties.local
+
+nbproject

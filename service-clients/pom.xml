@@ -24,7 +24,7 @@
     <artifactId>googledocs-content-service-clients</artifactId>
     <name>Google Drive :: Service Clients</name>
     <packaging>jar</packaging>
-  
+
     <parent>
         <groupId>com.google.cloud.pso.beam</groupId>
         <artifactId>googledocs-content-extraction-parent</artifactId>
@@ -93,7 +93,11 @@
             <groupId>dev.failsafe</groupId>
             <artifactId>failsafe</artifactId>
         </dependency>
-        
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jdk8</artifactId>
+        </dependency>
+
         <!-- Add slf4j API frontend binding with JUL backend -->
         <dependency>
             <groupId>org.slf4j</groupId>
