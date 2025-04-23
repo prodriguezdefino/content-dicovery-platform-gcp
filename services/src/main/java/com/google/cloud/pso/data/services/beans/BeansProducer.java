@@ -15,27 +15,26 @@
  */
 package com.google.cloud.pso.data.services.beans;
 
-import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
+import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import jakarta.annotation.PostConstruct;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import java.io.IOException;
 import java.util.Optional;
-import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.inject.Produces;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** */
-@Singleton
+@ApplicationScoped
 public class BeansProducer {
   private static final Logger LOG = LoggerFactory.getLogger(BeansProducer.class);
 
@@ -118,17 +117,16 @@ public class BeansProducer {
         Optional.ofNullable(configuration.get("log.interactions"))
             .map(jse -> jse.getAsBoolean())
             .orElse(false);
+
+    // we assume the service account for the current container has permissions to make requests to
+    // the needed Google services.
+    GCPEnvironment.trySetup(projectId, region, () -> "");
   }
 
   @Produces
   @Named("cloudrun.service.id")
   public String cloudRunServiceId() {
     return cloudRunServiceId;
-  }
-
-  @Produces
-  public EmbeddingsClient produceEmbeddingsClient() {
-    return EmbeddingsClient.create(projectId, region);
   }
 
   @Produces
@@ -147,7 +145,6 @@ public class BeansProducer {
   }
 
   @Produces
-  @ApplicationScoped
   public ServiceTypes.ResourceConfiguration produceResourceConfiguration() {
     return new ServiceTypes.ResourceConfiguration(
         logInteraction,
@@ -161,7 +158,6 @@ public class BeansProducer {
   }
 
   @Produces
-  @ApplicationScoped
   public ServiceTypes.BigTableConfiguration produceBigTableConfiguration() {
     return new ServiceTypes.BigTableConfiguration(
         bigTableInstanceName,

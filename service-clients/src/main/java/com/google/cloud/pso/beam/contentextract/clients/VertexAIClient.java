@@ -15,7 +15,7 @@
  */
 package com.google.cloud.pso.beam.contentextract.clients;
 
-import com.google.cloud.pso.beam.contentextract.clients.utils.GoogleCredentialsCache;
+import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
 import com.google.gson.Gson;
 import java.io.Serializable;
 import java.net.URI;

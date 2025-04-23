@@ -15,16 +15,19 @@
  */
 package com.google.cloud.pso.data.services.beans;
 
-import com.google.cloud.pso.beam.contentextract.clients.EmbeddingsClient;
 import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
+import com.google.cloud.pso.rag.embeddings.Embeddings;
+import com.google.cloud.pso.rag.embeddings.EmbeddingsException;
+import com.google.cloud.pso.rag.embeddings.VertexAi;
 import com.google.common.collect.Lists;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Optional;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import java.util.concurrent.ExecutionException;
 import org.eclipse.microprofile.metrics.MetricUnits;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 
@@ -33,9 +36,9 @@ import org.eclipse.microprofile.metrics.annotation.Timed;
 public class VertexAIService {
 
   @Inject PalmClient palmService;
-  @Inject EmbeddingsClient embeddingsService;
   @Inject MatchingEngineClient matchingEngineService;
   @Inject ServiceTypes.ResourceConfiguration configuration;
+  private String embeddingsModel = "text-embedding-005";
 
   @Timed(name = "palm.exchanges.summarization", unit = MetricUnits.MILLISECONDS)
   public Optional<Types.PalmSummarizationResponse> retrievePreviousSummarizedConversation(
@@ -73,15 +76,40 @@ public class VertexAIService {
     return palmResp;
   }
 
-  @Timed(name = "palm.embeddings.prediction", unit = MetricUnits.MILLISECONDS)
+  @Timed(name = "embeddings.prediction", unit = MetricUnits.MILLISECONDS)
   public Types.EmbeddingsResponse retrieveEmbeddings(
-      ServiceTypes.UserQuery query, String previousSummarizedConversation) {
-    var embeddingRequest =
-        new Types.EmbeddingRequest(
-            Lists.newArrayList(
-                new Types.TextInstance(query.text() + "\n" + previousSummarizedConversation)));
-    var embResponse = embeddingsService.retrieveEmbeddingsWithRetries(embeddingRequest);
-    return embResponse;
+      ServiceTypes.UserQuery query, String previousSummarizedConversation)
+      throws InterruptedException, ExecutionException {
+
+    return Embeddings.retrieveEmbeddings(
+            new VertexAi.Text(embeddingsModel, List.of(new VertexAi.TextInstance(query.text()))))
+        .thenApply(
+            embeddingsResponse ->
+                switch (embeddingsResponse) {
+                  case VertexAi.TextResponse(var predictions) ->
+                      new Types.EmbeddingsResponse(
+                          predictions.stream()
+                              .map(txtPred -> txtPred.embeddings())
+                              .map(
+                                  emb ->
+                                      new Types.Embedding(
+                                          new Types.Stats(
+                                              emb.statistics().truncated(),
+                                              emb.statistics().tokenCount()),
+                                          emb.values()))
+                              .map(Types.Embeddings::new)
+                              .toList());
+                  case VertexAi.MultimodalResponse(var predictions) ->
+                      new Types.EmbeddingsResponse(
+                          predictions.stream()
+                              .flatMap(mmPred -> mmPred.textEmbedding().stream())
+                              .map(
+                                  values -> new Types.Embedding(new Types.Stats(false, -1), values))
+                              .map(Types.Embeddings::new)
+                              .toList());
+                  case Embeddings.ErrorResponse(var cause) -> throw new EmbeddingsException(cause);
+                })
+        .get();
   }
 
   @Timed(name = "matchingengine.ann", unit = MetricUnits.MILLISECONDS)
