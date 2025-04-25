@@ -13,16 +13,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.rag.embeddings;
+package com.google.cloud.pso.rag.vector;
 
 /** */
-public class EmbeddingsException extends RuntimeException {
+public class VectorsException extends RuntimeException {
 
-  public EmbeddingsException(String message, Throwable cause) {
-    super(message, cause);
+  public VectorsException(String message) {
+    super(message);
   }
 
-  public EmbeddingsException(String message) {
-    super(message);
+  public VectorsException(String message, Throwable cause) {
+    super(message, cause);
   }
 }
