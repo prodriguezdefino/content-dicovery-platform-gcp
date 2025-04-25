@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google Inc.
+ * Copyright (C) 2025 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,7 +15,6 @@
  */
 package com.google.cloud.pso.data.services.resources;
 
-import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.data.services.beans.BigTableService;
 import com.google.cloud.pso.data.services.beans.ServiceTypes;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentAndMetadata;
@@ -26,15 +25,13 @@ import com.google.cloud.pso.data.services.beans.ServiceTypes.UserQuery;
 import com.google.cloud.pso.data.services.beans.VertexAIService;
 import com.google.cloud.pso.data.services.exceptions.QueryResourceException;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
+import com.google.cloud.pso.rag.vector.VectorSearch;
+import com.google.cloud.pso.rag.vector.Vectors;
+import com.google.cloud.pso.rag.vector.VectorsException;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import jakarta.enterprise.context.SessionScoped;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -42,6 +39,11 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import org.eclipse.microprofile.metrics.MetricUnits;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
@@ -140,29 +142,42 @@ public class QueryResource {
                   CompletableFuture.runAsync(() -> btService.removeSessionInfo(query.sessionId())));
 
       // given the query and previous conversation summary, retrieve embeddings
-      Types.EmbeddingsResponse embResponse =
-          vertexaiService.retrieveEmbeddings(query, previousSummarizedConversation);
-
-      Types.NearestNeighborsResponse nnResp =
-          vertexaiService.retrieveNearestNeighbors(embResponse, query);
-
-      // given the retrieved neighbors, use their ids to retrieve the chunks text content
       var context =
-          nnResp.nearestNeighbors().stream()
-              .flatMap(n -> n.neighbors().stream())
-              // filter out the dummy index initial vector
-              .filter(n -> n.distance() < configuration.maxNeighborDistance())
-              .sorted((n1, n2) -> -n1.distance().compareTo(n2.distance()))
-              // we keep only the most relevant context entries
-              .limit(configuration.maxNeighbors())
-              // capture content and link from storage and preserve distance from original query
-              .map(
-                  nn -> {
-                    var content = btService.queryByPrefix(nn.datapoint().datapointId());
-                    return new ContentAndMetadata(
-                        content.content(), content.sourceLink(), nn.distance());
-                  })
-              .toList();
+          vertexaiService
+              .retrieveEmbeddings(query, previousSummarizedConversation)
+              // and those nearest neighbors
+              .thenCompose(
+                  embResponse -> vertexaiService.retrieveNearestNeighbors(embResponse, query))
+              // given the retrieved neighbors, use their ids to retrieve the chunks text content
+              .thenApply(
+                  nnResp ->
+                      switch (nnResp) {
+                        case Vectors.ErrorResponse(var message, var cause) ->
+                            throw cause
+                                .map(ex -> new VectorsException(message, ex))
+                                .orElse(new VectorsException(message));
+
+                        case VectorSearch.NeighborsResponse(var nearestNeighbors) ->
+                            nearestNeighbors.stream()
+                                .flatMap(n -> n.neighbors().stream())
+                                // filter out the dummy index initial vector
+                                .filter(n -> n.distance() < configuration.maxNeighborDistance())
+                                .sorted((n1, n2) -> -n1.distance().compareTo(n2.distance()))
+                                // we keep only the most relevant context entries
+                                .limit(configuration.maxNeighbors())
+                                // capture content and link from storage and preserve distance from
+                                // original
+                                // query
+                                .map(
+                                    nn -> {
+                                      var content =
+                                          btService.queryByPrefix(nn.datapoint().datapointId());
+                                      return new ContentAndMetadata(
+                                          content.content(), content.sourceLink(), nn.distance());
+                                    })
+                                .toList();
+                      })
+              .get();
 
       // given the textual context and the previously retrieved existing conversation request a chat
       // response to the model using the provided query.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google Inc.
+ * Copyright (C) 2025 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,11 +18,11 @@ package com.google.cloud.pso.data.services.beans;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import jakarta.ws.rs.FormParam;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Base64;
 import java.util.List;
-import jakarta.ws.rs.FormParam;
 
 /** */
 public class ServiceTypes {

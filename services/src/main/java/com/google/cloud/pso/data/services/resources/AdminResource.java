@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google Inc.
+ * Copyright (C) 2025 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -24,8 +24,6 @@ import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentKeys;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentUrl;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.Info;
 import com.google.common.collect.Lists;
-import java.io.IOException;
-import java.util.stream.Collectors;
 import jakarta.enterprise.context.SessionScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -34,6 +32,8 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import java.io.IOException;
+import java.util.stream.Collectors;
 import org.eclipse.microprofile.metrics.MetricUnits;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
