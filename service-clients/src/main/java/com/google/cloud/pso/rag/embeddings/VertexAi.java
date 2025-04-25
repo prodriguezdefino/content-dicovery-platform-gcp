@@ -1,17 +1,31 @@
+/*
+ * Copyright (C) 2025 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.pso.rag.embeddings;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import static com.google.cloud.pso.rag.common.HttpInteractionHelper.createHTTPBasedRequest;
+import static com.google.cloud.pso.rag.common.HttpInteractionHelper.httpClient;
+import static com.google.cloud.pso.rag.common.HttpInteractionHelper.jsonMapper;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
-import com.google.cloud.pso.rag.common.HttpRequestHelper;
+import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
+import com.google.cloud.pso.rag.common.HttpInteractionHelper.MaybeJson;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Optional;
@@ -19,13 +33,6 @@ import java.util.concurrent.CompletableFuture;
 
 /** */
 public interface VertexAi {
-  static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().build();
-  static final ObjectMapper JSON_MAPPER =
-      new ObjectMapper()
-          .registerModule(new Jdk8Module())
-          .setSerializationInclusion(JsonInclude.Include.NON_ABSENT)
-          .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
   static URI uri(String project, String region, String model) throws URISyntaxException {
     return new URI(
         "https://"
@@ -175,40 +182,46 @@ public interface VertexAi {
     try {
       return switch (request) {
         case Text(var __, var text, var params) ->
-            JSON_MAPPER.writeValueAsString(new TextEmbeddingRequest(text, params));
-        case Multimodal(var __, var data) ->
-            JSON_MAPPER.writeValueAsString(new MultimodalEmbeddingRequest(data));
+            jsonMapper(new TextEmbeddingRequest(text, params));
+        case Multimodal(var __, var data) -> jsonMapper(new MultimodalEmbeddingRequest(data));
       };
     } catch (JsonProcessingException ex) {
       throw new EmbeddingsException("Problems while marshalling service request.", ex);
     }
   }
 
+  static Embeddings.Response handleMaybeJson(MaybeJson<? extends Response> maybeJson) {
+    return Optional.ofNullable(maybeJson.value())
+        .orElseThrow(
+            () ->
+                new EmbeddingsException("Problems while marshalling response.", maybeJson.error()));
+  }
+
   static Embeddings.Response response(Request request, HttpResponse<String> httpResponse) {
-    try {
-      if (httpResponse.statusCode() != 200) {
-        return new Embeddings.ErrorResponse(
-            String.format(
-                """
-                Error returned by embeddings model, code: %d, message: %s
+    return Optional.of(httpResponse.statusCode())
+        .filter(code -> code == 200)
+        .map(
+            ___ ->
+                switch (request) {
+                  case Text __ -> jsonMapper(httpResponse.body(), TextResponse.class);
+                  case Multimodal __ -> jsonMapper(httpResponse.body(), MultimodalResponse.class);
+                })
+        .map(VertexAi::handleMaybeJson)
+        .orElse(
+            new Embeddings.ErrorResponse(
+                String.format(
+                    """
+                Error returned by embeddings model %s, code: %d, message: %s
                 Request payload: %s""",
-                httpResponse.statusCode(), httpResponse.body(), request.toString()));
-      }
-      return switch (request) {
-        case Text __ -> JSON_MAPPER.readValue(httpResponse.body(), TextResponse.class);
-        case Multimodal __ -> JSON_MAPPER.readValue(httpResponse.body(), MultimodalResponse.class);
-      };
-    } catch (JsonProcessingException ex) {
-      throw new EmbeddingsException("Problems while unmarshalling responses from service.", ex);
-    }
+                    request.model(), httpResponse.statusCode(), httpResponse.body(), request)));
   }
 
   static CompletableFuture<Embeddings.Response> retrieveEmbeddings(Request request) {
     try {
       var envConfig = GCPEnvironment.config();
-      return HTTP_CLIENT
+      return httpClient()
           .sendAsync(
-              HttpRequestHelper.createHTTPBasedRequest(
+              createHTTPBasedRequest(
                   uri(envConfig.project(), envConfig.region(), request.model()),
                   requestBody(request),
                   GoogleCredentialsCache.retrieveAccessToken(

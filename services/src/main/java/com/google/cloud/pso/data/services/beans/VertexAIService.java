@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google Inc.
+ * Copyright (C) 2025 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -22,12 +22,14 @@ import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.cloud.pso.rag.embeddings.Embeddings;
 import com.google.cloud.pso.rag.embeddings.EmbeddingsException;
 import com.google.cloud.pso.rag.embeddings.VertexAi;
+import com.google.cloud.pso.rag.vector.VectorSearch;
+import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.collect.Lists;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
 import org.eclipse.microprofile.metrics.MetricUnits;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 
@@ -77,56 +79,38 @@ public class VertexAIService {
   }
 
   @Timed(name = "embeddings.prediction", unit = MetricUnits.MILLISECONDS)
-  public Types.EmbeddingsResponse retrieveEmbeddings(
-      ServiceTypes.UserQuery query, String previousSummarizedConversation)
-      throws InterruptedException, ExecutionException {
-
+  public CompletableFuture<Embeddings.Response> retrieveEmbeddings(
+      ServiceTypes.UserQuery query, String previousSummarizedConversation) {
     return Embeddings.retrieveEmbeddings(
-            new VertexAi.Text(embeddingsModel, List.of(new VertexAi.TextInstance(query.text()))))
-        .thenApply(
-            embeddingsResponse ->
-                switch (embeddingsResponse) {
-                  case VertexAi.TextResponse(var predictions) ->
-                      new Types.EmbeddingsResponse(
-                          predictions.stream()
-                              .map(txtPred -> txtPred.embeddings())
-                              .map(
-                                  emb ->
-                                      new Types.Embedding(
-                                          new Types.Stats(
-                                              emb.statistics().truncated(),
-                                              emb.statistics().tokenCount()),
-                                          emb.values()))
-                              .map(Types.Embeddings::new)
-                              .toList());
-                  case VertexAi.MultimodalResponse(var predictions) ->
-                      new Types.EmbeddingsResponse(
-                          predictions.stream()
-                              .flatMap(mmPred -> mmPred.textEmbedding().stream())
-                              .map(
-                                  values -> new Types.Embedding(new Types.Stats(false, -1), values))
-                              .map(Types.Embeddings::new)
-                              .toList());
-                  case Embeddings.ErrorResponse(var cause) -> throw new EmbeddingsException(cause);
-                })
-        .get();
+        new VertexAi.Text(embeddingsModel, List.of(new VertexAi.TextInstance(query.text()))));
   }
 
-  @Timed(name = "matchingengine.ann", unit = MetricUnits.MILLISECONDS)
-  public Types.NearestNeighborsResponse retrieveNearestNeighbors(
-      Types.EmbeddingsResponse embResponse, ServiceTypes.UserQuery query) {
-    // retrieve the nearest neighbors using the computed embeddings
-    var nnResp =
-        matchingEngineService.queryNearestNeighborsWithRetries(
-            embResponse.toNearestNeighborRequest(
-                configuration.matchingEngineIndexDeploymentId(),
-                // use min value between statically configured and the request one (if exists)
-                Integer.min(
-                    configuration.maxNeighbors(),
-                    Optional.ofNullable(query.parameters())
-                        .flatMap(params -> Optional.ofNullable(params.maxNeighbors()))
-                        .orElse(Integer.MAX_VALUE))));
-    return nnResp;
+  @Timed(name = "vectorseach.ann", unit = MetricUnits.MILLISECONDS)
+  public CompletableFuture<? extends Vectors.SearchResponse> retrieveNearestNeighbors(
+      Embeddings.Response embResponse, ServiceTypes.UserQuery query) {
+
+    return Vectors.findNearestNeighbors(
+        VectorSearch.requestFromValues(
+            configuration.matchingEngineIndexDeploymentId(),
+            // use min value between statically configured and the request one (if exists)
+            Integer.min(
+                configuration.maxNeighbors(),
+                Optional.ofNullable(query.parameters())
+                    .flatMap(params -> Optional.ofNullable(params.maxNeighbors()))
+                    .orElse(Integer.MAX_VALUE)),
+            extractValuesFromEmbeddings(embResponse)));
+  }
+
+  List<Double> extractValuesFromEmbeddings(Embeddings.Response embResponse) {
+    return switch (embResponse) {
+      case VertexAi.TextResponse(var predictions) -> predictions.getFirst().embeddings().values();
+      case VertexAi.MultimodalResponse(var predictions) ->
+          predictions.getFirst().textEmbedding().get();
+      case Embeddings.ErrorResponse(var message, var cause) ->
+          throw cause
+              .map(ex -> new EmbeddingsException(message, ex))
+              .orElse(new EmbeddingsException(message));
+    };
   }
 
   Types.PalmRequestParameters palmRequestParameters(

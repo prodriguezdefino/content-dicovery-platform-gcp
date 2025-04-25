@@ -42,7 +42,7 @@
         <mockito.version>3.7.7</mockito.version>
         <slf4j.version>2.0.16</slf4j.version>
         <maven-surefire-plugin.version>3.5.1</maven-surefire-plugin.version>
-        <spotless.version>2.43.0</spotless.version>
+        <spotless.version>2.44.4</spotless.version>
     </properties>
 
     <repositories>
@@ -144,11 +144,13 @@
                                 <include>src/main/java/**/*.java</include>
                                 <include>src/test/java/**/*.java</include>
                             </includes>
-                            <cleanthat />        
-                            <googleJavaFormat /> 
-                            <importOrder /> 
-                            <removeUnusedImports /> 
-                            <formatAnnotations />  
+                            <cleanthat />
+                            <googleJavaFormat>
+                                <version>1.24.0</version>
+                            </googleJavaFormat>
+                            <importOrder />
+                            <removeUnusedImports />
+                            <formatAnnotations />
                             <licenseHeader>
                                 <file>${maven.multiModuleProjectDirectory}/license-header</file>
                             </licenseHeader>
@@ -169,7 +171,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-      
+
             <dependency>
                 <groupId>org.apache.beam</groupId>
                 <artifactId>beam-sdks-java-bom</artifactId>
@@ -177,7 +179,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-      
+
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
@@ -228,27 +230,27 @@
                 <artifactId>failsafe</artifactId>
                 <version>3.3.2</version>
             </dependency>
-    
+
             <!-- Adds a dependency on the Beam Google Cloud Platform IO module. -->
             <dependency>
                 <groupId>org.apache.beam</groupId>
                 <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
                 <version>${beam.version}</version>
             </dependency>
-    
+
             <!-- Adds a dependency on the Beam Python module. -->
             <dependency>
                 <groupId>org.apache.beam</groupId>
                 <artifactId>beam-sdks-java-extensions-python</artifactId>
                 <version>${beam.version}</version>
             </dependency>
-    
+
             <dependency>
                 <groupId>org.apache.beam</groupId>
                 <artifactId>beam-sdks-java-core</artifactId>
                 <version>${beam.version}</version>
             </dependency>
-      
+
             <dependency>
                 <groupId>org.apache.beam</groupId>
                 <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
@@ -291,7 +293,7 @@
                 <version>${mockito.version}</version>
                 <scope>test</scope>
             </dependency>
-      
+
             <dependency>
                 <groupId>com.google.cloud.pso.beam</groupId>
                 <artifactId>googledocs-content-service-clients</artifactId>

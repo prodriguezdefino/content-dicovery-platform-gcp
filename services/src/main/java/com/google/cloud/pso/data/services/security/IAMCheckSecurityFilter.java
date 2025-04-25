@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google Inc.
+ * Copyright (C) 2025 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -21,13 +21,13 @@ import google.cloud.policytroubleshooter.v1.Explanations;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.impl.Codec;
 import jakarta.annotation.PreDestroy;
-import java.io.IOException;
-import java.util.Optional;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.Optional;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 import org.slf4j.Logger;

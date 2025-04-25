@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google Inc.
+ * Copyright (C) 2025 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -120,7 +120,15 @@ public class BeansProducer {
 
     // we assume the service account for the current container has permissions to make requests to
     // the needed Google services.
-    GCPEnvironment.trySetup(projectId, region, () -> "");
+    GCPEnvironment.trySetup(
+        new GCPEnvironment.Config(
+            projectId,
+            region,
+            () -> "",
+            new GCPEnvironment.VectorSearchConfig(
+                matchingEngineIndexEndpointDomain,
+                matchingEngineIndexEndpointId,
+                matchingEngineIndexDeploymentId)));
   }
 
   @Produces
