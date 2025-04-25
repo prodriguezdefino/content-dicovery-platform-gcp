@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google Inc.
+ * Copyright (C) 2025 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -22,8 +22,8 @@ import com.google.api.services.docs.v1.Docs;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.slides.v1.Slides;
-import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
+import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Optional;

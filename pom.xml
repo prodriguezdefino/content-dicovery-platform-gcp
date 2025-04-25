@@ -42,7 +42,7 @@
         <mockito.version>3.7.7</mockito.version>
         <slf4j.version>2.0.16</slf4j.version>
         <maven-surefire-plugin.version>3.5.1</maven-surefire-plugin.version>
-        <spotless.version>2.43.0</spotless.version>
+        <spotless.version>2.44.4</spotless.version>
     </properties>
 
     <repositories>
@@ -145,7 +145,9 @@
                                 <include>src/test/java/**/*.java</include>
                             </includes>
                             <cleanthat />        
-                            <googleJavaFormat /> 
+                            <googleJavaFormat>
+                                <version>1.24.0</version>
+                            </googleJavaFormat>
                             <importOrder /> 
                             <removeUnusedImports /> 
                             <formatAnnotations />  
