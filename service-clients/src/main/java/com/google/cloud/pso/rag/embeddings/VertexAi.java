@@ -23,6 +23,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
+import com.google.cloud.pso.rag.common.HttpInteractionHelper.Error;
+import com.google.cloud.pso.rag.common.HttpInteractionHelper.Json;
 import com.google.cloud.pso.rag.common.HttpInteractionHelper.MaybeJson;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -190,30 +192,28 @@ public interface VertexAi {
     }
   }
 
-  static Embeddings.Response handleMaybeJson(MaybeJson<? extends Response> maybeJson) {
-    return Optional.ofNullable(maybeJson.value())
-        .orElseThrow(
-            () ->
-                new EmbeddingsException("Problems while marshalling response.", maybeJson.error()));
+  static Embeddings.Response handleMaybeJson(MaybeJson<? extends Embeddings.Response> maybeJson) {
+    return switch (maybeJson) {
+      case Json<? extends Embeddings.Response> response -> response.value();
+      case Error error ->
+          throw new EmbeddingsException("Problems while marshalling response.", error.error());
+    };
   }
 
   static Embeddings.Response response(Request request, HttpResponse<String> httpResponse) {
-    return Optional.of(httpResponse.statusCode())
-        .filter(code -> code == 200)
-        .map(
-            ___ ->
-                switch (request) {
-                  case Text __ -> jsonMapper(httpResponse.body(), TextResponse.class);
-                  case Multimodal __ -> jsonMapper(httpResponse.body(), MultimodalResponse.class);
-                })
-        .map(VertexAi::handleMaybeJson)
-        .orElse(
-            new Embeddings.ErrorResponse(
-                String.format(
-                    """
+    return switch (request) {
+      case Text __ when httpResponse.statusCode() == 200 ->
+          handleMaybeJson(jsonMapper(httpResponse.body(), TextResponse.class));
+      case Multimodal __ when httpResponse.statusCode() == 200 ->
+          handleMaybeJson(jsonMapper(httpResponse.body(), MultimodalResponse.class));
+      default ->
+          new Embeddings.ErrorResponse(
+              String.format(
+                  """
                 Error returned by embeddings model %s, code: %d, message: %s
                 Request payload: %s""",
-                    request.model(), httpResponse.statusCode(), httpResponse.body(), request)));
+                  request.model(), httpResponse.statusCode(), httpResponse.body(), request));
+    };
   }
 
   static CompletableFuture<Embeddings.Response> retrieveEmbeddings(Request request) {

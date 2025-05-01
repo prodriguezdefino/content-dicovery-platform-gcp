@@ -50,20 +50,31 @@ public class GoogleCredentialsCache {
                 }
               });
 
-  static String accessToken(String credentialsPrincipal) {
+  public static GoogleCredentials credentials(String principal) {
     try {
       var credentials =
-          Optional.of(credentialsPrincipal)
+          Optional.of(principal)
               .filter(p -> !p.isEmpty() && !p.isBlank())
               .map(p -> getImpersonatedCredentialsWithScopes(p))
               .orElse(getDefaultCredentials());
       credentials.refreshIfExpired();
-      var accessToken = credentials.refreshAccessToken();
-      return accessToken.getTokenValue();
+      return credentials;
     } catch (IOException ex) {
       var msg =
           String.format(
-              "Problems while trying to retrieve access token, principal '%s'.",
+              "Problems while trying to retrieve access token, principal '%s'.", principal);
+      LOG.error(msg, ex);
+      throw new RuntimeException(msg, ex);
+    }
+  }
+
+  static String accessToken(String credentialsPrincipal) {
+    try {
+      return credentials(credentialsPrincipal).refreshAccessToken().getTokenValue();
+    } catch (IOException ex) {
+      var msg =
+          String.format(
+              "Problems while trying to refresh access token, principal '%s'.",
               credentialsPrincipal);
       LOG.error(msg, ex);
       throw new RuntimeException(msg, ex);
@@ -74,7 +85,7 @@ public class GoogleCredentialsCache {
     try {
       return GoogleCredentials.getApplicationDefault();
     } catch (Exception ex) {
-      var errMsg = "errors while trying to create default credentials";
+      var errMsg = "Error while trying to create default credentials.";
       LOG.error(errMsg, ex);
       throw new RuntimeException(errMsg, ex);
     }
@@ -108,12 +119,6 @@ public class GoogleCredentialsCache {
   }
 
   public static String retrieveAccessToken(Supplier<String> credentialsPrincipal) {
-    try {
-      return TOKEN_CACHE.get(credentialsPrincipal.get());
-    } catch (Exception ex) {
-      var msg = "Error while trying to retrieve access token from cache";
-      LOG.error(msg, ex);
-      throw new RuntimeException(msg, ex);
-    }
+    return retrieveAccessToken(credentialsPrincipal.get());
   }
 }

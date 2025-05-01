@@ -17,6 +17,7 @@ package com.google.cloud.pso.rag.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
@@ -39,21 +40,25 @@ public class HttpInteractionHelper {
     return HTTP_CLIENT;
   }
 
-  public record MaybeJson<T>(T value, JsonProcessingException error) {
-    public MaybeJson(T value) {
-      this(value, null);
-    }
+  public sealed interface MaybeJson<T> permits Json, Error {}
 
-    public MaybeJson(JsonProcessingException error) {
-      this(null, error);
-    }
-  }
+  public record Json<T>(T value) implements MaybeJson<T> {}
+
+  public record Error<T>(Throwable error) implements MaybeJson<T> {}
 
   public static <T> MaybeJson<T> jsonMapper(String value, Class<T> valueType) {
     try {
-      return new MaybeJson<>(JSON_MAPPER.readValue(value, valueType));
+      return new Json<>(JSON_MAPPER.readValue(value, valueType));
     } catch (JsonProcessingException ex) {
-      return new MaybeJson<>(ex);
+      return new Error<>(ex);
+    }
+  }
+
+  public static <T> MaybeJson<T> jsonMapper(String value, TypeReference<T> valueTypeReference) {
+    try {
+      return new Json<>(JSON_MAPPER.readValue(value, valueTypeReference));
+    } catch (JsonProcessingException ex) {
+      return new Error<>(ex);
     }
   }
 
