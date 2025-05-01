@@ -23,19 +23,17 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
+import com.google.cloud.pso.rag.common.HttpInteractionHelper.Error;
+import com.google.cloud.pso.rag.common.HttpInteractionHelper.Json;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 /** */
 public interface VectorSearch {
-
-  String INDEX_FIND_METHOD = "findNeighbors";
-  String INDEX_STORE_METHOD = "upsertDatapoints";
 
   sealed interface Request extends Vectors.Search, Vectors.Store
       permits SearchRequest, UpsertRequest {}
@@ -130,26 +128,28 @@ public interface VectorSearch {
     }
   }
 
+  static Vectors.ErrorResponse error(HttpResponse<String> httpResponse, Request request) {
+    return new Vectors.ErrorResponse(
+        String.format(
+            """
+            Error returned by VectorSearch, code %d, message: %s.
+            Request payload: %s""",
+            httpResponse.statusCode(), httpResponse.body(), request));
+  }
+
   static CompletableFuture<Vectors.StoreResponse> store(Request request) {
     return initiateRequest(request)
         .thenApply(
             httpResponse ->
                 switch (httpResponse.statusCode()) {
-                  case 200 -> {
-                    var maybeJson = jsonMapper(httpResponse.body(), UpsertResponse.class);
-                    yield Optional.ofNullable(maybeJson.value())
-                        .orElseThrow(
-                            () ->
-                                new VectorsException(
-                                    "Problems while marshalling response.", maybeJson.error()));
-                  }
-                  default ->
-                      new Vectors.ErrorResponse(
-                          String.format(
-                              """
-                              Error returned by VectorSearch, code %d, message: %s.
-                              Request payload: %s""",
-                              httpResponse.statusCode(), httpResponse.body(), request));
+                  case 200 ->
+                      switch (jsonMapper(httpResponse.body(), UpsertResponse.class)) {
+                        case Json<UpsertResponse> response -> response.value();
+                        case Error error ->
+                            throw new VectorsException(
+                                "Problems while marshalling response.", error.error());
+                      };
+                  default -> error(httpResponse, request);
                 });
   }
 
@@ -158,21 +158,14 @@ public interface VectorSearch {
         .thenApply(
             httpResponse ->
                 switch (httpResponse.statusCode()) {
-                  case 200 -> {
-                    var maybeJson = jsonMapper(httpResponse.body(), NeighborsResponse.class);
-                    yield Optional.ofNullable(maybeJson.value())
-                        .orElseThrow(
-                            () ->
-                                new VectorsException(
-                                    "Problems while marshalling response.", maybeJson.error()));
-                  }
-                  default ->
-                      new Vectors.ErrorResponse(
-                          String.format(
-                              """
-                              Error returned by VectorSearch, code %d, message: %s.
-                              Request payload: %s""",
-                              httpResponse.statusCode(), httpResponse.body(), request));
+                  case 200 ->
+                      switch (jsonMapper(httpResponse.body(), SearchResponse.class)) {
+                        case Json<SearchResponse> response -> response.value();
+                        case Error error ->
+                            throw new VectorsException(
+                                "Problems while marshalling response.", error.error());
+                      };
+                  default -> error(httpResponse, request);
                 });
   }
 }
