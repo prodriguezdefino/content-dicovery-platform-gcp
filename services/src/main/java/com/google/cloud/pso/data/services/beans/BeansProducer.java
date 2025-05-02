@@ -128,6 +128,7 @@ public class BeansProducer {
             new GCPEnvironment.VectorSearchConfig(
                 matchingEngineIndexEndpointDomain,
                 matchingEngineIndexEndpointId,
+                matchingEngineIndexDeploymentId,
                 matchingEngineIndexDeploymentId)));
   }
 

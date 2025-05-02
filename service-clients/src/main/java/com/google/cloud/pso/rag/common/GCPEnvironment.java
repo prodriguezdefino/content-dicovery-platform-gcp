@@ -23,7 +23,8 @@ public class GCPEnvironment {
 
   private static GCPEnvironment INSTANCE = null;
 
-  public record VectorSearchConfig(String indexDomain, String indexPath, String indexId) {}
+  public record VectorSearchConfig(
+      String indexDomain, String indexPath, String indexId, String deploymentId) {}
 
   public record Config(
       String project,

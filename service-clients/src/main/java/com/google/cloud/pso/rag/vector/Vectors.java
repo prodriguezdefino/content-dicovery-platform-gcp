@@ -21,20 +21,26 @@ import java.util.concurrent.CompletableFuture;
 /** */
 public interface Vectors {
 
-  sealed interface Request permits Search, Store {}
+  sealed interface Request permits Search, Store, Delete {}
 
-  sealed interface Search extends Request permits VectorSearch.Request {}
+  sealed interface Search extends Request permits VectorSearch.SearchRequest {}
 
-  sealed interface Store extends Request permits VectorSearch.Request {}
+  sealed interface Store extends Request permits VectorSearch.UpsertRequest {}
 
-  sealed interface Response permits StoreResponse, SearchResponse {}
+  sealed interface Delete extends Request permits VectorSearch.RemoveRequest {}
+
+  sealed interface Response permits StoreResponse, SearchResponse, DeleteResponse {}
 
   sealed interface StoreResponse extends Response permits VectorSearch.StoreResponse {}
 
   sealed interface SearchResponse extends Response permits VectorSearch.SearchResponse {}
 
+  sealed interface DeleteResponse extends Response permits VectorSearch.DeleteResponse {}
+
   record ErrorResponse(String message, Optional<Throwable> cause)
-      implements VectorSearch.SearchResponse, VectorSearch.StoreResponse {
+      implements VectorSearch.SearchResponse,
+          VectorSearch.StoreResponse,
+          VectorSearch.DeleteResponse {
     public ErrorResponse(String message) {
       this(message, Optional.empty());
     }
@@ -42,13 +48,19 @@ public interface Vectors {
 
   static CompletableFuture<? extends SearchResponse> findNearestNeighbors(Search request) {
     return switch (request) {
-      case VectorSearch.Request vectorSearch -> VectorSearch.search(vectorSearch);
+      case VectorSearch.SearchRequest vectorSearch -> VectorSearch.search(vectorSearch);
     };
   }
 
   static CompletableFuture<? extends StoreResponse> storeVector(Store request) {
     return switch (request) {
-      case VectorSearch.Request storeVector -> VectorSearch.store(storeVector);
+      case VectorSearch.UpsertRequest storeVector -> VectorSearch.store(storeVector);
+    };
+  }
+
+  static CompletableFuture<? extends DeleteResponse> removeVectors(Delete request) {
+    return switch (request) {
+      case VectorSearch.RemoveRequest removeVectors -> VectorSearch.remove(removeVectors);
     };
   }
 }
