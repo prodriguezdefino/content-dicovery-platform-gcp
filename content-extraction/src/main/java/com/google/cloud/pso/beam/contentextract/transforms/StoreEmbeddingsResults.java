@@ -22,11 +22,12 @@ import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
-import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
-import com.google.cloud.pso.beam.contentextract.clients.Types.DeleteMatchingEngineDatapoints;
-import com.google.cloud.pso.beam.contentextract.clients.Types.UpsertMatchingEngineDatapoints;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
+import com.google.cloud.pso.rag.vector.VectorSearch.Datapoint;
+import com.google.cloud.pso.rag.vector.VectorSearch.RemoveRequest;
+import com.google.cloud.pso.rag.vector.VectorSearch.UpsertRequest;
+import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import java.util.List;
@@ -55,13 +56,6 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
   public PDone expand(PCollection<List<IndexableContent>> input) {
     var options = input.getPipeline().getOptions().as(ContentExtractionOptions.class);
     var fetcher = DocContentRetriever.create(GoogleDriveClient.create(options.getServiceAccount()));
-    var matchingEngineClient =
-        MatchingEngineClient.create(
-            options.getRegion(),
-            options.getMatchingEngineIndexId(),
-            options.getMatchingEngineIndexEndpointId(),
-            options.getMatchingEngineIndexEndpointDomain(),
-            options.getMatchingEngineIndexEndpointDeploymentName());
 
     input
         .apply(
@@ -77,13 +71,10 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
                 new RemoveContentFromIndexes(
                     options.getProject(),
                     options.getBigTableInstanceName(),
-                    options.getBigTableTableName(),
-                    matchingEngineClient)));
+                    options.getBigTableTableName())));
 
     // store the embeddings into Matching Engine for later query
-    input.apply(
-        "UpsertIndexDatapoints",
-        ParDo.of(new MatchingEngineDatapointUpsertDoFn(matchingEngineClient)));
+    input.apply("UpsertIndexDatapoints", ParDo.of(new MatchingEngineDatapointUpsertDoFn()));
 
     // also, we need to store the content and its id into BigTable since the content is later
     // needed to set context for the text prediction model
@@ -105,21 +96,17 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
     private final String projectId;
     private final String instanceId;
     private final String tableId;
-    private final MatchingEngineClient mEClient;
 
-    public RemoveContentFromIndexes(
-        String projectId, String instanceId, String tableId, MatchingEngineClient mEClient) {
+    public RemoveContentFromIndexes(String projectId, String instanceId, String tableId) {
       this.projectId = projectId;
       this.instanceId = instanceId;
       this.tableId = tableId;
-      this.mEClient = mEClient;
     }
 
     @ProcessElement
     public void processElement(ProcessContext context) {
       // remove data from the matching engine index
-      mEClient.deleteVectorDBDatapointsWithRetries(
-          new DeleteMatchingEngineDatapoints(context.element()));
+      Vectors.removeVectors(new RemoveRequest(context.element()));
 
       // remove all the content rows with prefix
       try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceId)) {
@@ -233,11 +220,6 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
   }
 
   static class MatchingEngineDatapointUpsertDoFn extends DoFn<List<IndexableContent>, Void> {
-    private final MatchingEngineClient serviceClient;
-
-    public MatchingEngineDatapointUpsertDoFn(MatchingEngineClient serviceClient) {
-      this.serviceClient = serviceClient;
-    }
 
     @ProcessElement
     public void process(ProcessContext context) {
@@ -246,13 +228,10 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
       Lists.partition(context.element(), 15)
           .forEach(
               embeddings ->
-                  serviceClient.upsertVectorDBDataPointsWithRetries(
-                      new UpsertMatchingEngineDatapoints(
+                  Vectors.storeVector(
+                      new UpsertRequest(
                           embeddings.stream()
-                              .map(
-                                  kv ->
-                                      new com.google.cloud.pso.beam.contentextract.clients.Types
-                                          .Datapoint(kv.key(), kv.embedding(), null))
+                              .map(content -> new Datapoint(content.key(), content.embedding()))
                               .toList())));
     }
   }

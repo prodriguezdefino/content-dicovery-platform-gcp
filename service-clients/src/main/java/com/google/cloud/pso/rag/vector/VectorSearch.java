@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 
 /** */
 public interface VectorSearch {
@@ -46,10 +47,13 @@ public interface VectorSearch {
   sealed interface DeleteResponse extends Vectors.DeleteResponse
       permits RemoveResponse, Vectors.ErrorResponse {}
 
-  static SearchRequest requestFromValues(
-      String deployedIndexId, Integer neighborCount, List<Double> values) {
+  static SearchRequest requestFromValues(Integer neighborCount, List<List<Double>> listOfValues) {
     return new SearchRequest(
-        deployedIndexId, List.of(new Query(new Datapoint(values), neighborCount)));
+        IntStream.range(0, listOfValues.size())
+            .mapToObj(
+                idx ->
+                    new Query(new Datapoint("query" + idx, listOfValues.get(idx)), neighborCount))
+            .toList());
   }
 
   static URI searchUri(String indexDomain, String indexEndpointPath) throws URISyntaxException {
