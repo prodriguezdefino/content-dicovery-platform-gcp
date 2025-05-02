@@ -47,11 +47,12 @@ public interface Embeddings {
     };
   }
 
-  static List<Double> extractValuesFromEmbeddings(Embeddings.Response embResponse) {
+  static List<List<Double>> extractValuesFromEmbeddings(Embeddings.Response embResponse) {
     return switch (embResponse) {
-      case VertexAi.TextResponse(var predictions) -> predictions.getFirst().embeddings().values();
+      case VertexAi.TextResponse(var predictions) ->
+          predictions.stream().map(emb -> emb.embeddings().values()).toList();
       case VertexAi.MultimodalResponse(var predictions) ->
-          predictions.getFirst().textEmbedding().get();
+          predictions.stream().flatMap(mmEmb -> mmEmb.textEmbedding().stream()).toList();
       case Embeddings.ErrorResponse(var message, var cause) ->
           throw cause
               .map(ex -> new EmbeddingsException(message, ex))

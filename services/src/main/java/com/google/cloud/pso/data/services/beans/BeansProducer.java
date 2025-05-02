@@ -16,7 +16,6 @@
 package com.google.cloud.pso.data.services.beans;
 
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
-import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
@@ -128,6 +127,7 @@ public class BeansProducer {
             new GCPEnvironment.VectorSearchConfig(
                 matchingEngineIndexEndpointDomain,
                 matchingEngineIndexEndpointId,
+                matchingEngineIndexId,
                 matchingEngineIndexDeploymentId)));
   }
 
@@ -140,16 +140,6 @@ public class BeansProducer {
   @Produces
   public PalmClient producePalmClient() {
     return PalmClient.create(projectId, region);
-  }
-
-  @Produces
-  public MatchingEngineClient produceMatchingEngineClient() {
-    return MatchingEngineClient.create(
-        region,
-        matchingEngineIndexId,
-        matchingEngineIndexEndpointId,
-        matchingEngineIndexEndpointDomain,
-        matchingEngineIndexDeploymentId);
   }
 
   @Produces

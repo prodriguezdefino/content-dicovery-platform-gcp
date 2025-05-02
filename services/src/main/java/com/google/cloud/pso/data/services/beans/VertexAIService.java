@@ -15,12 +15,10 @@
  */
 package com.google.cloud.pso.data.services.beans;
 
-import com.google.cloud.pso.beam.contentextract.clients.MatchingEngineClient;
 import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.cloud.pso.rag.embeddings.Embeddings;
-import com.google.cloud.pso.rag.embeddings.EmbeddingsException;
 import com.google.cloud.pso.rag.embeddings.VertexAi;
 import com.google.cloud.pso.rag.vector.VectorSearch;
 import com.google.cloud.pso.rag.vector.Vectors;
@@ -38,7 +36,6 @@ import org.eclipse.microprofile.metrics.annotation.Timed;
 public class VertexAIService {
 
   @Inject PalmClient palmService;
-  @Inject MatchingEngineClient matchingEngineService;
   @Inject ServiceTypes.ResourceConfiguration configuration;
   private String embeddingsModel = "text-embedding-005";
 
@@ -91,26 +88,14 @@ public class VertexAIService {
 
     return Vectors.findNearestNeighbors(
         VectorSearch.requestFromValues(
-            configuration.matchingEngineIndexDeploymentId(),
-            // use min value between statically configured and the request one (if exists)
+            // use min value between statically configured and the request one (if
+            // exists)
             Integer.min(
                 configuration.maxNeighbors(),
                 Optional.ofNullable(query.parameters())
                     .flatMap(params -> Optional.ofNullable(params.maxNeighbors()))
                     .orElse(Integer.MAX_VALUE)),
-            extractValuesFromEmbeddings(embResponse)));
-  }
-
-  List<Double> extractValuesFromEmbeddings(Embeddings.Response embResponse) {
-    return switch (embResponse) {
-      case VertexAi.TextResponse(var predictions) -> predictions.getFirst().embeddings().values();
-      case VertexAi.MultimodalResponse(var predictions) ->
-          predictions.getFirst().textEmbedding().get();
-      case Embeddings.ErrorResponse(var message, var cause) ->
-          throw cause
-              .map(ex -> new EmbeddingsException(message, ex))
-              .orElse(new EmbeddingsException(message));
-    };
+            Embeddings.extractValuesFromEmbeddings(embResponse)));
   }
 
   Types.PalmRequestParameters palmRequestParameters(

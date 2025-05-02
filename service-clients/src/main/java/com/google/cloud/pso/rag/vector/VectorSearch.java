@@ -25,18 +25,18 @@ import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
 import com.google.cloud.pso.rag.common.HttpInteractionHelper.Error;
 import com.google.cloud.pso.rag.common.HttpInteractionHelper.Json;
+import com.google.cloud.pso.rag.vector.Vectors.ErrorResponse;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 
 /** */
 public interface VectorSearch {
-
-  sealed interface Request extends Vectors.Search, Vectors.Store
-      permits SearchRequest, UpsertRequest {}
 
   sealed interface SearchResponse extends Vectors.SearchResponse
       permits NeighborsResponse, Vectors.ErrorResponse {}
@@ -44,10 +44,16 @@ public interface VectorSearch {
   sealed interface StoreResponse extends Vectors.StoreResponse
       permits UpsertResponse, Vectors.ErrorResponse {}
 
-  static SearchRequest requestFromValues(
-      String deployedIndexId, Integer neighborCount, List<Double> values) {
+  sealed interface DeleteResponse extends Vectors.DeleteResponse
+      permits RemoveResponse, Vectors.ErrorResponse {}
+
+  static SearchRequest requestFromValues(Integer neighborCount, List<List<Double>> listOfValues) {
     return new SearchRequest(
-        deployedIndexId, List.of(new Query(new Datapoint(values), neighborCount)));
+        IntStream.range(0, listOfValues.size())
+            .mapToObj(
+                idx ->
+                    new Query(new Datapoint("query" + idx, listOfValues.get(idx)), neighborCount))
+            .toList());
   }
 
   static URI searchUri(String indexDomain, String indexEndpointPath) throws URISyntaxException {
@@ -60,15 +66,26 @@ public interface VectorSearch {
             "https://%s-aiplatform.googleapis.com/v1/%s:upsertDatapoints", region, indexId));
   }
 
+  static URI removeUri(String region, String indexId) throws URISyntaxException {
+    return new URI(
+        String.format(
+            "https://%s-aiplatform.googleapis.com/v1/%s:removeDatapoints", region, indexId));
+  }
+
+  /*
+  Nearest neighbor search types.
+  */
+
   record SearchRequest(
       @JsonProperty("deployed_index_id") String deployedIndexId, List<Query> queries)
-      implements Request {}
+      implements Vectors.Search {
+    public SearchRequest(List<Query> queries) {
+      this(GCPEnvironment.config().vectorSearchConfig().deploymentId(), queries);
+    }
+  }
 
   record NeighborsResponse(List<Neighbors> nearestNeighbors) implements SearchResponse {}
 
-  /*
-  Nearest Neighbor request types.
-  */
   record Datapoint(String datapointId, List<Double> featureVector) {
     public Datapoint(List<Double> values) {
       this("dummyId", values);
@@ -77,15 +94,27 @@ public interface VectorSearch {
 
   record Query(Datapoint datapoint, @JsonProperty("neighbor_count") Integer neighborCount) {}
 
-  /*
-  Nearest Neighbor response types.
-  */
-
   record Neighbor(Double distance, Datapoint datapoint) {}
 
   record Neighbors(String id, List<Neighbor> neighbors) {}
 
-  static String requestBody(Request request) {
+  /*
+  Index datapoint store types.
+  */
+
+  record UpsertRequest(List<Datapoint> datapoints) implements Vectors.Store {}
+
+  record UpsertResponse() implements StoreResponse {}
+
+  /*
+  Remove datapoint types.
+  */
+
+  record RemoveRequest(List<String> datapointIds) implements Vectors.Delete {}
+
+  record RemoveResponse() implements DeleteResponse {}
+
+  static String requestBody(Vectors.Request request) {
     try {
       return jsonMapper(request);
     } catch (JsonProcessingException ex) {
@@ -93,27 +122,25 @@ public interface VectorSearch {
     }
   }
 
-  /*
-  Index datapoint store types.
-  */
-
-  record UpsertRequest(List<Datapoint> datapoints) implements Request {}
-
-  record UpsertResponse() implements StoreResponse {}
-
   static Supplier<VectorsException> exceptionSupplier(Throwable cause) {
     return () -> new VectorsException("Problems while marshalling service response.", cause);
   }
 
-  static URI resolveRequestUri(Request request) throws URISyntaxException {
-    var vectorConfig = GCPEnvironment.config().vectorSearchConfig();
+  static URI resolveRequestUri(Vectors.Request request) throws URISyntaxException {
+    var config = GCPEnvironment.config();
+    var region = config.region();
+    var vectorConfig = config.vectorSearchConfig();
     return switch (request) {
       case SearchRequest __ -> searchUri(vectorConfig.indexDomain(), vectorConfig.indexPath());
-      case UpsertRequest __ -> storeUri(GCPEnvironment.config().region(), vectorConfig.indexId());
+      case UpsertRequest __ -> storeUri(region, vectorConfig.indexId());
+      case RemoveRequest __ -> removeUri(region, vectorConfig.indexId());
+      default ->
+          throw new VectorsException(
+              String.format("Request type not implemented for VectorSearch: %s", request));
     };
   }
 
-  static CompletableFuture<HttpResponse<String>> initiateRequest(Request request) {
+  static CompletableFuture<HttpResponse<String>> initiateRequest(Vectors.Request request) {
     try {
       return httpClient()
           .sendAsync(
@@ -128,8 +155,8 @@ public interface VectorSearch {
     }
   }
 
-  static Vectors.ErrorResponse error(HttpResponse<String> httpResponse, Request request) {
-    return new Vectors.ErrorResponse(
+  static ErrorResponse error(HttpResponse<String> httpResponse, Vectors.Request request) {
+    return new ErrorResponse(
         String.format(
             """
             Error returned by VectorSearch, code %d, message: %s.
@@ -137,7 +164,13 @@ public interface VectorSearch {
             httpResponse.statusCode(), httpResponse.body(), request));
   }
 
-  static CompletableFuture<Vectors.StoreResponse> store(Request request) {
+  static ErrorResponse marshalError(String response, Throwable error) {
+    return new ErrorResponse(
+        String.format("Problems while marshalling response from VectorSearch: %s", response),
+        Optional.of(error));
+  }
+
+  static CompletableFuture<? extends StoreResponse> store(UpsertRequest request) {
     return initiateRequest(request)
         .thenApply(
             httpResponse ->
@@ -145,25 +178,35 @@ public interface VectorSearch {
                   case 200 ->
                       switch (jsonMapper(httpResponse.body(), UpsertResponse.class)) {
                         case Json<UpsertResponse> response -> response.value();
-                        case Error error ->
-                            throw new VectorsException(
-                                "Problems while marshalling response.", error.error());
+                        case Error error -> marshalError(httpResponse.body(), error.error());
                       };
                   default -> error(httpResponse, request);
                 });
   }
 
-  static CompletableFuture<Vectors.SearchResponse> search(Request request) {
+  static CompletableFuture<SearchResponse> search(SearchRequest request) {
     return initiateRequest(request)
         .thenApply(
             httpResponse ->
                 switch (httpResponse.statusCode()) {
                   case 200 ->
-                      switch (jsonMapper(httpResponse.body(), SearchResponse.class)) {
-                        case Json<SearchResponse> response -> response.value();
-                        case Error error ->
-                            throw new VectorsException(
-                                "Problems while marshalling response.", error.error());
+                      switch (jsonMapper(httpResponse.body(), NeighborsResponse.class)) {
+                        case Json<NeighborsResponse> response -> response.value();
+                        case Error error -> marshalError(httpResponse.body(), error.error());
+                      };
+                  default -> error(httpResponse, request);
+                });
+  }
+
+  static CompletableFuture<DeleteResponse> remove(RemoveRequest request) {
+    return initiateRequest(request)
+        .thenApply(
+            httpResponse ->
+                switch (httpResponse.statusCode()) {
+                  case 200 ->
+                      switch (jsonMapper(httpResponse.body(), RemoveResponse.class)) {
+                        case Json<RemoveResponse> response -> response.value();
+                        case Error error -> marshalError(httpResponse.body(), error.error());
                       };
                   default -> error(httpResponse, request);
                 });

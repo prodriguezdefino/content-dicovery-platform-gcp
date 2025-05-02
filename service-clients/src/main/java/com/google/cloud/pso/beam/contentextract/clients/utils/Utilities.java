@@ -30,7 +30,7 @@ import dev.failsafe.function.CheckedRunnable;
 import dev.failsafe.function.CheckedSupplier;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.Normalizer;
 import java.time.Duration;
@@ -121,7 +121,7 @@ public class Utilities {
 
   public static Boolean checkIfValidURL(String maybeUrl) {
     try {
-      new URL(maybeUrl);
+      URI.create(maybeUrl).toURL();
       return true;
     } catch (MalformedURLException ex) {
       return false;
@@ -129,26 +129,19 @@ public class Utilities {
   }
 
   public static String extractIdFromURL(String url) {
-    try {
-      var parsedUrl = new URL(url);
-      var path = parsedUrl.getPath();
-      Preconditions.checkState(!path.isEmpty(), "The URL path should not be empty");
-      if (path.contains("/document/d/")) {
-        return extractIdByPattern(path, "/document/d/");
-      } else if (path.contains("/presentation/d/")) {
-        return extractIdByPattern(path, "/presentation/d/");
-      } else if (path.contains("/spreadsheets/d/")) {
-        return extractIdByPattern(path, "/spreadsheets/d/");
-      } else if (path.contains("/drive/folders/")) {
-        return extractIdByPattern(path, "/drive/folders/");
-      } else {
-        throw new IllegalArgumentException(
-            "The shared URL is not a document or drive folder one: " + url);
-      }
-    } catch (MalformedURLException ex) {
-      var msg = "Problems while parsing the Google drive URL: " + url;
-      LOG.error(msg, ex);
-      throw new IllegalArgumentException(msg, ex);
+    var path = URI.create(url).getPath();
+    Preconditions.checkState(!path.isEmpty(), "The URL path should not be empty");
+    if (path.contains("/document/d/")) {
+      return extractIdByPattern(path, "/document/d/");
+    } else if (path.contains("/presentation/d/")) {
+      return extractIdByPattern(path, "/presentation/d/");
+    } else if (path.contains("/spreadsheets/d/")) {
+      return extractIdByPattern(path, "/spreadsheets/d/");
+    } else if (path.contains("/drive/folders/")) {
+      return extractIdByPattern(path, "/drive/folders/");
+    } else {
+      throw new IllegalArgumentException(
+          "The shared URL is not a document or drive folder one: " + url);
     }
   }
 
@@ -186,13 +179,12 @@ public class Utilities {
 
   public static String reconstructDocumentLinkFromEmbeddingsId(
       String embeddingsId, GoogleDriveAPIMimeTypes type) {
-    var fileId = fileIdFromContentId(embeddingsId);
     return switch (type) {
           case DOCUMENT -> "https://docs.google.com/document/d/";
           case SPREADSHEET -> "https://docs.google.com/spreadsheets/d/";
           case PRESENTATION -> "https://docs.google.com/presentation/d/";
           default -> "NA ";
         }
-        + fileId;
+        + fileIdFromContentId(embeddingsId);
   }
 }
