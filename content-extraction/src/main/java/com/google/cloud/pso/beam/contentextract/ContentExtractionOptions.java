@@ -76,10 +76,4 @@ public interface ContentExtractionOptions extends DataflowPipelineOptions {
   String getBigTableTableName();
 
   void setBigTableTableName(String value);
-
-  @Description("The local expansion server url in the form of 'localhost:PORT'.")
-  @Validation.Required
-  String getExpansionService();
-
-  void setExpansionService(String value);
 }

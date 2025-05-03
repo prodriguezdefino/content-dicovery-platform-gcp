@@ -18,5 +18,5 @@ resource "null_resource" "build_and_push_services_image" {
     working_dir = "../services"
   }
 
-  depends_on = [null_resource.build_and_push_beam_embeddings_image]
+  depends_on = [google_artifact_registry_repository.repo]
 }

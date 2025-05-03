@@ -48,7 +48,7 @@ public class ProcessEmbeddings
 
     @ProcessElement
     public void process(
-        @Element ContentChunks content, OutputReceiver<Iterable<IndexableContent>> receiver) {
+        @Element ContentChunks content, OutputReceiver<List<IndexableContent>> receiver) {
       Embeddings.retrieveEmbeddings(
               new Text(
                   "text-embedding-005", content.chunks().stream().map(TextInstance::new).toList()))
