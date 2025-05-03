@@ -105,7 +105,7 @@ public class ContentExtractionTest {
               fetcher.retrieveGoogleDriveFileContent(
                   file.getId(), GoogleDriveAPIMimeTypes.DOCUMENT);
           var jsonLines = ExtractionUtils.docContentToKeyedJSONLFormat(docContent);
-          System.out.println(docContent.getKey());
+          System.out.println(docContent.key());
           jsonLines.forEach(line -> System.out.println(line.getValue()));
         });
   }

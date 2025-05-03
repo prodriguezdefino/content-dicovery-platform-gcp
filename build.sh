@@ -24,11 +24,3 @@ mvn install -DskipTests
 echo " "
 echo " "
 echo " "
-
-echo "install python transforms"
-pushd python-embeddings
-pip3 install .
-popd
-echo " "
-echo " "
-echo " "

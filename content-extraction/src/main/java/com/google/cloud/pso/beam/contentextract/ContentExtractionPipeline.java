@@ -16,9 +16,10 @@
 package com.google.cloud.pso.beam.contentextract;
 
 import com.google.cloud.pso.beam.contentextract.Types.*;
+import com.google.cloud.pso.beam.contentextract.transforms.ContentChunker;
 import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTransform;
 import com.google.cloud.pso.beam.contentextract.transforms.ErrorHandlingTransform;
-import com.google.cloud.pso.beam.contentextract.transforms.FoundationModelsTransform;
+import com.google.cloud.pso.beam.contentextract.transforms.ProcessEmbeddings;
 import com.google.cloud.pso.beam.contentextract.transforms.RefreshContentTransform;
 import com.google.cloud.pso.beam.contentextract.transforms.StoreEmbeddingsResults;
 import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
@@ -98,7 +99,8 @@ public class ContentExtractionPipeline {
     // and then they will be stored in MatchingEngine
     maybeDocsContents
         .output()
-        .apply("ProcessEmbeddings", FoundationModelsTransform.processEmbeddings())
+        .apply("ChunkContent", ContentChunker.create())
+        .apply("ProcessEmbeddings", ProcessEmbeddings.create())
         .apply("StoreEmbeddings", StoreEmbeddingsResults.create());
 
     // also little bit of error handling.
