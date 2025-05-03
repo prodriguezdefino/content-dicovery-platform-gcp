@@ -3,7 +3,7 @@ set -eu
 
 if [ "$#" -ne 3 ] && [ "$#" -ne 4 ]
   then
-    echo "Usage : sh deploy_pipeline.sh <gcp project> <a run name> <region> <optional params>" 
+    echo "Usage : sh deploy_pipeline.sh <gcp project> <a run name> <region> <optional params>"
     exit -1
 fi
 
@@ -16,22 +16,6 @@ pushd infra
 
 source tf-outputs.sh $RUN_NAME
 
-popd
-
-echo " "
-echo "********************************************"
-echo "bootstrap the local expansion service "
-echo "for Beam multi-lang pipeline"
-echo "********************************************"
-echo " "
-
-pushd python-embeddings
-# capture a random open port
-PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
-# start expansion service with the custom python image
-source run_expansion_service.sh $PROJECT_ID $REGION $PORT 
-# EXP_SERVICE_PID is captured in the previous script
-echo "expansion service pid: $EXP_SERVICE_PID"
 popd
 
 pushd content-extraction
@@ -63,8 +47,6 @@ LAUNCH_PARAMS=" \
  --maxNumWorkers=10 \
  --numWorkers=1 \
  --experiments=use_runner_v2 \
- --sdkHarnessContainerImageOverrides=".*python.*,gcr.io/$PROJECT_ID/$REGION/beam-embeddings" \
- --expansionService=localhost:$PORT \
  --topic=projects/$PROJECT_ID/topics/$RUN_NAME \
  --subscription=projects/$PROJECT_ID/subscriptions/$RUN_NAME-sub \
  --bucketLocation=$BUCKET \
@@ -83,4 +65,4 @@ fi
 
 mvn compile exec:java -Dexec.mainClass=com.google.cloud.pso.beam.contentextract.${PIPELINE_NAME} -Dexec.cleanupDaemonThreads=false -Dexec.args="${LAUNCH_PARAMS}"
 
-popd 
+popd

@@ -17,6 +17,7 @@ package com.google.cloud.pso.beam.contentextract.utils;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import com.google.cloud.pso.beam.contentextract.Types;
 import com.google.cloud.pso.beam.contentextract.Types.ContentIdExtractError;
 import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
 import com.google.cloud.pso.beam.contentextract.Types.Transport;
@@ -64,21 +65,16 @@ public class ExtractionUtils {
     }
   }
 
-  public static List<KV<String, String>> docContentToKeyedJSONLFormat(
-      KV<String, List<String>> content) {
-    return content.getValue().stream()
+  public static List<KV<String, String>> docContentToKeyedJSONLFormat(Types.Content content) {
+    return content.content().stream()
         .map(
             contentLine -> {
               var json = new JsonObject();
               json.addProperty("text", contentLine);
               return json.toString();
             })
-        .map(jsonl -> KV.of(content.getKey(), jsonl))
+        .map(jsonl -> KV.of(content.key(), jsonl))
         .toList();
-  }
-
-  public static KV<String, String> contentToKeyedParagraphs(KV<String, List<String>> content) {
-    return KV.of(content.getKey(), content.getValue().stream().collect(Collectors.joining("\n")));
   }
 
   public static List<IndexableContent> addEmbeddingsIdentifiers(

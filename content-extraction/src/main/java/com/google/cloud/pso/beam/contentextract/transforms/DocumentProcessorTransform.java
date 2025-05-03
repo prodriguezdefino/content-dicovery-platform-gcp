@@ -25,7 +25,6 @@ import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.util.Base64;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -37,7 +36,6 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PInput;
@@ -46,7 +44,6 @@ import org.apache.beam.sdk.values.PValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
-import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,10 +121,7 @@ public class DocumentProcessorTransform
             .output()
             .apply(
                 "ExtractContent",
-                MapElements.into(
-                        TypeDescriptors.kvs(
-                            TypeDescriptors.strings(),
-                            TypeDescriptors.lists(TypeDescriptors.strings())))
+                MapElements.into(TypeDescriptor.of(Types.Content.class))
                     .via(
                         (Types.Transport t) ->
                             fetcher.retrieveGoogleDriveFileContent(t.contentId(), t.mimeType()))
@@ -149,22 +143,22 @@ public class DocumentProcessorTransform
   public static class DocumentProcessingResult implements POutput {
 
     private final Pipeline pipeline;
-    private final PCollection<KV<String, List<String>>> output;
+    private final PCollection<Types.Content> output;
     private final PCollection<Types.ProcessingError> docIdFailures;
     private final PCollection<Types.ProcessingError> docUrlFailures;
     private final PCollection<Types.ProcessingError> docContentFailures;
-    private final TupleTag<KV<String, List<String>>> outputTag;
+    private final TupleTag<Types.Content> outputTag;
     private final TupleTag<Types.ProcessingError> docIdFailuresTag;
     private final TupleTag<Types.ProcessingError> docUrlFailuresTag;
     private final TupleTag<Types.ProcessingError> docContentFailuresTag;
 
     public DocumentProcessingResult(
         Pipeline pipeline,
-        PCollection<KV<String, List<String>>> output,
+        PCollection<Types.Content> output,
         PCollection<Types.ProcessingError> docIdFailures,
         PCollection<Types.ProcessingError> docUrlFailures,
         PCollection<Types.ProcessingError> docContentFailures,
-        TupleTag<KV<String, List<String>>> outputTag,
+        TupleTag<Types.Content> outputTag,
         TupleTag<Types.ProcessingError> docIdFailuresTag,
         TupleTag<Types.ProcessingError> docUrlFailuresTag,
         TupleTag<Types.ProcessingError> docContentFailuresTag) {
@@ -181,7 +175,7 @@ public class DocumentProcessorTransform
 
     public static DocumentProcessingResult of(
         Pipeline pipeline,
-        PCollection<KV<String, List<String>>> output,
+        PCollection<Types.Content> output,
         PCollection<Types.ProcessingError> docIdFailures,
         PCollection<Types.ProcessingError> docUrlFailures,
         PCollection<Types.ProcessingError> docContentFailures) {
@@ -219,7 +213,7 @@ public class DocumentProcessorTransform
     public void finishSpecifyingOutput(
         String transformName, PInput input, PTransform<?, ?> transform) {}
 
-    public PCollection<KV<String, List<String>>> output() {
+    public PCollection<Types.Content> output() {
       return output;
     }
 
@@ -232,7 +226,7 @@ public class DocumentProcessorTransform
     private static final Logger LOG = LoggerFactory.getLogger(CheckIfContentIsIncludedDoFn.class);
 
     static final TupleTag<PubsubMessage> pubsubMessageContent = new TupleTag<>() {};
-    static final TupleTag<KV<String, List<String>>> documentContent = new TupleTag<>() {};
+    static final TupleTag<Types.Content> documentContent = new TupleTag<>() {};
     static final TupleTag<Types.ProcessingError> failures = new TupleTag<>() {};
 
     @ProcessElement
@@ -247,7 +241,7 @@ public class DocumentProcessorTransform
           var document = json.getAsJsonObject("document");
           if (document.has("id") && document.has("content")) {
             var content =
-                KV.of(
+                new Types.Content(
                     document.get("id").getAsString(),
                     Stream.of(
                             new String(
