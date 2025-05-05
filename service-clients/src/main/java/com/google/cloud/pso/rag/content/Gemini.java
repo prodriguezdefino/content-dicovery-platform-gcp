@@ -20,8 +20,8 @@ import static com.google.cloud.pso.rag.common.HttpInteractionHelper.jsonMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
-import com.google.cloud.pso.rag.common.HttpInteractionHelper.Error;
-import com.google.cloud.pso.rag.common.HttpInteractionHelper.Json;
+import com.google.cloud.pso.rag.common.Result.Failure;
+import com.google.cloud.pso.rag.common.Result.Success;
 import com.google.genai.Client;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
@@ -90,10 +90,9 @@ public class Gemini {
   static ChunkResponse response(GenerateContentResponse generatedResponse) {
     return switch (jsonMapper(
         generatedResponse.text(), new TypeReference<ArrayList<String>>() {})) {
-      case Json<ArrayList<String>> response -> new TextChunkResponse(response.value());
-      case Error error ->
-          new Chunks.ErrorResponse(
-              "Error while parsing response from model.", Optional.of(error.error()));
+      case Success<ArrayList<String>, ?>(var response) -> new TextChunkResponse(response);
+      case Failure<?, Exception>(var ex) ->
+          new Chunks.ErrorResponse("Error while parsing response from model.", Optional.of(ex));
     };
   }
 

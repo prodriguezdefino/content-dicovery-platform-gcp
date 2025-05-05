@@ -27,7 +27,6 @@ import com.google.cloud.pso.data.services.exceptions.QueryResourceException;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.cloud.pso.rag.vector.VectorSearch;
 import com.google.cloud.pso.rag.vector.Vectors;
-import com.google.cloud.pso.rag.vector.VectorsException;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -154,8 +153,8 @@ public class QueryResource {
                       switch (nnResp) {
                         case Vectors.ErrorResponse(var message, var cause) ->
                             throw cause
-                                .map(ex -> new VectorsException(message, ex))
-                                .orElse(new VectorsException(message));
+                                .map(ex -> new RuntimeException(message, ex))
+                                .orElse(new RuntimeException(message));
 
                         case VectorSearch.NeighborsResponse(var nearestNeighbors) ->
                             nearestNeighbors.stream()

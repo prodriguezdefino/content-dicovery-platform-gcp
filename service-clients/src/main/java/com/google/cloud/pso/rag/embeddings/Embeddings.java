@@ -53,10 +53,10 @@ public interface Embeddings {
           predictions.stream().map(emb -> emb.embeddings().values()).toList();
       case VertexAi.MultimodalResponse(var predictions) ->
           predictions.stream().flatMap(mmEmb -> mmEmb.textEmbedding().stream()).toList();
-      case Embeddings.ErrorResponse(var message, var cause) ->
+      case ErrorResponse(var message, var cause) ->
           throw cause
-              .map(ex -> new EmbeddingsException(message, ex))
-              .orElse(new EmbeddingsException(message));
+              .map(ex -> new RuntimeException(message, ex))
+              .orElse(new RuntimeException(message));
     };
   }
 }

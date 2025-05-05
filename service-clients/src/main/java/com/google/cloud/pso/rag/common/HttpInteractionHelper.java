@@ -40,30 +40,29 @@ public class HttpInteractionHelper {
     return HTTP_CLIENT;
   }
 
-  public sealed interface MaybeJson<T> permits Json, Error {}
-
-  public record Json<T>(T value) implements MaybeJson<T> {}
-
-  public record Error<T>(Throwable error) implements MaybeJson<T> {}
-
-  public static <T> MaybeJson<T> jsonMapper(String value, Class<T> valueType) {
+  public static <T> Result<T, Exception> jsonMapper(String value, Class<T> valueType) {
     try {
-      return new Json<>(JSON_MAPPER.readValue(value, valueType));
+      return Result.success(JSON_MAPPER.readValue(value, valueType));
     } catch (JsonProcessingException ex) {
-      return new Error<>(ex);
+      return Result.failure(ex);
     }
   }
 
-  public static <T> MaybeJson<T> jsonMapper(String value, TypeReference<T> valueTypeReference) {
+  public static <T> Result<T, Exception> jsonMapper(
+      String value, TypeReference<T> valueTypeReference) {
     try {
-      return new Json<>(JSON_MAPPER.readValue(value, valueTypeReference));
+      return Result.success(JSON_MAPPER.readValue(value, valueTypeReference));
     } catch (JsonProcessingException ex) {
-      return new Error<>(ex);
+      return Result.failure(ex);
     }
   }
 
-  public static String jsonMapper(Object value) throws JsonProcessingException {
-    return JSON_MAPPER.writeValueAsString(value);
+  public static Result<String, Exception> jsonMapper(Object value) {
+    try {
+      return Result.success(JSON_MAPPER.writeValueAsString(value));
+    } catch (JsonProcessingException ex) {
+      return Result.failure(ex);
+    }
   }
 
   public static HttpRequest createHTTPBasedRequest(URI uri, String body, String accessToken)
