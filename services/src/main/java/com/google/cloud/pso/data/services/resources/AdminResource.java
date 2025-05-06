@@ -16,12 +16,13 @@
 package com.google.cloud.pso.data.services.resources;
 
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
+import com.google.cloud.pso.data.services.beans.BeansProducer;
 import com.google.cloud.pso.data.services.beans.BigTableService;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentInfo;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentKeys;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentUrl;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.Info;
-import com.google.cloud.pso.rag.vector.VectorSearch;
+import com.google.cloud.pso.rag.vector.VectorRequests;
 import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.collect.Lists;
 import jakarta.enterprise.context.SessionScoped;
@@ -48,6 +49,7 @@ public class AdminResource {
 
   @Inject BigTableService btService;
   @Inject GoogleDriveClient googleDriveClient;
+  @Inject BeansProducer.Interactions interactions;
 
   @GET
   @Path("/ids")
@@ -116,7 +118,7 @@ public class AdminResource {
   @Consumes(MediaType.APPLICATION_JSON)
   @Timed(name = "content.admin.delete.key", unit = MetricUnits.MILLISECONDS)
   public void deleteContentKey(ContentKeys contentKeys) {
-    Vectors.removeVectors(new VectorSearch.RemoveRequest(contentKeys.keys()));
+    Vectors.removeVectors(VectorRequests.remove(interactions.vectorStorage(), contentKeys.keys()));
     btService.deleteRowsByKeys(contentKeys.keys());
   }
 
@@ -141,7 +143,7 @@ public class AdminResource {
         contentIdsToDelete.add(key);
       }
     }
-    Vectors.removeVectors(new VectorSearch.RemoveRequest(contentIdsToDelete));
+    Vectors.removeVectors(VectorRequests.remove(interactions.vectorStorage(), contentIdsToDelete));
     btService.deleteRowsByKeys(contentIdsToDelete);
   }
 }

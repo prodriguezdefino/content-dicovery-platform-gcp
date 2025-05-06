@@ -45,10 +45,6 @@ public class BeansProducer {
   private String region;
   private String cloudRunServiceId;
   private String pubsubTopic;
-  private String matchingEngineIndexId;
-  private String matchingEngineIndexEndpointId;
-  private String matchingEngineIndexEndpointDomain;
-  private String matchingEngineIndexDeploymentId;
   private String bigTableInstanceName;
   private String bigTableQueryContextTableName;
   private String bigTableQueryContextColumnFamily;
@@ -59,6 +55,7 @@ public class BeansProducer {
   private String bigTableContentColumnQualifierContext;
   private String serviceAccount;
   private Boolean logInteraction;
+  private Interactions interactions;
 
   private final Integer maxNeighbors = 3;
   private final Double maxNeighborDistance = 10.0;
@@ -79,12 +76,12 @@ public class BeansProducer {
     region = configuration.get("region").getAsString();
     cloudRunServiceId = configuration.get("cloudrun.service.id").getAsString();
     pubsubTopic = configuration.get("pubsub.topic").getAsString();
-    matchingEngineIndexId = configuration.get("matchingengine.index.id").getAsString();
-    matchingEngineIndexEndpointId =
+    var matchingEngineIndexId = configuration.get("matchingengine.index.id").getAsString();
+    var matchingEngineIndexEndpointId =
         configuration.get("matchingengine.indexendpoint.id").getAsString();
-    matchingEngineIndexEndpointDomain =
+    var matchingEngineIndexEndpointDomain =
         configuration.get("matchingengine.indexendpoint.domain").getAsString();
-    matchingEngineIndexDeploymentId =
+    var matchingEngineIndexDeploymentId =
         configuration.get("matchingengine.index.deployment").getAsString();
     bigTableInstanceName = configuration.get("bt.instance").getAsString();
     bigTableQueryContextTableName = configuration.get("bt.contexttable").getAsString();
@@ -129,6 +126,11 @@ public class BeansProducer {
                 matchingEngineIndexEndpointId,
                 matchingEngineIndexId,
                 matchingEngineIndexDeploymentId)));
+    interactions =
+        new Interactions(
+            configuration.get("embeddings_models").getAsJsonArray().get(0).getAsString(),
+            configuration.get("vector_storages").getAsJsonArray().get(0).getAsString(),
+            configuration.get("chunkers").getAsJsonArray().get(0).getAsString());
   }
 
   @Produces
@@ -146,7 +148,6 @@ public class BeansProducer {
   public ServiceTypes.ResourceConfiguration produceResourceConfiguration() {
     return new ServiceTypes.ResourceConfiguration(
         logInteraction,
-        matchingEngineIndexDeploymentId,
         maxNeighbors,
         maxNeighborDistance,
         temperature,
@@ -167,6 +168,11 @@ public class BeansProducer {
         bigTableContentColumnQualifierLink,
         bigTableContentColumnQualifierContext,
         projectId);
+  }
+
+  @Produces
+  public Interactions interactions() {
+    return interactions;
   }
 
   @Produces
@@ -195,4 +201,6 @@ public class BeansProducer {
   public Boolean includeOwnKnowledgeEnrichment() {
     return includeOwnKnowledgeEnrichment;
   }
+
+  public record Interactions(String embeddingsModel, String vectorStorage, String chunker) {}
 }

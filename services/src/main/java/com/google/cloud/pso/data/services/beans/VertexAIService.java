@@ -19,8 +19,8 @@ import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.cloud.pso.rag.embeddings.Embeddings;
-import com.google.cloud.pso.rag.embeddings.VertexAi;
-import com.google.cloud.pso.rag.vector.VectorSearch;
+import com.google.cloud.pso.rag.embeddings.EmbeddingsRequests;
+import com.google.cloud.pso.rag.vector.VectorRequests;
 import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.collect.Lists;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -37,7 +37,7 @@ public class VertexAIService {
 
   @Inject PalmClient palmService;
   @Inject ServiceTypes.ResourceConfiguration configuration;
-  private String embeddingsModel = "text-embedding-005";
+  @Inject BeansProducer.Interactions interactions;
 
   @Timed(name = "palm.exchanges.summarization", unit = MetricUnits.MILLISECONDS)
   public Optional<Types.PalmSummarizationResponse> retrievePreviousSummarizedConversation(
@@ -79,7 +79,8 @@ public class VertexAIService {
   public CompletableFuture<Embeddings.Response> retrieveEmbeddings(
       ServiceTypes.UserQuery query, String previousSummarizedConversation) {
     return Embeddings.retrieveEmbeddings(
-        new VertexAi.Text(embeddingsModel, List.of(new VertexAi.TextInstance(query.text()))));
+        EmbeddingsRequests.create(
+            interactions.embeddingsModel(), Embeddings.Types.TEXT, List.of(query.text())));
   }
 
   @Timed(name = "vectorseach.ann", unit = MetricUnits.MILLISECONDS)
@@ -87,15 +88,17 @@ public class VertexAIService {
       Embeddings.Response embResponse, ServiceTypes.UserQuery query) {
 
     return Vectors.findNearestNeighbors(
-        VectorSearch.requestFromValues(
-            // use min value between statically configured and the request one (if
-            // exists)
+        VectorRequests.find(
+            interactions.vectorStorage(),
+            Embeddings.extractValuesFromEmbeddings(embResponse).stream()
+                .map(VectorRequests.Vector::new)
+                .toList(),
+            // use min value between statically configured and the request one (if exists)
             Integer.min(
                 configuration.maxNeighbors(),
                 Optional.ofNullable(query.parameters())
                     .flatMap(params -> Optional.ofNullable(params.maxNeighbors()))
-                    .orElse(Integer.MAX_VALUE)),
-            Embeddings.extractValuesFromEmbeddings(embResponse)));
+                    .orElse(Integer.MAX_VALUE))));
   }
 
   Types.PalmRequestParameters palmRequestParameters(

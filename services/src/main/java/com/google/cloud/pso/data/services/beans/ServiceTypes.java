@@ -88,11 +88,7 @@ public class ServiceTypes {
     }
 
     String checkUrl(String maybeUrl) {
-      try {
-        return new URI(maybeUrl).toString();
-      } catch (URISyntaxException ex) {
-        throw new IllegalArgumentException(ex);
-      }
+      return URI.create(maybeUrl).toString();
     }
   }
 
@@ -106,7 +102,6 @@ public class ServiceTypes {
 
   public record ResourceConfiguration(
       Boolean logInteractions,
-      String matchingEngineIndexDeploymentId,
       Integer maxNeighbors,
       Double maxNeighborDistance,
       Double temperature,
