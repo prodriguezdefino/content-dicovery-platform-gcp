@@ -118,11 +118,11 @@ public class VertexAi {
    Multimodal embeddings requests types.
   */
 
-  record Multimodal(String model, List<MultimodalInstance> data) implements Request {}
+  public record Multimodal(String model, List<MultimodalInstance> data) implements Request {}
 
   record MultimodalEmbeddingRequest(List<MultimodalInstance> instances) {}
 
-  record MultimodalInstance(
+  public record MultimodalInstance(
       Optional<String> text,
       Optional<ImageData> image,
       Optional<VideoData> video,
@@ -133,11 +133,19 @@ public class VertexAi {
             "A multimodal embeddings request should set one of text, image or video data.");
       }
     }
+
+    public MultimodalInstance(ImageData image) {
+      this(Optional.empty(), Optional.of(image), Optional.empty(), Optional.empty());
+    }
+
+    public MultimodalInstance(VideoData video) {
+      this(Optional.empty(), Optional.empty(), Optional.of(video), Optional.empty());
+    }
   }
 
-  record MultimodalParameters(Integer dimension) implements Parameters {}
+  public record MultimodalParameters(Integer dimension) implements Parameters {}
 
-  record ImageData(
+  public record ImageData(
       Optional<String> bytesBase64Encoded, Optional<String> gcsUri, Optional<String> mimeType) {
 
     public ImageData {
@@ -148,7 +156,7 @@ public class VertexAi {
     }
   }
 
-  record VideoData(
+  public record VideoData(
       Optional<String> bytesBase64Encoded,
       Optional<String> gcsUri,
       Optional<VideoSegment> videoSegmentConfig) {
@@ -160,12 +168,12 @@ public class VertexAi {
     }
   }
 
-  record VideoSegment(
+  public record VideoSegment(
       Optional<Integer> startOffsetSec,
       Optional<Integer> endOffsetSec,
       Optional<Integer> intervalSec) {}
 
-  record MultimodalResponse(List<MultimodalPrediction> predictions) implements Response {
+  public record MultimodalResponse(List<MultimodalPrediction> predictions) implements Response {
 
     @Override
     public Embeddings.ResponseMetadata metadata() {
@@ -173,14 +181,15 @@ public class VertexAi {
     }
   }
 
-  record MultimodalResponseMetadata() implements ResponseMetadata {}
+  public record MultimodalResponseMetadata() implements ResponseMetadata {}
 
-  record MultimodalPrediction(
+  public record MultimodalPrediction(
       Optional<List<Double>> textEmbedding,
       Optional<List<Double>> imageEmbedding,
       Optional<VideoEmbedding> videoEmbeddings) {}
 
-  record VideoEmbedding(Integer startOffsetSec, Integer endOffsetSec, List<Double> embedding) {}
+  public record VideoEmbedding(
+      Integer startOffsetSec, Integer endOffsetSec, List<Double> embedding) {}
 
   static Result<String, Exception> requestBody(Request request) {
     return switch (request) {

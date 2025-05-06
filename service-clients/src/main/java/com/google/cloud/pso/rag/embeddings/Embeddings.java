@@ -22,6 +22,14 @@ import java.util.concurrent.CompletableFuture;
 /** */
 public interface Embeddings {
 
+  enum Types {
+    TEXT,
+    IMAGE_RAW,
+    IMAGE_LINK,
+    VIDEO_RAW,
+    VIDEO_LINK,
+  }
+
   sealed interface Parameters permits VertexAi.Parameters {}
 
   sealed interface Request permits VertexAi.Request {}

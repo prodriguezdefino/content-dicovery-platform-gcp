@@ -121,9 +121,9 @@ public class Utilities {
 
   public static Boolean checkIfValidURL(String maybeUrl) {
     try {
-      URI.create(maybeUrl).toURL();
+      URI.create(maybeUrl);
       return true;
-    } catch (MalformedURLException ex) {
+    } catch (IllegalArgumentException ex) {
       return false;
     }
   }
