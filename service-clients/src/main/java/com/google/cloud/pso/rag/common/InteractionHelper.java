@@ -25,9 +25,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** */
-public class HttpInteractionHelper {
+public class InteractionHelper {
 
   static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().build();
   static final ObjectMapper JSON_MAPPER =
@@ -35,6 +37,8 @@ public class HttpInteractionHelper {
           .registerModule(new Jdk8Module())
           .setSerializationInclusion(JsonInclude.Include.NON_ABSENT)
           .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+  public static final ExecutorService EXEC = Executors.newVirtualThreadPerTaskExecutor();
 
   public static HttpClient httpClient() {
     return HTTP_CLIENT;

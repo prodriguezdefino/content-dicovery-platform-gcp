@@ -15,9 +15,9 @@
  */
 package com.google.cloud.pso.rag.vector;
 
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.createHTTPBasedRequest;
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.httpClient;
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.jsonMapper;
+import static com.google.cloud.pso.rag.common.InteractionHelper.createHTTPBasedRequest;
+import static com.google.cloud.pso.rag.common.InteractionHelper.httpClient;
+import static com.google.cloud.pso.rag.common.InteractionHelper.jsonMapper;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
