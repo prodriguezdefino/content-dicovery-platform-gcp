@@ -29,7 +29,6 @@ import dev.failsafe.RetryPolicy;
 import dev.failsafe.function.CheckedRunnable;
 import dev.failsafe.function.CheckedSupplier;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.Normalizer;

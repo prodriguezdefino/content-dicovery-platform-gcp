@@ -25,7 +25,6 @@ import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.io.FileIO;
