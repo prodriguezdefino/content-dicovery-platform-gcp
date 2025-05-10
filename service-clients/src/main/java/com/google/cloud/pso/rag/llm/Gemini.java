@@ -7,6 +7,8 @@ import com.google.cloud.pso.rag.common.Result;
 import com.google.cloud.pso.rag.common.Result.Failure;
 import com.google.cloud.pso.rag.common.Result.Success;
 import com.google.cloud.pso.rag.llm.LLM.ErrorResponse;
+import com.google.cloud.pso.rag.llm.LLM.Parameters;
+import com.google.cloud.pso.rag.llm.LLM.Exchange;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
@@ -28,11 +30,11 @@ public class Gemini {
 
   sealed interface Summarize extends LLM.SummarizationRequest permits SummarizeRequest {}
 
-  public record ChatRequest(String model, List<Exchange> exchanges) implements Chat {}
+  public record ChatRequest(String model, List<Exchange> exchanges, Parameters params)
+      implements Chat {}
 
-  public record Exchange(String author, String content) {}
-
-  public record SummarizeRequest(String model, List<String> content) implements Summarize {}
+  public record SummarizeRequest(String model, List<String> content, Parameters params)
+      implements Summarize {}
 
   public sealed interface ChatResponse extends LLM.ChatResponse
       permits ErrorResponse, ChattingResponse {}
@@ -40,12 +42,28 @@ public class Gemini {
   public sealed interface SummarizeResponse extends LLM.SummarizationResponse
       permits ErrorResponse, SummarizationResponse {}
 
-  public record ChattingResponse(Exchange answer) implements ChatResponse {}
+  public record ChattingResponse(Exchange answer, Optional<String> blockReason)
+      implements ChatResponse {}
 
   public record SummarizationResponse(String content) implements SummarizeResponse {}
 
   static String formatErrorWithResponse(String response) {
     return String.format("Error returned from the model, see response: %s", response);
+  }
+
+  static Optional<String> extractModelFeedback(GenerateContentResponse response) {
+    return response
+        .promptFeedback()
+        .flatMap(
+            feedback ->
+                feedback
+                    .blockReason()
+                    .map(
+                        reason ->
+                            feedback
+                                .blockReasonMessage()
+                                .map(msg -> reason + " " + msg)
+                                .orElse(reason)));
   }
 
   static Optional<String> extractResponse(GenerateContentResponse response) {
@@ -80,7 +98,8 @@ public class Gemini {
 
   static ChatResponse chattingResponse(GenerateContentResponse generatedResponse) {
     return switch (extractExchange(generatedResponse)) {
-      case Success<Exchange, ?>(var exchange) -> new ChattingResponse(exchange);
+      case Success<Exchange, ?>(var exchange) ->
+          new ChattingResponse(exchange, extractModelFeedback(generatedResponse));
       case Failure<?, String>(var jsonResponse) ->
           new ErrorResponse(formatErrorWithResponse(jsonResponse));
     };
@@ -98,10 +117,19 @@ public class Gemini {
                             .map(
                                 exch ->
                                     Content.builder()
-                                        .role(exch.author)
-                                        .parts(List.of(Part.fromText(exch.content)))
+                                        .role(exch.author())
+                                        .parts(List.of(Part.fromText(exch.content())))
                                         .build())
-                            .toList()),
+                            .toList(),
+                        Models.setupParameters(
+                                Models.DEFAULT_CONFIG,
+                                request.params().topK(),
+                                request.params().topP(),
+                                request.params().temperature(),
+                                request.params().maxOutputTokens())
+                            .toBuilder()
+                            .responseSchema(Models.STRING_SCHEMA)
+                            .build()),
             InteractionHelper.EXEC)
         .thenApply(Gemini::chattingResponse)
         .exceptionally(
@@ -122,7 +150,13 @@ public class Gemini {
                                 .map(Part::fromText)
                                 .toList())
                         .build(),
-                    Models.DEFAULT_CONFIG.toBuilder()
+                    Models.setupParameters(
+                            Models.DEFAULT_CONFIG,
+                            request.params().topK(),
+                            request.params().topP(),
+                            request.params().temperature(),
+                            request.params().maxOutputTokens())
+                        .toBuilder()
                         .systemInstruction(SYSTEM_SUMMARIZATION_INSTRUCTION)
                         .responseSchema(Models.STRING_SCHEMA)
                         .build()),

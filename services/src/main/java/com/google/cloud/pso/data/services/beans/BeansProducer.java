@@ -16,7 +16,6 @@
 package com.google.cloud.pso.data.services.beans;
 
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
-import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.gson.Gson;
@@ -130,18 +129,14 @@ public class BeansProducer {
         new Interactions(
             configuration.get("embeddings_models").getAsJsonArray().get(0).getAsString(),
             configuration.get("vector_storages").getAsJsonArray().get(0).getAsString(),
-            configuration.get("chunkers").getAsJsonArray().get(0).getAsString());
+            configuration.get("chunkers").getAsJsonArray().get(0).getAsString(),
+            configuration.get("llms").getAsJsonArray().get(0).getAsString());
   }
 
   @Produces
   @Named("cloudrun.service.id")
   public String cloudRunServiceId() {
     return cloudRunServiceId;
-  }
-
-  @Produces
-  public PalmClient producePalmClient() {
-    return PalmClient.create(projectId, region);
   }
 
   @Produces
@@ -202,5 +197,6 @@ public class BeansProducer {
     return includeOwnKnowledgeEnrichment;
   }
 
-  public record Interactions(String embeddingsModel, String vectorStorage, String chunker) {}
+  public record Interactions(
+      String embeddingsModel, String vectorStorage, String chunker, String llm) {}
 }

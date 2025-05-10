@@ -23,6 +23,7 @@ locals {
         "service.account" : "${google_service_account.dataflow_runner_sa.email}",
         "embeddings_models" : ${jsonencode(var.embeddings_models)},
         "vector_storages" : ${jsonencode(var.vector_storages)},
+        "llms" : ${jsonencode(var.llms)},
         "chunkers" : ${jsonencode(var.chunkers)}
       }
 EOL

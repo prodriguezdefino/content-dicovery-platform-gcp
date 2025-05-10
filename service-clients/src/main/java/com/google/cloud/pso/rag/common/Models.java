@@ -1,5 +1,6 @@
 package com.google.cloud.pso.rag.common;
 
+import com.google.cloud.pso.rag.llm.LLM;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.SafetySetting;
@@ -51,5 +52,19 @@ public class Models {
       }
     }
     return GEMINI;
+  }
+
+  public static GenerateContentConfig setupParameters(
+      GenerateContentConfig config,
+      Integer topK,
+      Double topP,
+      Double temperature,
+      Integer maxOutputTokens) {
+    return config.toBuilder()
+        .topK(topK.floatValue())
+        .topP(topP.floatValue())
+        .temperature(temperature.floatValue())
+        .maxOutputTokens(maxOutputTokens)
+        .build();
   }
 }

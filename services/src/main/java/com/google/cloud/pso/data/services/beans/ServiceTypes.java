@@ -47,11 +47,7 @@ public class ServiceTypes {
   public record UserQuery(String text, String sessionId, QueryParameters parameters) {}
 
   public record QueryResult(
-      String content,
-      String previousConversationSummary,
-      List<LinkAndDistance> sourceLinks,
-      List<Types.CitationMetadata> citationMetadata,
-      List<Types.SafetyAttributes> safetyAttributes) {}
+      String content, String previousConversationSummary, List<LinkAndDistance> sourceLinks) {}
 
   public static class MultipartContentIngestionRequest {
     @FormParam("documentId")

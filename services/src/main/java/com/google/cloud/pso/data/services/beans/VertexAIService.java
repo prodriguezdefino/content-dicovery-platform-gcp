@@ -15,19 +15,19 @@
  */
 package com.google.cloud.pso.data.services.beans;
 
-import com.google.cloud.pso.beam.contentextract.clients.PalmClient;
-import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.cloud.pso.rag.embeddings.Embeddings;
 import com.google.cloud.pso.rag.embeddings.EmbeddingsRequests;
+import com.google.cloud.pso.rag.llm.LLM;
+import com.google.cloud.pso.rag.llm.LLMRequests;
 import com.google.cloud.pso.rag.vector.VectorRequests;
 import com.google.cloud.pso.rag.vector.Vectors;
-import com.google.common.collect.Lists;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import org.eclipse.microprofile.metrics.MetricUnits;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 
@@ -35,44 +35,48 @@ import org.eclipse.microprofile.metrics.annotation.Timed;
 @ApplicationScoped
 public class VertexAIService {
 
-  @Inject PalmClient palmService;
   @Inject ServiceTypes.ResourceConfiguration configuration;
   @Inject BeansProducer.Interactions interactions;
 
   @Timed(name = "palm.exchanges.summarization", unit = MetricUnits.MILLISECONDS)
-  public Optional<Types.PalmSummarizationResponse> retrievePreviousSummarizedConversation(
-      List<ServiceTypes.QAndA> qsAndAs) {
+  public CompletableFuture<Optional<LLM.SummarizationResponse>>
+      retrievePreviousSummarizedConversation(List<ServiceTypes.QAndA> qsAndAs) {
     if (qsAndAs.isEmpty()) {
-      return Optional.empty();
+      return CompletableFuture.completedFuture(Optional.empty());
     }
-    return Optional.of(
-        palmService.predictSummarizationWithRetries(
-            new Types.PalmSummarizationRequest(
-                new Types.PalmRequestParameters(
+    return LLM.summarize(
+            LLMRequests.summarize(
+                interactions.llm(),
+                PromptUtilities.formatChatSummaryPrompt(
+                    qsAndAs.stream().flatMap(q -> q.toExchange().stream()).toList()),
+                new LLM.Parameters(
                     configuration.temperature(),
                     configuration.maxOutputTokens(),
                     configuration.topK(),
-                    configuration.topP()),
-                new Types.SummarizationInstances(
-                    PromptUtilities.formatChatSummaryPrompt(
-                        qsAndAs.stream().flatMap(q -> q.toExchange().stream()).toList())))));
+                    configuration.topP())))
+        .thenApply(Optional::of);
   }
 
   @Timed(name = "palm.chat.prediction", unit = MetricUnits.MILLISECONDS)
-  public Types.PalmChatResponse retrieveChatResponse(
+  public CompletableFuture<? extends LLM.ChatResponse> retrieveChatResponse(
       List<ServiceTypes.QAndA> lastsQAndAs,
       ServiceTypes.UserQuery query,
       String palmRequestContext) {
-    var currentExchange =
-        Lists.newArrayList(lastsQAndAs.stream().flatMap(qaa -> qaa.toExchange().stream()).toList());
-    currentExchange.add(new Types.Exchange("user", query.text()));
-    var palmResp =
-        palmService.predictChatAnswerWithRetries(
-            new Types.PalmChatAnswerRequest(
-                palmRequestParameters(Optional.ofNullable(query.parameters())),
-                new Types.ChatInstances(
-                    palmRequestContext, PromptUtilities.EXCHANGE_EXAMPLES, currentExchange)));
-    return palmResp;
+
+    var exchanges =
+        Stream.concat(
+                lastsQAndAs.stream()
+                    .flatMap(
+                        qaa ->
+                            Stream.of(
+                                new LLM.Exchange("user", qaa.question()),
+                                new LLM.Exchange("model", qaa.answer()))),
+                Stream.of(new LLM.Exchange("user", query.text())))
+            .toList();
+
+    return LLM.chat(
+        LLMRequests.chat(
+            interactions.llm(), exchanges, llmParameters(Optional.ofNullable(query.parameters()))));
   }
 
   @Timed(name = "embeddings.prediction", unit = MetricUnits.MILLISECONDS)
@@ -101,9 +105,8 @@ public class VertexAIService {
                     .orElse(Integer.MAX_VALUE))));
   }
 
-  Types.PalmRequestParameters palmRequestParameters(
-      Optional<ServiceTypes.QueryParameters> parameters) {
-    return new Types.PalmRequestParameters(
+  LLM.Parameters llmParameters(Optional<ServiceTypes.QueryParameters> parameters) {
+    return new LLM.Parameters(
         parameters.map(p -> p.temperature()).orElse(configuration.temperature()),
         parameters.map(p -> p.maxOutputTokens()).orElse(configuration.maxOutputTokens()),
         parameters.map(p -> p.topK()).orElse(configuration.topK()),

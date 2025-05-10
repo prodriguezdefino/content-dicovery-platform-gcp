@@ -201,6 +201,12 @@ variable chunkers {
   default = ["gemini-2.0-flash"]
 }
 
+variable llms {
+  description = "A list of LLM implementations to be used."
+  type = set(string)
+  default = ["gemini-2.0-flash"]
+}
+
 output "df_sa" {
   value = google_service_account.dataflow_runner_sa.email
 }

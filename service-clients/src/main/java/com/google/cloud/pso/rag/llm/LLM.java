@@ -14,6 +14,11 @@ public interface LLM {
 
   sealed interface SummarizationResponse permits Gemini.SummarizeResponse {}
 
+  record Exchange(String author, String content) {}
+
+  public record Parameters(
+      Double temperature, Integer maxOutputTokens, Integer topK, Double topP) {}
+
   record ErrorResponse(String message, Optional<Throwable> cause)
       implements Gemini.ChatResponse, Gemini.SummarizeResponse {
     public ErrorResponse(String message) {
