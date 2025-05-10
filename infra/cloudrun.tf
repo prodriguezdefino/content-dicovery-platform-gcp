@@ -20,7 +20,11 @@ locals {
         "matchingengine.indexendpoint.domain" : "${google_vertex_ai_index_endpoint.vertex_index_endpoint.public_endpoint_domain_name}",
         "bot.contextexpertise" : "${var.bot_context_expertise}",
         "bot.includeownknowledge" : "${var.bot_include_own_knowledge}",
-        "service.account" : "${google_service_account.dataflow_runner_sa.email}"
+        "service.account" : "${google_service_account.dataflow_runner_sa.email}",
+        "embeddings_models" : ${jsonencode(var.embeddings_models)},
+        "vector_storages" : ${jsonencode(var.vector_storages)},
+        "llms" : ${jsonencode(var.llms)},
+        "chunkers" : ${jsonencode(var.chunkers)}
       }
 EOL
 }

@@ -25,9 +25,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** */
-public class HttpInteractionHelper {
+public class InteractionHelper {
 
   static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().build();
   static final ObjectMapper JSON_MAPPER =
@@ -36,34 +38,35 @@ public class HttpInteractionHelper {
           .setSerializationInclusion(JsonInclude.Include.NON_ABSENT)
           .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
+  public static final ExecutorService EXEC = Executors.newVirtualThreadPerTaskExecutor();
+
   public static HttpClient httpClient() {
     return HTTP_CLIENT;
   }
 
-  public sealed interface MaybeJson<T> permits Json, Error {}
-
-  public record Json<T>(T value) implements MaybeJson<T> {}
-
-  public record Error<T>(Throwable error) implements MaybeJson<T> {}
-
-  public static <T> MaybeJson<T> jsonMapper(String value, Class<T> valueType) {
+  public static <T> Result<T, Exception> jsonMapper(String value, Class<T> valueType) {
     try {
-      return new Json<>(JSON_MAPPER.readValue(value, valueType));
+      return Result.success(JSON_MAPPER.readValue(value, valueType));
     } catch (JsonProcessingException ex) {
-      return new Error<>(ex);
+      return Result.failure(ex);
     }
   }
 
-  public static <T> MaybeJson<T> jsonMapper(String value, TypeReference<T> valueTypeReference) {
+  public static <T> Result<T, Exception> jsonMapper(
+      String value, TypeReference<T> valueTypeReference) {
     try {
-      return new Json<>(JSON_MAPPER.readValue(value, valueTypeReference));
+      return Result.success(JSON_MAPPER.readValue(value, valueTypeReference));
     } catch (JsonProcessingException ex) {
-      return new Error<>(ex);
+      return Result.failure(ex);
     }
   }
 
-  public static String jsonMapper(Object value) throws JsonProcessingException {
-    return JSON_MAPPER.writeValueAsString(value);
+  public static Result<String, Exception> jsonMapper(Object value) {
+    try {
+      return Result.success(JSON_MAPPER.writeValueAsString(value));
+    } catch (JsonProcessingException ex) {
+      return Result.failure(ex);
+    }
   }
 
   public static HttpRequest createHTTPBasedRequest(URI uri, String body, String accessToken)

@@ -22,6 +22,14 @@ import java.util.concurrent.CompletableFuture;
 /** */
 public interface Embeddings {
 
+  enum Types {
+    TEXT,
+    IMAGE_RAW,
+    IMAGE_LINK,
+    VIDEO_RAW,
+    VIDEO_LINK,
+  }
+
   sealed interface Parameters permits VertexAi.Parameters {}
 
   sealed interface Request permits VertexAi.Request {}
@@ -53,10 +61,10 @@ public interface Embeddings {
           predictions.stream().map(emb -> emb.embeddings().values()).toList();
       case VertexAi.MultimodalResponse(var predictions) ->
           predictions.stream().flatMap(mmEmb -> mmEmb.textEmbedding().stream()).toList();
-      case Embeddings.ErrorResponse(var message, var cause) ->
+      case ErrorResponse(var message, var cause) ->
           throw cause
-              .map(ex -> new EmbeddingsException(message, ex))
-              .orElse(new EmbeddingsException(message));
+              .map(ex -> new RuntimeException(message, ex))
+              .orElse(new RuntimeException(message));
     };
   }
 }

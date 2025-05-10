@@ -15,20 +15,17 @@
  */
 package com.google.cloud.pso.rag.content;
 
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.jsonMapper;
+import static com.google.cloud.pso.rag.common.InteractionHelper.jsonMapper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
-import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
-import com.google.cloud.pso.rag.common.HttpInteractionHelper.Error;
-import com.google.cloud.pso.rag.common.HttpInteractionHelper.Json;
-import com.google.genai.Client;
+import com.google.cloud.pso.rag.common.InteractionHelper;
+import com.google.cloud.pso.rag.common.Models;
+import com.google.cloud.pso.rag.common.Result.Failure;
+import com.google.cloud.pso.rag.common.Result.Success;
 import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
-import com.google.genai.types.SafetySetting;
-import com.google.genai.types.Schema;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -55,27 +52,6 @@ public class Gemini {
       Content.fromParts(
           Part.fromText("You are an efficient data chunker used to generate text embeddings."));
 
-  private static final List<SafetySetting> SAFETY_SETTINGS =
-      List.of(
-          SafetySetting.builder()
-              .category("HARM_CATEGORY_HATE_SPEECH")
-              .threshold("BLOCK_ONLY_HIGH")
-              .build(),
-          SafetySetting.builder()
-              .category("HARM_CATEGORY_DANGEROUS_CONTENT")
-              .threshold("BLOCK_ONLY_HIGH")
-              .build());
-
-  private static final GenerateContentConfig DEFAULT_CONFIG =
-      GenerateContentConfig.builder()
-          .responseMimeType("application/json")
-          .responseSchema(
-              Schema.builder().type("array").items(Schema.builder().type("string").build()).build())
-          .candidateCount(1)
-          .safetySettings(SAFETY_SETTINGS)
-          .systemInstruction(SYSTEM_INSTRUCTION)
-          .build();
-
   private Gemini() {}
 
   public sealed interface ChunkRequest extends Chunks.ChunkRequest permits TextChunkRequest {}
@@ -90,24 +66,14 @@ public class Gemini {
   static ChunkResponse response(GenerateContentResponse generatedResponse) {
     return switch (jsonMapper(
         generatedResponse.text(), new TypeReference<ArrayList<String>>() {})) {
-      case Json<ArrayList<String>> response -> new TextChunkResponse(response.value());
-      case Error error ->
-          new Chunks.ErrorResponse(
-              "Error while parsing response from model.", Optional.of(error.error()));
+      case Success<ArrayList<String>, ?>(var response) -> new TextChunkResponse(response);
+      case Failure<?, Exception>(var ex) ->
+          new Chunks.ErrorResponse("Error while parsing response from model.", Optional.of(ex));
     };
   }
 
   public static CompletableFuture<ChunkResponse> extractChunks(ChunkRequest request) {
-    var envConfig = GCPEnvironment.config();
-    var gemini =
-        Client.builder()
-            .project(envConfig.project())
-            .location(envConfig.region())
-            .credentials(
-                GoogleCredentialsCache.credentials(envConfig.serviceAccountEmailSupplier().get()))
-            .vertexAI(true)
-            .build();
-
+    var gemini = Models.gemini(GCPEnvironment.config());
     return switch (request) {
       case TextChunkRequest(var model, var content) ->
           CompletableFuture.supplyAsync(
@@ -122,7 +88,11 @@ public class Gemini {
                                       .map(Part::fromText)
                                       .toList())
                               .build(),
-                          DEFAULT_CONFIG))
+                          Models.DEFAULT_CONFIG.toBuilder()
+                              .systemInstruction(SYSTEM_INSTRUCTION)
+                              .responseSchema(Models.STRING_ARRAY_SCHEMA)
+                              .build()),
+                  InteractionHelper.EXEC)
               .thenApply(Gemini::response)
               .exceptionally(
                   error ->

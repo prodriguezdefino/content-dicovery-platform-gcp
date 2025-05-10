@@ -47,11 +47,7 @@ public class ServiceTypes {
   public record UserQuery(String text, String sessionId, QueryParameters parameters) {}
 
   public record QueryResult(
-      String content,
-      String previousConversationSummary,
-      List<LinkAndDistance> sourceLinks,
-      List<Types.CitationMetadata> citationMetadata,
-      List<Types.SafetyAttributes> safetyAttributes) {}
+      String content, String previousConversationSummary, List<LinkAndDistance> sourceLinks) {}
 
   public static class MultipartContentIngestionRequest {
     @FormParam("documentId")
@@ -88,11 +84,7 @@ public class ServiceTypes {
     }
 
     String checkUrl(String maybeUrl) {
-      try {
-        return new URI(maybeUrl).toString();
-      } catch (URISyntaxException ex) {
-        throw new IllegalArgumentException(ex);
-      }
+      return URI.create(maybeUrl).toString();
     }
   }
 
@@ -106,7 +98,6 @@ public class ServiceTypes {
 
   public record ResourceConfiguration(
       Boolean logInteractions,
-      String matchingEngineIndexDeploymentId,
       Integer maxNeighbors,
       Double maxNeighborDistance,
       Double temperature,

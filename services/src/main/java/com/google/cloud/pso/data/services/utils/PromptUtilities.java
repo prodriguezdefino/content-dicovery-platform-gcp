@@ -20,6 +20,7 @@ import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** */
 public class PromptUtilities {
@@ -68,13 +69,11 @@ public class PromptUtilities {
         contentData.stream().collect(Collectors.joining(" ")));
   }
 
-  public static String formatChatSummaryPrompt(List<Types.Exchange> exchanges) {
-
-    return String.format(
-        CHAT_SUMMARY_PROMPT_TEMPLATE,
-        exchanges.stream()
-            .map(ex -> String.format("%s: %s", ex.author(), ex.content()))
-            .collect(Collectors.joining("\n")));
+  public static List<String> formatChatSummaryPrompt(List<Types.Exchange> exchanges) {
+    return Stream.concat(
+            Stream.of(CHAT_SUMMARY_PROMPT_TEMPLATE),
+            exchanges.stream().map(ex -> String.format("%s: %s", ex.author(), ex.content())))
+        .toList();
   }
 
   public static Boolean checkNegativeAnswer(String answer) {

@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,8 +65,7 @@ public class DocContentRetriever implements Serializable {
                     .collect(Collectors.joining(" ")));
   }
 
-  public KV<String, List<String>> retrieveGoogleDriveFileContent(
-      String fileId, GoogleDriveAPIMimeTypes type) {
+  public Content retrieveGoogleDriveFileContent(String fileId, GoogleDriveAPIMimeTypes type) {
     return switch (type) {
       case DOCUMENT -> retrieveDocumentContent(fileId);
       case SPREADSHEET -> retrieveSpreadsheetContent(fileId);
@@ -89,11 +87,11 @@ public class DocContentRetriever implements Serializable {
     }
   }
 
-  KV<String, List<String>> retrieveSpreadsheetContent(String sheetId) {
+  Content retrieveSpreadsheetContent(String sheetId) {
     try {
       var response = clientProvider.sheetGetClient(sheetId).execute();
       var file = clientProvider.driveFileGetClient(sheetId).execute();
-      return KV.of(
+      return new Content(
           Utilities.newIdFromTitleAndDriveId(file.getName(), response.getSpreadsheetId()),
           response.getSheets().stream()
               .flatMap(sheet -> retrieveSpreadsheetSheetValues(sheetId, sheet).stream())
@@ -114,11 +112,11 @@ public class DocContentRetriever implements Serializable {
     }
   }
 
-  KV<String, List<String>> retrievePresentationContent(String presentationId) {
+  Content retrievePresentationContent(String presentationId) {
     try {
       var response = clientProvider.slideGetClient(presentationId).execute();
       var file = clientProvider.driveFileGetClient(presentationId).execute();
-      return KV.of(
+      return new Content(
           Utilities.newIdFromTitleAndDriveId(file.getName(), response.getPresentationId()),
           response.getSlides().stream()
               .flatMap(
@@ -147,11 +145,11 @@ public class DocContentRetriever implements Serializable {
     }
   }
 
-  KV<String, List<String>> retrieveDocumentContent(String documentId) {
+  Content retrieveDocumentContent(String documentId) {
     try {
       var response = clientProvider.documentGetClient(documentId).execute();
       var file = clientProvider.driveFileGetClient(documentId).execute();
-      return KV.of(
+      return new Content(
           Utilities.newIdFromTitleAndDriveId(file.getName(), response.getDocumentId()),
           response.getBody().getContent().stream()
               .map(

@@ -136,6 +136,10 @@ public class Types {
     DELETE
   }
 
+  public record Content(String key, List<String> content) implements Serializable {}
+
+  public record ContentChunks(String key, List<String> chunks) implements Serializable {}
+
   public record IndexableContent(String key, String content, List<Double> embedding)
       implements Serializable {}
 

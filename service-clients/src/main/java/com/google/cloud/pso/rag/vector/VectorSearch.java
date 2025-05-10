@@ -15,16 +15,16 @@
  */
 package com.google.cloud.pso.rag.vector;
 
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.createHTTPBasedRequest;
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.httpClient;
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.jsonMapper;
+import static com.google.cloud.pso.rag.common.InteractionHelper.createHTTPBasedRequest;
+import static com.google.cloud.pso.rag.common.InteractionHelper.httpClient;
+import static com.google.cloud.pso.rag.common.InteractionHelper.jsonMapper;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
-import com.google.cloud.pso.rag.common.HttpInteractionHelper.Error;
-import com.google.cloud.pso.rag.common.HttpInteractionHelper.Json;
+import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.common.Result.Failure;
+import com.google.cloud.pso.rag.common.Result.Success;
 import com.google.cloud.pso.rag.vector.Vectors.ErrorResponse;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -32,11 +32,12 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 /** */
-public interface VectorSearch {
+public class VectorSearch {
+
+  private VectorSearch() {}
 
   sealed interface SearchResponse extends Vectors.SearchResponse
       permits NeighborsResponse, Vectors.ErrorResponse {}
@@ -47,7 +48,8 @@ public interface VectorSearch {
   sealed interface DeleteResponse extends Vectors.DeleteResponse
       permits RemoveResponse, Vectors.ErrorResponse {}
 
-  static SearchRequest requestFromValues(Integer neighborCount, List<List<Double>> listOfValues) {
+  public static SearchRequest requestFromValues(
+      Integer neighborCount, List<List<Double>> listOfValues) {
     return new SearchRequest(
         IntStream.range(0, listOfValues.size())
             .mapToObj(
@@ -56,18 +58,27 @@ public interface VectorSearch {
             .toList());
   }
 
-  static URI searchUri(String indexDomain, String indexEndpointPath) throws URISyntaxException {
-    return new URI(String.format("https://%s/v1/%s:findNeighbors", indexDomain, indexEndpointPath));
+  static Result<URI, Exception> createUri(String uri) {
+    try {
+      return Result.success(URI.create(uri));
+    } catch (IllegalArgumentException ex) {
+      return Result.failure(ex);
+    }
   }
 
-  static URI storeUri(String region, String indexId) throws URISyntaxException {
-    return new URI(
+  static Result<URI, Exception> searchUri(String indexDomain, String indexEndpointPath) {
+    return createUri(
+        String.format("https://%s/v1/%s:findNeighbors", indexDomain, indexEndpointPath));
+  }
+
+  static Result<URI, Exception> storeUri(String region, String indexId) {
+    return createUri(
         String.format(
             "https://%s-aiplatform.googleapis.com/v1/%s:upsertDatapoints", region, indexId));
   }
 
-  static URI removeUri(String region, String indexId) throws URISyntaxException {
-    return new URI(
+  static Result<URI, Exception> removeUri(String region, String indexId) {
+    return createUri(
         String.format(
             "https://%s-aiplatform.googleapis.com/v1/%s:removeDatapoints", region, indexId));
   }
@@ -76,7 +87,7 @@ public interface VectorSearch {
   Nearest neighbor search types.
   */
 
-  record SearchRequest(
+  public record SearchRequest(
       @JsonProperty("deployed_index_id") String deployedIndexId, List<Query> queries)
       implements Vectors.Search {
     public SearchRequest(List<Query> queries) {
@@ -84,49 +95,37 @@ public interface VectorSearch {
     }
   }
 
-  record NeighborsResponse(List<Neighbors> nearestNeighbors) implements SearchResponse {}
+  public record NeighborsResponse(List<Neighbors> nearestNeighbors) implements SearchResponse {}
 
-  record Datapoint(String datapointId, List<Double> featureVector) {
+  public record Datapoint(String datapointId, List<Double> featureVector) {
     public Datapoint(List<Double> values) {
       this("dummyId", values);
     }
   }
 
-  record Query(Datapoint datapoint, @JsonProperty("neighbor_count") Integer neighborCount) {}
+  public record Query(Datapoint datapoint, @JsonProperty("neighbor_count") Integer neighborCount) {}
 
-  record Neighbor(Double distance, Datapoint datapoint) {}
+  public record Neighbor(Double distance, Datapoint datapoint) {}
 
-  record Neighbors(String id, List<Neighbor> neighbors) {}
+  public record Neighbors(String id, List<Neighbor> neighbors) {}
 
   /*
   Index datapoint store types.
   */
 
-  record UpsertRequest(List<Datapoint> datapoints) implements Vectors.Store {}
+  public record UpsertRequest(List<Datapoint> datapoints) implements Vectors.Store {}
 
-  record UpsertResponse() implements StoreResponse {}
+  public record UpsertResponse() implements StoreResponse {}
 
   /*
   Remove datapoint types.
   */
 
-  record RemoveRequest(List<String> datapointIds) implements Vectors.Delete {}
+  public record RemoveRequest(List<String> datapointIds) implements Vectors.Delete {}
 
-  record RemoveResponse() implements DeleteResponse {}
+  public record RemoveResponse() implements DeleteResponse {}
 
-  static String requestBody(Vectors.Request request) {
-    try {
-      return jsonMapper(request);
-    } catch (JsonProcessingException ex) {
-      throw new VectorsException("Problems while marshalling service request.", ex);
-    }
-  }
-
-  static Supplier<VectorsException> exceptionSupplier(Throwable cause) {
-    return () -> new VectorsException("Problems while marshalling service response.", cause);
-  }
-
-  static URI resolveRequestUri(Vectors.Request request) throws URISyntaxException {
+  static Result<URI, Exception> resolveRequestUri(Vectors.Request request) {
     var config = GCPEnvironment.config();
     var region = config.region();
     var vectorConfig = config.vectorSearchConfig();
@@ -135,23 +134,26 @@ public interface VectorSearch {
       case UpsertRequest __ -> storeUri(region, vectorConfig.indexId());
       case RemoveRequest __ -> removeUri(region, vectorConfig.indexId());
       default ->
-          throw new VectorsException(
-              String.format("Request type not implemented for VectorSearch: %s", request));
+          Result.failure(
+              new RuntimeException(
+                  String.format("Request type not implemented for VectorSearch: %s", request)));
     };
   }
 
-  static CompletableFuture<HttpResponse<String>> initiateRequest(Vectors.Request request) {
+  static Result<CompletableFuture<HttpResponse<String>>, Exception> executeRequest(
+      URI uri, String body) {
     try {
-      return httpClient()
-          .sendAsync(
-              createHTTPBasedRequest(
-                  resolveRequestUri(request),
-                  requestBody(request),
-                  GoogleCredentialsCache.retrieveAccessToken(
-                      GCPEnvironment.config().serviceAccountEmailSupplier())),
-              HttpResponse.BodyHandlers.ofString());
+      return Result.success(
+          httpClient()
+              .sendAsync(
+                  createHTTPBasedRequest(
+                      uri,
+                      body,
+                      GoogleCredentialsCache.retrieveAccessToken(
+                          GCPEnvironment.config().serviceAccountEmailSupplier())),
+                  HttpResponse.BodyHandlers.ofString()));
     } catch (URISyntaxException ex) {
-      throw new VectorsException("Problems while generating the URI for request.", ex);
+      return Result.failure(ex);
     }
   }
 
@@ -170,45 +172,75 @@ public interface VectorSearch {
         Optional.of(error));
   }
 
+  record HttpRequestParams(URI uri, String body) {}
+
+  static Result<CompletableFuture<HttpResponse<String>>, Exception> executeInternal(
+      Vectors.Request request) {
+    return jsonMapper(request)
+        .flatMap(body -> resolveRequestUri(request).map(uri -> new HttpRequestParams(uri, body)))
+        .flatMap(reqParams -> executeRequest(reqParams.uri(), reqParams.body()));
+  }
+
   static CompletableFuture<? extends StoreResponse> store(UpsertRequest request) {
-    return initiateRequest(request)
-        .thenApply(
-            httpResponse ->
-                switch (httpResponse.statusCode()) {
-                  case 200 ->
-                      switch (jsonMapper(httpResponse.body(), UpsertResponse.class)) {
-                        case Json<UpsertResponse> response -> response.value();
-                        case Error error -> marshalError(httpResponse.body(), error.error());
-                      };
-                  default -> error(httpResponse, request);
-                });
+    return switch (executeInternal(request)) {
+      case Failure<?, Exception>(var error) ->
+          CompletableFuture.completedFuture(
+              new ErrorResponse(
+                  "Errors occurred while generating the request.", Optional.of(error)));
+      case Success<CompletableFuture<HttpResponse<String>>, ?>(var value) ->
+          value.thenApply(
+              httpResponse ->
+                  switch (httpResponse.statusCode()) {
+                    case 200 ->
+                        switch (jsonMapper(httpResponse.body(), UpsertResponse.class)) {
+                          case Success<UpsertResponse, ?>(var response) -> response;
+                          case Failure<?, Exception>(var error) ->
+                              marshalError(httpResponse.body(), error);
+                        };
+                    default -> error(httpResponse, request);
+                  });
+    };
   }
 
   static CompletableFuture<SearchResponse> search(SearchRequest request) {
-    return initiateRequest(request)
-        .thenApply(
-            httpResponse ->
-                switch (httpResponse.statusCode()) {
-                  case 200 ->
-                      switch (jsonMapper(httpResponse.body(), NeighborsResponse.class)) {
-                        case Json<NeighborsResponse> response -> response.value();
-                        case Error error -> marshalError(httpResponse.body(), error.error());
-                      };
-                  default -> error(httpResponse, request);
-                });
+    return switch (executeInternal(request)) {
+      case Failure<?, Exception>(var error) ->
+          CompletableFuture.completedFuture(
+              new ErrorResponse(
+                  "Errors occurred while generating the request.", Optional.of(error)));
+      case Success<CompletableFuture<HttpResponse<String>>, ?>(var value) ->
+          value.thenApply(
+              httpResponse ->
+                  switch (httpResponse.statusCode()) {
+                    case 200 ->
+                        switch (jsonMapper(httpResponse.body(), NeighborsResponse.class)) {
+                          case Success<NeighborsResponse, ?>(var response) -> response;
+                          case Failure<?, Exception>(var error) ->
+                              marshalError(httpResponse.body(), error);
+                        };
+                    default -> error(httpResponse, request);
+                  });
+    };
   }
 
   static CompletableFuture<DeleteResponse> remove(RemoveRequest request) {
-    return initiateRequest(request)
-        .thenApply(
-            httpResponse ->
-                switch (httpResponse.statusCode()) {
-                  case 200 ->
-                      switch (jsonMapper(httpResponse.body(), RemoveResponse.class)) {
-                        case Json<RemoveResponse> response -> response.value();
-                        case Error error -> marshalError(httpResponse.body(), error.error());
-                      };
-                  default -> error(httpResponse, request);
-                });
+    return switch (executeInternal(request)) {
+      case Failure<?, Exception>(var error) ->
+          CompletableFuture.completedFuture(
+              new ErrorResponse(
+                  "Errors occurred while generating the request.", Optional.of(error)));
+      case Success<CompletableFuture<HttpResponse<String>>, ?>(var value) ->
+          value.thenApply(
+              httpResponse ->
+                  switch (httpResponse.statusCode()) {
+                    case 200 ->
+                        switch (jsonMapper(httpResponse.body(), RemoveResponse.class)) {
+                          case Success<RemoveResponse, ?>(var response) -> response;
+                          case Failure<?, Exception>(var error) ->
+                              marshalError(httpResponse.body(), error);
+                        };
+                    default -> error(httpResponse, request);
+                  });
+    };
   }
 }

@@ -15,17 +15,16 @@
  */
 package com.google.cloud.pso.rag.embeddings;
 
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.createHTTPBasedRequest;
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.httpClient;
-import static com.google.cloud.pso.rag.common.HttpInteractionHelper.jsonMapper;
+import static com.google.cloud.pso.rag.common.InteractionHelper.createHTTPBasedRequest;
+import static com.google.cloud.pso.rag.common.InteractionHelper.httpClient;
+import static com.google.cloud.pso.rag.common.InteractionHelper.jsonMapper;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
-import com.google.cloud.pso.rag.common.HttpInteractionHelper.Error;
-import com.google.cloud.pso.rag.common.HttpInteractionHelper.Json;
-import com.google.cloud.pso.rag.common.HttpInteractionHelper.MaybeJson;
+import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.common.Result.Failure;
+import com.google.cloud.pso.rag.common.Result.Success;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
@@ -34,7 +33,10 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /** */
-public interface VertexAi {
+public class VertexAi {
+
+  private VertexAi() {}
+
   static URI uri(String project, String region, String model) throws URISyntaxException {
     return new URI(
         "https://"
@@ -69,7 +71,7 @@ public interface VertexAi {
    Text embeddings requests types.
   */
 
-  record Text(String model, List<TextInstance> text, Optional<TextParameters> params)
+  public record Text(String model, List<TextInstance> text, Optional<TextParameters> params)
       implements Request {
     public Text(String model, List<TextInstance> text) {
       this(model, text, Optional.empty());
@@ -78,7 +80,7 @@ public interface VertexAi {
 
   record TextEmbeddingRequest(List<TextInstance> instances, Optional<TextParameters> parameters) {}
 
-  record TextInstance(
+  public record TextInstance(
       String content,
       @JsonProperty("task_type") Optional<String> taskType,
       Optional<String> title) {
@@ -87,7 +89,7 @@ public interface VertexAi {
     }
   }
 
-  record TextParameters(
+  public record TextParameters(
       @JsonProperty("auto_truncate") Boolean autoTruncate,
       @JsonProperty("output_dimensionality") Integer outputDimensionality)
       implements Parameters {}
@@ -116,11 +118,11 @@ public interface VertexAi {
    Multimodal embeddings requests types.
   */
 
-  record Multimodal(String model, List<MultimodalInstance> data) implements Request {}
+  public record Multimodal(String model, List<MultimodalInstance> data) implements Request {}
 
   record MultimodalEmbeddingRequest(List<MultimodalInstance> instances) {}
 
-  record MultimodalInstance(
+  public record MultimodalInstance(
       Optional<String> text,
       Optional<ImageData> image,
       Optional<VideoData> video,
@@ -131,11 +133,19 @@ public interface VertexAi {
             "A multimodal embeddings request should set one of text, image or video data.");
       }
     }
+
+    public MultimodalInstance(ImageData image) {
+      this(Optional.empty(), Optional.of(image), Optional.empty(), Optional.empty());
+    }
+
+    public MultimodalInstance(VideoData video) {
+      this(Optional.empty(), Optional.empty(), Optional.of(video), Optional.empty());
+    }
   }
 
-  record MultimodalParameters(Integer dimension) implements Parameters {}
+  public record MultimodalParameters(Integer dimension) implements Parameters {}
 
-  record ImageData(
+  public record ImageData(
       Optional<String> bytesBase64Encoded, Optional<String> gcsUri, Optional<String> mimeType) {
 
     public ImageData {
@@ -146,7 +156,7 @@ public interface VertexAi {
     }
   }
 
-  record VideoData(
+  public record VideoData(
       Optional<String> bytesBase64Encoded,
       Optional<String> gcsUri,
       Optional<VideoSegment> videoSegmentConfig) {
@@ -158,12 +168,12 @@ public interface VertexAi {
     }
   }
 
-  record VideoSegment(
+  public record VideoSegment(
       Optional<Integer> startOffsetSec,
       Optional<Integer> endOffsetSec,
       Optional<Integer> intervalSec) {}
 
-  record MultimodalResponse(List<MultimodalPrediction> predictions) implements Response {
+  public record MultimodalResponse(List<MultimodalPrediction> predictions) implements Response {
 
     @Override
     public Embeddings.ResponseMetadata metadata() {
@@ -171,65 +181,78 @@ public interface VertexAi {
     }
   }
 
-  record MultimodalResponseMetadata() implements ResponseMetadata {}
+  public record MultimodalResponseMetadata() implements ResponseMetadata {}
 
-  record MultimodalPrediction(
+  public record MultimodalPrediction(
       Optional<List<Double>> textEmbedding,
       Optional<List<Double>> imageEmbedding,
       Optional<VideoEmbedding> videoEmbeddings) {}
 
-  record VideoEmbedding(Integer startOffsetSec, Integer endOffsetSec, List<Double> embedding) {}
+  public record VideoEmbedding(
+      Integer startOffsetSec, Integer endOffsetSec, List<Double> embedding) {}
 
-  static String requestBody(Request request) {
-    try {
-      return switch (request) {
-        case Text(var __, var text, var params) ->
-            jsonMapper(new TextEmbeddingRequest(text, params));
-        case Multimodal(var __, var data) -> jsonMapper(new MultimodalEmbeddingRequest(data));
-      };
-    } catch (JsonProcessingException ex) {
-      throw new EmbeddingsException("Problems while marshalling service request.", ex);
-    }
+  static Result<String, Exception> requestBody(Request request) {
+    return switch (request) {
+      case Text(var __, var text, var params) -> jsonMapper(new TextEmbeddingRequest(text, params));
+      case Multimodal(var __, var data) -> jsonMapper(new MultimodalEmbeddingRequest(data));
+    };
   }
 
-  static Embeddings.Response handleMaybeJson(MaybeJson<? extends Embeddings.Response> maybeJson) {
-    return switch (maybeJson) {
-      case Json<? extends Embeddings.Response> response -> response.value();
-      case Error error ->
-          throw new EmbeddingsException("Problems while marshalling response.", error.error());
+  static Embeddings.Response handleResult(Result<? extends Embeddings.Response, Exception> result) {
+    return switch (result) {
+      case Success<? extends Embeddings.Response, ?>(var response) -> response;
+      case Failure<?, Exception>(var error) ->
+          new Embeddings.ErrorResponse("Problems while marshalling response.", Optional.of(error));
     };
   }
 
   static Embeddings.Response response(Request request, HttpResponse<String> httpResponse) {
     return switch (request) {
       case Text __ when httpResponse.statusCode() == 200 ->
-          handleMaybeJson(jsonMapper(httpResponse.body(), TextResponse.class));
+          handleResult(jsonMapper(httpResponse.body(), TextResponse.class));
       case Multimodal __ when httpResponse.statusCode() == 200 ->
-          handleMaybeJson(jsonMapper(httpResponse.body(), MultimodalResponse.class));
+          handleResult(jsonMapper(httpResponse.body(), MultimodalResponse.class));
       default ->
           new Embeddings.ErrorResponse(
               String.format(
                   """
-                Error returned by embeddings model %s, code: %d, message: %s
-                Request payload: %s""",
+                  Error returned by embeddings model %s, code: %d, message: %s
+                  Request payload: %s""",
                   request.model(), httpResponse.statusCode(), httpResponse.body(), request));
     };
   }
 
-  static CompletableFuture<Embeddings.Response> retrieveEmbeddings(Request request) {
+  static Result<CompletableFuture<HttpResponse<String>>, Exception> executeRequest(
+      String body, String model) {
     try {
       var envConfig = GCPEnvironment.config();
-      return httpClient()
-          .sendAsync(
-              createHTTPBasedRequest(
-                  uri(envConfig.project(), envConfig.region(), request.model()),
-                  requestBody(request),
-                  GoogleCredentialsCache.retrieveAccessToken(
-                      envConfig.serviceAccountEmailSupplier())),
-              HttpResponse.BodyHandlers.ofString())
-          .thenApply(httpResponse -> response(request, httpResponse));
+      return Result.success(
+          httpClient()
+              .sendAsync(
+                  createHTTPBasedRequest(
+                      uri(envConfig.project(), envConfig.region(), model),
+                      body,
+                      GoogleCredentialsCache.retrieveAccessToken(
+                          envConfig.serviceAccountEmailSupplier())),
+                  HttpResponse.BodyHandlers.ofString()));
     } catch (URISyntaxException ex) {
-      throw new EmbeddingsException("Problems while generating the URI for request.", ex);
+      return Result.failure(ex);
     }
+  }
+
+  static Result<CompletableFuture<HttpResponse<String>>, Exception> executeInternal(
+      Request request) {
+    return requestBody(request).flatMap(body -> executeRequest(body, request.model()));
+  }
+
+  static CompletableFuture<Embeddings.Response> retrieveEmbeddings(Request request) {
+    return switch (executeInternal(request)) {
+      case Failure<?, Exception>(var error) ->
+          CompletableFuture.completedFuture(
+              new Embeddings.ErrorResponse(
+                  "Error occurred while generating the request.", Optional.of(error)));
+      case Success<CompletableFuture<HttpResponse<String>>, ?>(var value) ->
+          value.thenApply(httpResponse -> response(request, httpResponse));
+    };
   }
 }
