@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.beam.contentextract.transforms;
 
+import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types.ContentChunks;
 import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
@@ -38,7 +39,8 @@ public class ProcessEmbeddings
 
   @Override
   public PCollection<List<IndexableContent>> expand(PCollection<ContentChunks> input) {
-    var embeddingsConfig = "text-embedding-005";
+    var options = input.getPipeline().getOptions();
+    var embeddingsConfig = options.as(ContentExtractionOptions.class).getEmbeddingsConfiguration();
     return input
         .apply("StableChunks", Reshuffle.viaRandomKey())
         .apply("Embeddings", ParDo.of(new EmbeddingsRetriever(embeddingsConfig)));

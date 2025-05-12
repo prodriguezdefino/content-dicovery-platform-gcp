@@ -55,7 +55,7 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
   public PDone expand(PCollection<List<IndexableContent>> input) {
     var options = input.getPipeline().getOptions().as(ContentExtractionOptions.class);
     var fetcher = DocContentRetriever.create(GoogleDriveClient.create(options.getServiceAccount()));
-    var vectorsConfig = "vector_search";
+    var vectorsConfig = options.getVectorConfiguration();
 
     input
         .apply(

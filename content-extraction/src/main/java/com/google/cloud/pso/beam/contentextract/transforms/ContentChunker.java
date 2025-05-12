@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.beam.contentextract.transforms;
 
+import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types.Content;
 import com.google.cloud.pso.beam.contentextract.Types.ContentChunks;
 import com.google.cloud.pso.rag.content.Chunks;
@@ -34,7 +35,8 @@ public class ContentChunker extends PTransform<PCollection<Content>, PCollection
 
   @Override
   public PCollection<ContentChunks> expand(PCollection<Content> input) {
-    var chunkerConfig = "gemini-2.0-flash";
+    var options = input.getPipeline().getOptions();
+    var chunkerConfig = options.as(ContentExtractionOptions.class).getChunkerConfiguration();
     return input
         .apply("StableContent", Reshuffle.viaRandomKey())
         .apply("Chunk", ParDo.of(new ChunkContent(chunkerConfig)));

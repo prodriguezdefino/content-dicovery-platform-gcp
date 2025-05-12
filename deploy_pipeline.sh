@@ -55,7 +55,9 @@ LAUNCH_PARAMS=" \
  --matchingEngineIndexEndpointDomain=$INDEX_ENDPOINT_DOMAIN \
  --matchingEngineIndexEndpointDeploymentName=$INDEX_ENDPOINT_DEPLOYMENT \
  --bigTableInstanceName=$RUN_NAME-instance \
- --serviceAccount=$DF_SA \
+ --embeddingsConfiguration=$EMBEDDINGS_CONFIG \
+ --vectorConfiguration=$VECTOR_CONFIG \
+ --chunkerConfiguration=$CHUNKER_CONFIG \
  --usePublicIps=false "
 
 if (( $# == 4 ))

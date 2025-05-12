@@ -76,4 +76,22 @@ public interface ContentExtractionOptions extends DataflowPipelineOptions {
   String getBigTableTableName();
 
   void setBigTableTableName(String value);
+
+  @Description("The configuration for Vector related storage interactions.")
+  @Validation.Required
+  String getVectorConfiguration();
+
+  void setVectorConfiguration(String value);
+
+  @Description("The configuration for Embeddings related interactions.")
+  @Validation.Required
+  String getEmbeddingsConfiguration();
+
+  void setEmbeddingsConfiguration(String value);
+
+  @Description("The configuration for Chunker related interactions.")
+  @Validation.Required
+  String getChunkerConfiguration();
+
+  void setChunkerConfiguration(String value);
 }

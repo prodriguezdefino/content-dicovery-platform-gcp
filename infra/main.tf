@@ -242,3 +242,15 @@ output "backend_service_url" {
 output "service_url" {
   value = google_api_gateway_gateway.gateway.default_hostname
 }
+
+output embeddings_models {
+  value = one(var.embeddings_models)
+}
+
+output vector_storages {
+  value = one(var.vector_storages)
+}
+
+output chunkers {
+  value = one(var.chunkers)
+}
