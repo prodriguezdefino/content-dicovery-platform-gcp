@@ -21,6 +21,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.cloud.pso.rag.common.Models;
+import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.google.cloud.pso.rag.common.Result.Failure;
 import com.google.cloud.pso.rag.common.Result.Success;
 import com.google.genai.types.Content;
@@ -56,23 +58,26 @@ public class Gemini {
 
   public sealed interface ChunkRequest extends Chunks.ChunkRequest permits TextChunkRequest {}
 
-  public sealed interface ChunkResponse extends Chunks.ChunkResponse
-      permits Chunks.ErrorResponse, TextChunkResponse {}
+  public sealed interface ChunkResponse extends Chunks.ChunkResponse permits TextChunkResponse {}
 
   public record TextChunkRequest(String model, List<String> content) implements ChunkRequest {}
 
   public record TextChunkResponse(List<String> chunks) implements ChunkResponse {}
 
-  static ChunkResponse response(GenerateContentResponse generatedResponse) {
+  static Result<? extends Chunks.ChunkResponse, ErrorResponse> response(
+      GenerateContentResponse generatedResponse) {
     return switch (jsonMapper(
         generatedResponse.text(), new TypeReference<ArrayList<String>>() {})) {
-      case Success<ArrayList<String>, ?>(var response) -> new TextChunkResponse(response);
+      case Success<ArrayList<String>, ?>(var chunks) ->
+          Result.success(new TextChunkResponse(chunks));
       case Failure<?, Exception>(var ex) ->
-          new Chunks.ErrorResponse("Error while parsing response from model.", Optional.of(ex));
+          Result.failure(
+              new ErrorResponse("Error while parsing response from model.", Optional.of(ex)));
     };
   }
 
-  public static CompletableFuture<ChunkResponse> extractChunks(ChunkRequest request) {
+  public static CompletableFuture<Result<? extends Chunks.ChunkResponse, ErrorResponse>>
+      extractChunks(ChunkRequest request) {
     var gemini = Models.gemini(GCPEnvironment.config());
     return switch (request) {
       case TextChunkRequest(var model, var content) ->
@@ -95,9 +100,7 @@ public class Gemini {
                   InteractionHelper.EXEC)
               .thenApply(Gemini::response)
               .exceptionally(
-                  error ->
-                      new Chunks.ErrorResponse(
-                          "Error while generating chunks.", Optional.of(error)));
+                  error -> Result.failure("Error while generating chunks.", Optional.of(error)));
     };
   }
 }

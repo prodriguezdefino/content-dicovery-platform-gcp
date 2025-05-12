@@ -31,7 +31,8 @@ import java.util.concurrent.Executors;
 /** */
 public class InteractionHelper {
 
-  static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().build();
+  static final HttpClient HTTP_CLIENT =
+      HttpClient.newBuilder().executor(Executors.newVirtualThreadPerTaskExecutor()).build();
   static final ObjectMapper JSON_MAPPER =
       new ObjectMapper()
           .registerModule(new Jdk8Module())

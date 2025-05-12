@@ -46,15 +46,14 @@ public class ContentChunker extends PTransform<PCollection<Content>, PCollection
       Chunks.chunk(new Gemini.TextChunkRequest("gemini-2.0-flash", content.content()))
           .thenApply(
               response ->
-                  switch (response) {
-                    case Gemini.TextChunkResponse chunks ->
-                        new ContentChunks(content.key(), chunks.chunks());
-                    case Chunks.ErrorResponse error ->
-                        throw error
-                            .cause()
-                            .map(t -> new RuntimeException(error.message(), t))
-                            .orElseGet(() -> new RuntimeException(error.message()));
-                  })
+                  response
+                      .map(resp -> new ContentChunks(content.key(), resp.chunks()))
+                      .orElseThrow(
+                          error ->
+                              error
+                                  .cause()
+                                  .map(t -> new RuntimeException(error.message(), t))
+                                  .orElseGet(() -> new RuntimeException(error.message()))))
           .thenAccept(receiver::output);
     }
   }

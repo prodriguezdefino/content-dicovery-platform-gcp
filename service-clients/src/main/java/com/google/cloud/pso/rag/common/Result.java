@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.rag.common;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -37,6 +38,10 @@ public sealed interface Result<T, E> {
     return new Failure<>(error);
   }
 
+  static <T, E> Result<T, ErrorResponse> failure(String message, Optional<Throwable> cause) {
+    return new Failure<>(new ErrorResponse(message, cause));
+  }
+
   default <U> Result<U, E> map(Function<? super T, ? extends U> mapper) {
     return switch (this) {
       case Success<T, E>(var value) -> new Success<>(mapper.apply(value));
@@ -50,4 +55,13 @@ public sealed interface Result<T, E> {
       case Failure<T, E>(var error) -> new Failure<>(error);
     };
   }
+
+  default T orElseThrow(Function<? super E, ? extends RuntimeException> exceptionMapper) {
+    return switch (this) {
+      case Success<T, E>(var value) -> value;
+      case Failure<T, E>(var error) -> throw exceptionMapper.apply(error);
+    };
+  }
+
+  record ErrorResponse(String message, Optional<Throwable> cause) {}
 }
