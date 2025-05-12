@@ -54,6 +54,8 @@ public class Gemini {
 
   public record SummarizationResponse(String content) implements LLM.SummarizationResponse {}
 
+  private Gemini() {}
+
   static String formatErrorWithResponse(String response) {
     return String.format("Error returned from the model, see response: %s", response);
   }
