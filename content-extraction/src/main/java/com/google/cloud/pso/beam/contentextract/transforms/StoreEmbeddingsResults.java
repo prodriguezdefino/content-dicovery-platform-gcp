@@ -24,7 +24,6 @@ import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
-import com.google.cloud.pso.rag.vector.VectorSearch.Datapoint;
 import com.google.cloud.pso.rag.vector.VectorSearch.RemoveRequest;
 import com.google.cloud.pso.rag.vector.VectorSearch.UpsertRequest;
 import com.google.cloud.pso.rag.vector.Vectors;
@@ -231,7 +230,9 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
                   Vectors.storeVector(
                       new UpsertRequest(
                           embeddings.stream()
-                              .map(content -> new Datapoint(content.key(), content.embedding()))
+                              .map(
+                                  content ->
+                                      new Vectors.Datapoint(content.key(), content.embedding()))
                               .toList())));
     }
   }

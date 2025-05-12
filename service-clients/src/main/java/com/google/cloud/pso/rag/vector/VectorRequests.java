@@ -39,7 +39,7 @@ public class VectorRequests {
                   .mapToObj(
                       idx -> {
                         var vector = vectors.get(idx);
-                        return new VectorSearch.Datapoint(
+                        return new Vectors.Datapoint(
                             vector.id().orElse(idPrefix + idx), vector.values());
                       })
                   .toList());
@@ -59,8 +59,7 @@ public class VectorRequests {
               vectors.stream()
                   .map(
                       vector ->
-                          new VectorSearch.Query(
-                              new VectorSearch.Datapoint(vector.values()), quantity))
+                          new VectorSearch.Query(new Vectors.Datapoint(vector.values()), quantity))
                   .toList());
       default ->
           throw new IllegalArgumentException(

@@ -15,7 +15,9 @@
  */
 package com.google.cloud.pso.rag.vector;
 
-import java.util.Optional;
+import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.common.Result.ErrorResponse;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /** */
@@ -31,34 +33,40 @@ public interface Vectors {
 
   sealed interface Response permits StoreResponse, SearchResponse, DeleteResponse {}
 
-  sealed interface StoreResponse extends Response permits VectorSearch.StoreResponse {}
+  sealed interface StoreResponse extends Response permits VectorSearch.UpsertResponse {}
 
-  sealed interface SearchResponse extends Response permits VectorSearch.SearchResponse {}
+  sealed interface SearchResponse extends Response permits VectorSearch.NeighborsResponse {
+    List<Neighbors> nearestNeighbors();
+  }
 
-  sealed interface DeleteResponse extends Response permits VectorSearch.DeleteResponse {}
+  sealed interface DeleteResponse extends Response permits VectorSearch.RemoveResponse {}
 
-  record ErrorResponse(String message, Optional<Throwable> cause)
-      implements VectorSearch.SearchResponse,
-          VectorSearch.StoreResponse,
-          VectorSearch.DeleteResponse {
-    public ErrorResponse(String message) {
-      this(message, Optional.empty());
+  public record Datapoint(String datapointId, List<Double> featureVector) {
+    public Datapoint(List<Double> values) {
+      this("dummyId", values);
     }
   }
 
-  static CompletableFuture<? extends SearchResponse> findNearestNeighbors(Search request) {
+  public record Neighbor(Double distance, Datapoint datapoint) {}
+
+  public record Neighbors(String id, List<Neighbor> neighbors) {}
+
+  static CompletableFuture<Result<? extends SearchResponse, ErrorResponse>> findNearestNeighbors(
+      Search request) {
     return switch (request) {
       case VectorSearch.SearchRequest vectorSearch -> VectorSearch.search(vectorSearch);
     };
   }
 
-  static CompletableFuture<? extends StoreResponse> storeVector(Store request) {
+  static CompletableFuture<Result<? extends StoreResponse, ErrorResponse>> storeVector(
+      Store request) {
     return switch (request) {
       case VectorSearch.UpsertRequest storeVector -> VectorSearch.store(storeVector);
     };
   }
 
-  static CompletableFuture<? extends DeleteResponse> removeVectors(Delete request) {
+  static CompletableFuture<Result<? extends DeleteResponse, ErrorResponse>> removeVectors(
+      Delete request) {
     return switch (request) {
       case VectorSearch.RemoveRequest removeVectors -> VectorSearch.remove(removeVectors);
     };

@@ -132,7 +132,7 @@ public class QueryResource {
                   // given the query and previous conversation summary, retrieve embeddings
                   vertexaiService
                       .retrieveEmbeddings(query, previousSummarizedConversation)
-                      // and those nearest neighbors
+                      // and their nearest neighbors
                       .thenCompose(
                           embResponse ->
                               embResponse
@@ -143,36 +143,37 @@ public class QueryResource {
                       // text content
                       .thenApply(
                           nnResp ->
-                              switch (nnResp) {
-                                case Vectors.ErrorResponse(var message, var cause) ->
-                                    throw cause
-                                        .map(ex -> new RuntimeException(message, ex))
-                                        .orElse(new RuntimeException(message));
-                                case VectorSearch.NeighborsResponse(var nearestNeighbors) ->
-                                    nearestNeighbors.stream()
-                                        .flatMap(n -> n.neighbors().stream())
-                                        // filter out the dummy index initial vector
-                                        .filter(
-                                            n -> n.distance() < configuration.maxNeighborDistance())
-                                        .sorted((n1, n2) -> -n1.distance().compareTo(n2.distance()))
-                                        // we keep only the most relevant context entries
-                                        .limit(configuration.maxNeighbors())
-                                        // capture content and link from storage and preserve
-                                        // distance from
-                                        // original
-                                        // query
-                                        .map(
-                                            nn -> {
-                                              var content =
-                                                  btService.queryByPrefix(
-                                                      nn.datapoint().datapointId());
-                                              return new ContentAndMetadata(
-                                                  content.content(),
-                                                  content.sourceLink(),
-                                                  nn.distance());
-                                            })
-                                        .toList();
-                              }));
+                              nnResp
+                                  .map(
+                                      resp ->
+                                          resp.nearestNeighbors().stream()
+                                              .flatMap(n -> n.neighbors().stream())
+                                              // filter out the dummy index initial vector
+                                              .filter(
+                                                  n ->
+                                                      n.distance()
+                                                          < configuration.maxNeighborDistance())
+                                              .sorted(
+                                                  (n1, n2) ->
+                                                      -n1.distance().compareTo(n2.distance()))
+                                              // we keep only the most relevant context entries
+                                              .limit(configuration.maxNeighbors())
+                                              // capture content and link from storage and preserve
+                                              // distance from
+                                              // original
+                                              // query
+                                              .map(
+                                                  nn -> {
+                                                    var content =
+                                                        btService.queryByPrefix(
+                                                            nn.datapoint().datapointId());
+                                                    return new ContentAndMetadata(
+                                                        content.content(),
+                                                        content.sourceLink(),
+                                                        nn.distance());
+                                                  })
+                                              .toList())
+                                  .orElseThrow(error -> processErrorResponse(error, query))));
       var textResponseFuture =
           contextFuture
               .thenCompose(

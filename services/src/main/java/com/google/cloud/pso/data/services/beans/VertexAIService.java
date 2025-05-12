@@ -86,8 +86,8 @@ public class VertexAIService {
   }
 
   @Timed(name = "vectorseach.ann", unit = MetricUnits.MILLISECONDS)
-  public CompletableFuture<? extends Vectors.SearchResponse> retrieveNearestNeighbors(
-      Embeddings.Response embResponse, ServiceTypes.UserQuery query) {
+  public CompletableFuture<Result<? extends Vectors.SearchResponse, ErrorResponse>>
+      retrieveNearestNeighbors(Embeddings.Response embResponse, ServiceTypes.UserQuery query) {
 
     return Vectors.findNearestNeighbors(
         VectorRequests.find(
