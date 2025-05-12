@@ -18,7 +18,7 @@ package com.google.cloud.pso.beam.contentextract.transforms;
 import com.google.cloud.pso.beam.contentextract.Types.Content;
 import com.google.cloud.pso.beam.contentextract.Types.ContentChunks;
 import com.google.cloud.pso.rag.content.Chunks;
-import com.google.cloud.pso.rag.content.Gemini;
+import com.google.cloud.pso.rag.content.ChunksRequests;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -34,16 +34,23 @@ public class ContentChunker extends PTransform<PCollection<Content>, PCollection
 
   @Override
   public PCollection<ContentChunks> expand(PCollection<Content> input) {
+    var chunkerConfig = "gemini-2.0-flash";
     return input
         .apply("StableContent", Reshuffle.viaRandomKey())
-        .apply("Chunk", ParDo.of(new ChunkContent()));
+        .apply("Chunk", ParDo.of(new ChunkContent(chunkerConfig)));
   }
 
   static class ChunkContent extends DoFn<Content, ContentChunks> {
 
+    private final String chunkerConfig;
+
+    public ChunkContent(String chunkerConfig) {
+      this.chunkerConfig = chunkerConfig;
+    }
+
     @ProcessElement
     public void process(@Element Content content, OutputReceiver<ContentChunks> receiver) {
-      Chunks.chunk(new Gemini.TextChunkRequest("gemini-2.0-flash", content.content()))
+      Chunks.chunk(ChunksRequests.create(chunkerConfig, content.content()))
           .thenApply(
               response ->
                   response

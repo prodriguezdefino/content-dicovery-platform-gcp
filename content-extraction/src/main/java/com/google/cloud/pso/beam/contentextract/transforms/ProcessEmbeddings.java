@@ -19,8 +19,7 @@ import com.google.cloud.pso.beam.contentextract.Types.ContentChunks;
 import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.rag.embeddings.Embeddings;
-import com.google.cloud.pso.rag.embeddings.VertexAi.Text;
-import com.google.cloud.pso.rag.embeddings.VertexAi.TextInstance;
+import com.google.cloud.pso.rag.embeddings.EmbeddingsRequests;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -39,19 +38,25 @@ public class ProcessEmbeddings
 
   @Override
   public PCollection<List<IndexableContent>> expand(PCollection<ContentChunks> input) {
+    var embeddingsConfig = "text-embedding-005";
     return input
         .apply("StableChunks", Reshuffle.viaRandomKey())
-        .apply("Embeddings", ParDo.of(new EmbeddingsRetriever()));
+        .apply("Embeddings", ParDo.of(new EmbeddingsRetriever(embeddingsConfig)));
   }
 
   static class EmbeddingsRetriever extends DoFn<ContentChunks, List<IndexableContent>> {
+
+    private final String embeddingsConfig;
+
+    public EmbeddingsRetriever(String embeddingsConfig) {
+      this.embeddingsConfig = embeddingsConfig;
+    }
 
     @ProcessElement
     public void process(
         @Element ContentChunks content, OutputReceiver<List<IndexableContent>> receiver) {
       Embeddings.retrieveEmbeddings(
-              new Text(
-                  "text-embedding-005", content.chunks().stream().map(TextInstance::new).toList()))
+              EmbeddingsRequests.create(embeddingsConfig, Embeddings.Types.TEXT, content.chunks()))
           .thenApply(
               response ->
                   response

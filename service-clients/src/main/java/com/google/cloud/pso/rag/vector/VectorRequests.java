@@ -30,6 +30,10 @@ public class VectorRequests {
     }
   }
 
+  public static Vectors.Store store(String configurationEntry, List<Vector> vectors) {
+    return store(configurationEntry, "", vectors);
+  }
+
   public static Vectors.Store store(
       String configurationEntry, String idPrefix, List<Vector> vectors) {
     return switch (configurationEntry) {
