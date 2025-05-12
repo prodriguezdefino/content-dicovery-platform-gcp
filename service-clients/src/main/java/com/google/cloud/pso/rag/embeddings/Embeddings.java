@@ -15,6 +15,8 @@
  */
 package com.google.cloud.pso.rag.embeddings;
 
+import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -34,22 +36,14 @@ public interface Embeddings {
 
   sealed interface Request permits VertexAi.Request {}
 
-  sealed interface Response permits ErrorResponse, ValuesResponse {}
-
-  sealed interface ValuesResponse extends Response permits VertexAi.Response {
-
+  sealed interface Response permits VertexAi.Response {
     ResponseMetadata metadata();
   }
 
   sealed interface ResponseMetadata permits VertexAi.ResponseMetadata {}
 
-  record ErrorResponse(String message, Optional<Throwable> cause) implements Response {
-    public ErrorResponse(String message) {
-      this(message, Optional.empty());
-    }
-  }
-
-  static CompletableFuture<Response> retrieveEmbeddings(Request request) {
+  static CompletableFuture<Result<? extends Response, ErrorResponse>> retrieveEmbeddings(
+      Request request) {
     return switch (request) {
       case VertexAi.Request vertexRequest -> VertexAi.retrieveEmbeddings(vertexRequest);
     };
@@ -61,10 +55,6 @@ public interface Embeddings {
           predictions.stream().map(emb -> emb.embeddings().values()).toList();
       case VertexAi.MultimodalResponse(var predictions) ->
           predictions.stream().flatMap(mmEmb -> mmEmb.textEmbedding().stream()).toList();
-      case ErrorResponse(var message, var cause) ->
-          throw cause
-              .map(ex -> new RuntimeException(message, ex))
-              .orElse(new RuntimeException(message));
     };
   }
 }

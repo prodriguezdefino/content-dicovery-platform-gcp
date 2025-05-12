@@ -42,6 +42,10 @@ public sealed interface Result<T, E> {
     return new Failure<>(new ErrorResponse(message, Optional.of(cause)));
   }
 
+  static <T, E> Result<T, ErrorResponse> failure(String message) {
+    return new Failure<>(new ErrorResponse(message, Optional.empty()));
+  }
+
   default <U> Result<U, E> map(Function<? super T, ? extends U> mapper) {
     return switch (this) {
       case Success<T, E>(var value) -> new Success<>(mapper.apply(value));
@@ -60,6 +64,13 @@ public sealed interface Result<T, E> {
     return switch (this) {
       case Success<T, E>(var value) -> value;
       case Failure<T, E>(var error) -> throw exceptionMapper.apply(error);
+    };
+  }
+
+  default <U> Result<T, U> orElseApply(Function<? super E, ? extends U> failureMapper) {
+    return switch (this) {
+      case Success<T, ?>(var value) -> Result.success(value);
+      case Failure<?, E>(var error) -> Result.failure(failureMapper.apply(error));
     };
   }
 

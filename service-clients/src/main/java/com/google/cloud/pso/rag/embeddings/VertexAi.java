@@ -24,6 +24,7 @@ import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
 import com.google.cloud.pso.rag.common.Result;
 import com.google.cloud.pso.rag.common.Result.Failure;
+import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.google.cloud.pso.rag.common.Result.Success;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -61,8 +62,7 @@ public class VertexAi {
   sealed interface Parameters extends Embeddings.Parameters
       permits TextParameters, MultimodalParameters {}
 
-  sealed interface Response extends Embeddings.ValuesResponse
-      permits TextResponse, MultimodalResponse {}
+  sealed interface Response extends Embeddings.Response permits TextResponse, MultimodalResponse {}
 
   sealed interface ResponseMetadata extends Embeddings.ResponseMetadata
       permits TextResponseMetadata, MultimodalResponseMetadata {}
@@ -198,22 +198,21 @@ public class VertexAi {
     };
   }
 
-  static Embeddings.Response handleResult(Result<? extends Embeddings.Response, Exception> result) {
-    return switch (result) {
-      case Success<? extends Embeddings.Response, ?>(var response) -> response;
-      case Failure<?, Exception>(var error) ->
-          new Embeddings.ErrorResponse("Problems while marshalling response.", Optional.of(error));
-    };
+  static ErrorResponse marshalFailure(Exception error) {
+    return new ErrorResponse("Problems unmarshalling the response.", Optional.of(error));
   }
 
-  static Embeddings.Response response(Request request, HttpResponse<String> httpResponse) {
+  static Result<? extends Embeddings.Response, ErrorResponse> response(
+      Request request, HttpResponse<String> httpResponse) {
     return switch (request) {
       case Text __ when httpResponse.statusCode() == 200 ->
-          handleResult(jsonMapper(httpResponse.body(), TextResponse.class));
+          jsonMapper(httpResponse.body(), TextResponse.class)
+              .orElseApply(error -> marshalFailure(error));
       case Multimodal __ when httpResponse.statusCode() == 200 ->
-          handleResult(jsonMapper(httpResponse.body(), MultimodalResponse.class));
+          jsonMapper(httpResponse.body(), MultimodalResponse.class)
+              .orElseApply(error -> marshalFailure(error));
       default ->
-          new Embeddings.ErrorResponse(
+          Result.failure(
               String.format(
                   """
                   Error returned by embeddings model %s, code: %d, message: %s
@@ -245,12 +244,12 @@ public class VertexAi {
     return requestBody(request).flatMap(body -> executeRequest(body, request.model()));
   }
 
-  static CompletableFuture<Embeddings.Response> retrieveEmbeddings(Request request) {
+  static CompletableFuture<Result<? extends Embeddings.Response, ErrorResponse>> retrieveEmbeddings(
+      Request request) {
     return switch (executeInternal(request)) {
       case Failure<?, Exception>(var error) ->
           CompletableFuture.completedFuture(
-              new Embeddings.ErrorResponse(
-                  "Error occurred while generating the request.", Optional.of(error)));
+              Result.failure("Error occurred while generating the request.", error));
       case Success<CompletableFuture<HttpResponse<String>>, ?>(var value) ->
           value.thenApply(httpResponse -> response(request, httpResponse));
     };

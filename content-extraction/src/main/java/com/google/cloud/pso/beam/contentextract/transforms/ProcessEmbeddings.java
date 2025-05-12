@@ -54,14 +54,10 @@ public class ProcessEmbeddings
                   "text-embedding-005", content.chunks().stream().map(TextInstance::new).toList()))
           .thenApply(
               response ->
-                  switch (response) {
-                    case Embeddings.ErrorResponse error ->
-                        throw error
-                            .cause()
-                            .map(t -> new RuntimeException(error.message(), t))
-                            .orElseGet(() -> new RuntimeException(error.message()));
-                    case Embeddings.Response text -> Embeddings.extractValuesFromEmbeddings(text);
-                  })
+                  response
+                      .map(text -> Embeddings.extractValuesFromEmbeddings(text))
+                      .orElseThrow(
+                          error -> new RuntimeException(error.message(), error.cause().get())))
           .thenApply(
               embValues ->
                   IntStream.range(0, content.chunks().size())

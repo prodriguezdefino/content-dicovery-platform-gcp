@@ -26,6 +26,7 @@ import com.google.cloud.pso.data.services.beans.VertexAIService;
 import com.google.cloud.pso.data.services.exceptions.QueryResourceException;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.cloud.pso.rag.llm.Gemini;
+import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.google.cloud.pso.rag.vector.VectorSearch;
 import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.base.Preconditions;
@@ -124,13 +125,7 @@ public class QueryResource {
                       summary ->
                           summary
                               .map(resp -> resp.content())
-                              .orElseThrow(
-                                  error ->
-                                      new QueryResourceException(
-                                          error.message(),
-                                          query.text(),
-                                          query.sessionId(),
-                                          error.cause().get())));
+                              .orElseThrow(error -> processErrorResponse(error, query)));
       var contextFuture =
           previousFuture.thenCompose(
               previousSummarizedConversation ->
@@ -140,7 +135,10 @@ public class QueryResource {
                       // and those nearest neighbors
                       .thenCompose(
                           embResponse ->
-                              vertexaiService.retrieveNearestNeighbors(embResponse, query))
+                              embResponse
+                                  .map(
+                                      embs -> vertexaiService.retrieveNearestNeighbors(embs, query))
+                                  .orElseThrow(error -> processErrorResponse(error, query)))
                       // given the retrieved neighbors, use their ids to retrieve the chunks
                       // text content
                       .thenApply(
@@ -213,13 +211,7 @@ public class QueryResource {
                                     case Gemini.ChatResponse(var exchange, var __) ->
                                         exchange.content();
                                   })
-                          .orElseThrow(
-                              error ->
-                                  new QueryResourceException(
-                                      error.message(),
-                                      query.text(),
-                                      query.sessionId(),
-                                      error.cause().get())));
+                          .orElseThrow(error -> processErrorResponse(error, query)));
 
       return contextFuture.thenCombine(
           textResponseFuture,
@@ -261,5 +253,10 @@ public class QueryResource {
       LOG.error(msg, ex);
       throw new QueryResourceException(msg + ex.getMessage(), query.text(), query.sessionId(), ex);
     }
+  }
+
+  QueryResourceException processErrorResponse(ErrorResponse error, UserQuery query) {
+    return new QueryResourceException(
+        error.message(), query.text(), query.sessionId(), error.cause().get());
   }
 }

@@ -78,7 +78,7 @@ public class VertexAIService {
   }
 
   @Timed(name = "embeddings.prediction", unit = MetricUnits.MILLISECONDS)
-  public CompletableFuture<Embeddings.Response> retrieveEmbeddings(
+  public CompletableFuture<Result<? extends Embeddings.Response, ErrorResponse>> retrieveEmbeddings(
       ServiceTypes.UserQuery query, String previousSummarizedConversation) {
     return Embeddings.retrieveEmbeddings(
         EmbeddingsRequests.create(
