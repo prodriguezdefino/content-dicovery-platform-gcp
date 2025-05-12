@@ -16,6 +16,8 @@
 package com.google.cloud.pso.data.services.beans;
 
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
+import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.google.cloud.pso.rag.embeddings.Embeddings;
 import com.google.cloud.pso.rag.embeddings.EmbeddingsRequests;
 import com.google.cloud.pso.rag.llm.LLM;
@@ -39,26 +41,22 @@ public class VertexAIService {
   @Inject BeansProducer.Interactions interactions;
 
   @Timed(name = "palm.exchanges.summarization", unit = MetricUnits.MILLISECONDS)
-  public CompletableFuture<Optional<LLM.SummarizationResponse>>
+  public CompletableFuture<Result<? extends LLM.SummarizationResponse, ErrorResponse>>
       retrievePreviousSummarizedConversation(List<ServiceTypes.QAndA> qsAndAs) {
-    if (qsAndAs.isEmpty()) {
-      return CompletableFuture.completedFuture(Optional.empty());
-    }
     return LLM.summarize(
-            LLMRequests.summarize(
-                interactions.llm(),
-                PromptUtilities.formatChatSummaryPrompt(
-                    qsAndAs.stream().flatMap(q -> q.toExchange().stream()).toList()),
-                new LLM.Parameters(
-                    configuration.temperature(),
-                    configuration.maxOutputTokens(),
-                    configuration.topK(),
-                    configuration.topP())))
-        .thenApply(Optional::of);
+        LLMRequests.summarize(
+            interactions.llm(),
+            PromptUtilities.formatChatSummaryPrompt(
+                qsAndAs.stream().flatMap(q -> q.toExchange().stream()).toList()),
+            new LLM.Parameters(
+                configuration.temperature(),
+                configuration.maxOutputTokens(),
+                configuration.topK(),
+                configuration.topP())));
   }
 
   @Timed(name = "palm.chat.prediction", unit = MetricUnits.MILLISECONDS)
-  public CompletableFuture<? extends LLM.ChatResponse> retrieveChatResponse(
+  public CompletableFuture<Result<? extends LLM.ChatResponse, ErrorResponse>> retrieveChatResponse(
       List<ServiceTypes.QAndA> lastsQAndAs,
       ServiceTypes.UserQuery query,
       String palmRequestContext) {
@@ -80,7 +78,7 @@ public class VertexAIService {
   }
 
   @Timed(name = "embeddings.prediction", unit = MetricUnits.MILLISECONDS)
-  public CompletableFuture<Embeddings.Response> retrieveEmbeddings(
+  public CompletableFuture<Result<? extends Embeddings.Response, ErrorResponse>> retrieveEmbeddings(
       ServiceTypes.UserQuery query, String previousSummarizedConversation) {
     return Embeddings.retrieveEmbeddings(
         EmbeddingsRequests.create(
@@ -88,8 +86,8 @@ public class VertexAIService {
   }
 
   @Timed(name = "vectorseach.ann", unit = MetricUnits.MILLISECONDS)
-  public CompletableFuture<? extends Vectors.SearchResponse> retrieveNearestNeighbors(
-      Embeddings.Response embResponse, ServiceTypes.UserQuery query) {
+  public CompletableFuture<Result<? extends Vectors.SearchResponse, ErrorResponse>>
+      retrieveNearestNeighbors(Embeddings.Response embResponse, ServiceTypes.UserQuery query) {
 
     return Vectors.findNearestNeighbors(
         VectorRequests.find(

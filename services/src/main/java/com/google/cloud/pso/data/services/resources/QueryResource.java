@@ -26,7 +26,7 @@ import com.google.cloud.pso.data.services.beans.VertexAIService;
 import com.google.cloud.pso.data.services.exceptions.QueryResourceException;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.cloud.pso.rag.llm.Gemini;
-import com.google.cloud.pso.rag.llm.LLM;
+import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.google.cloud.pso.rag.vector.VectorSearch;
 import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.base.Preconditions;
@@ -117,65 +117,63 @@ public class QueryResource {
       // retrieve the summary of the previous conversation and generate embeddings adding that
       // context to the user query
       var previousFuture =
-          vertexaiService
-              .retrievePreviousSummarizedConversation(lastsQAndAs)
-              .thenApply(
-                  maybeSummary ->
-                      maybeSummary
-                          .map(
-                              summary ->
-                                  switch (summary) {
-                                    case LLM.ErrorResponse(var msg, var cause) ->
-                                        throw cause
-                                            .map(ex -> new RuntimeException(msg, ex))
-                                            .orElse(new RuntimeException(msg));
-                                    case Gemini.SummarizationResponse(var content) -> content;
-                                  })
-                          .orElse(""));
+          lastsQAndAs.isEmpty()
+              ? CompletableFuture.completedFuture("")
+              : vertexaiService
+                  .retrievePreviousSummarizedConversation(lastsQAndAs)
+                  .thenApply(
+                      summary ->
+                          summary
+                              .map(resp -> resp.content())
+                              .orElseThrow(error -> processErrorResponse(error, query)));
       var contextFuture =
           previousFuture.thenCompose(
               previousSummarizedConversation ->
                   // given the query and previous conversation summary, retrieve embeddings
                   vertexaiService
                       .retrieveEmbeddings(query, previousSummarizedConversation)
-                      // and those nearest neighbors
+                      // and their nearest neighbors
                       .thenCompose(
                           embResponse ->
-                              vertexaiService.retrieveNearestNeighbors(embResponse, query))
+                              embResponse
+                                  .map(
+                                      embs -> vertexaiService.retrieveNearestNeighbors(embs, query))
+                                  .orElseThrow(error -> processErrorResponse(error, query)))
                       // given the retrieved neighbors, use their ids to retrieve the chunks
                       // text content
                       .thenApply(
                           nnResp ->
-                              switch (nnResp) {
-                                case Vectors.ErrorResponse(var message, var cause) ->
-                                    throw cause
-                                        .map(ex -> new RuntimeException(message, ex))
-                                        .orElse(new RuntimeException(message));
-                                case VectorSearch.NeighborsResponse(var nearestNeighbors) ->
-                                    nearestNeighbors.stream()
-                                        .flatMap(n -> n.neighbors().stream())
-                                        // filter out the dummy index initial vector
-                                        .filter(
-                                            n -> n.distance() < configuration.maxNeighborDistance())
-                                        .sorted((n1, n2) -> -n1.distance().compareTo(n2.distance()))
-                                        // we keep only the most relevant context entries
-                                        .limit(configuration.maxNeighbors())
-                                        // capture content and link from storage and preserve
-                                        // distance from
-                                        // original
-                                        // query
-                                        .map(
-                                            nn -> {
-                                              var content =
-                                                  btService.queryByPrefix(
-                                                      nn.datapoint().datapointId());
-                                              return new ContentAndMetadata(
-                                                  content.content(),
-                                                  content.sourceLink(),
-                                                  nn.distance());
-                                            })
-                                        .toList();
-                              }));
+                              nnResp
+                                  .map(
+                                      resp ->
+                                          resp.nearestNeighbors().stream()
+                                              .flatMap(n -> n.neighbors().stream())
+                                              // filter out the dummy index initial vector
+                                              .filter(
+                                                  n ->
+                                                      n.distance()
+                                                          < configuration.maxNeighborDistance())
+                                              .sorted(
+                                                  (n1, n2) ->
+                                                      -n1.distance().compareTo(n2.distance()))
+                                              // we keep only the most relevant context entries
+                                              .limit(configuration.maxNeighbors())
+                                              // capture content and link from storage and preserve
+                                              // distance from
+                                              // original
+                                              // query
+                                              .map(
+                                                  nn -> {
+                                                    var content =
+                                                        btService.queryByPrefix(
+                                                            nn.datapoint().datapointId());
+                                                    return new ContentAndMetadata(
+                                                        content.content(),
+                                                        content.sourceLink(),
+                                                        nn.distance());
+                                                  })
+                                              .toList())
+                                  .orElseThrow(error -> processErrorResponse(error, query))));
       var textResponseFuture =
           contextFuture
               .thenCompose(
@@ -203,17 +201,19 @@ public class QueryResource {
                         lastsQAndAs, query, palmRequestContext);
                   })
               .thenApply(
-                  chatResponse ->
-                      switch (chatResponse) {
-                        case LLM.ErrorResponse(var msg, var cause) ->
-                            throw cause
-                                .map(ex -> new RuntimeException(msg, ex))
-                                .orElse(new RuntimeException(msg));
-                        case Gemini.ChattingResponse(var __, var blocked) when blocked
-                                .isPresent() ->
-                            "Response blocked by model. " + blocked.get();
-                        case Gemini.ChattingResponse(var exchange, var __) -> exchange.content();
-                      });
+                  response ->
+                      response
+                          .map(
+                              chat ->
+                                  switch (chat) {
+                                    case Gemini.ChatResponse(var __, var blocked) when blocked
+                                            .isPresent() ->
+                                        "Response blocked by model. " + blocked.get();
+                                    case Gemini.ChatResponse(var exchange, var __) ->
+                                        exchange.content();
+                                  })
+                          .orElseThrow(error -> processErrorResponse(error, query)));
+
       return contextFuture.thenCombine(
           textResponseFuture,
           (context, responseText) -> {
@@ -254,5 +254,10 @@ public class QueryResource {
       LOG.error(msg, ex);
       throw new QueryResourceException(msg + ex.getMessage(), query.text(), query.sessionId(), ex);
     }
+  }
+
+  QueryResourceException processErrorResponse(ErrorResponse error, UserQuery query) {
+    return new QueryResourceException(
+        error.message(), query.text(), query.sessionId(), error.cause().get());
   }
 }

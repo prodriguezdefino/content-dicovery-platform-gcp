@@ -15,7 +15,9 @@
  */
 package com.google.cloud.pso.rag.content;
 
-import java.util.Optional;
+import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.common.Result.ErrorResponse;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /** */
@@ -23,15 +25,12 @@ public interface Chunks {
 
   sealed interface ChunkRequest permits Gemini.ChunkRequest {}
 
-  sealed interface ChunkResponse permits Gemini.ChunkResponse {}
-
-  record ErrorResponse(String message, Optional<Throwable> cause) implements Gemini.ChunkResponse {
-    public ErrorResponse(String message) {
-      this(message, Optional.empty());
-    }
+  sealed interface ChunkResponse permits Gemini.ChunkResponse {
+    List<String> chunks();
   }
 
-  static CompletableFuture<? extends ChunkResponse> chunk(ChunkRequest request) {
+  static CompletableFuture<Result<? extends ChunkResponse, ErrorResponse>> chunk(
+      ChunkRequest request) {
     return switch (request) {
       case Gemini.ChunkRequest geminiRequest -> Gemini.extractChunks(geminiRequest);
     };

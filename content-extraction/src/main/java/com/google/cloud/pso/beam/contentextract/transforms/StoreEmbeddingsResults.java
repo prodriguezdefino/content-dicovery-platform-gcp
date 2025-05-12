@@ -24,13 +24,12 @@ import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
-import com.google.cloud.pso.rag.vector.VectorSearch.Datapoint;
-import com.google.cloud.pso.rag.vector.VectorSearch.RemoveRequest;
-import com.google.cloud.pso.rag.vector.VectorSearch.UpsertRequest;
+import com.google.cloud.pso.rag.vector.VectorRequests;
 import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -56,6 +55,7 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
   public PDone expand(PCollection<List<IndexableContent>> input) {
     var options = input.getPipeline().getOptions().as(ContentExtractionOptions.class);
     var fetcher = DocContentRetriever.create(GoogleDriveClient.create(options.getServiceAccount()));
+    var vectorsConfig = "vector_search";
 
     input
         .apply(
@@ -71,10 +71,12 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
                 new RemoveContentFromIndexes(
                     options.getProject(),
                     options.getBigTableInstanceName(),
-                    options.getBigTableTableName())));
+                    options.getBigTableTableName(),
+                    vectorsConfig)));
 
     // store the embeddings into Matching Engine for later query
-    input.apply("UpsertIndexDatapoints", ParDo.of(new MatchingEngineDatapointUpsertDoFn()));
+    input.apply(
+        "UpsertIndexDatapoints", ParDo.of(new MatchingEngineDatapointUpsertDoFn(vectorsConfig)));
 
     // also, we need to store the content and its id into BigTable since the content is later
     // needed to set context for the text prediction model
@@ -96,17 +98,20 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
     private final String projectId;
     private final String instanceId;
     private final String tableId;
+    private final String vectorsConfig;
 
-    public RemoveContentFromIndexes(String projectId, String instanceId, String tableId) {
+    public RemoveContentFromIndexes(
+        String projectId, String instanceId, String tableId, String vectorsConfig) {
       this.projectId = projectId;
       this.instanceId = instanceId;
       this.tableId = tableId;
+      this.vectorsConfig = vectorsConfig;
     }
 
     @ProcessElement
     public void processElement(ProcessContext context) {
       // remove data from the matching engine index
-      Vectors.removeVectors(new RemoveRequest(context.element()));
+      Vectors.removeVectors(VectorRequests.remove(vectorsConfig, context.element()));
 
       // remove all the content rows with prefix
       try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceId)) {
@@ -221,6 +226,12 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
 
   static class MatchingEngineDatapointUpsertDoFn extends DoFn<List<IndexableContent>, Void> {
 
+    private final String vectorsConfig;
+
+    public MatchingEngineDatapointUpsertDoFn(String vectorsConfig) {
+      this.vectorsConfig = vectorsConfig;
+    }
+
     @ProcessElement
     public void process(ProcessContext context) {
       // recommendation is not to send more than 20 datapoints per request to matching engine
@@ -229,9 +240,13 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
           .forEach(
               embeddings ->
                   Vectors.storeVector(
-                      new UpsertRequest(
+                      VectorRequests.store(
+                          vectorsConfig,
                           embeddings.stream()
-                              .map(content -> new Datapoint(content.key(), content.embedding()))
+                              .map(
+                                  content ->
+                                      new VectorRequests.Vector(
+                                          Optional.of(content.key()), content.embedding()))
                               .toList())));
     }
   }
