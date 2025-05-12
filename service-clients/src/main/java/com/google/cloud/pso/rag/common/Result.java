@@ -38,8 +38,8 @@ public sealed interface Result<T, E> {
     return new Failure<>(error);
   }
 
-  static <T, E> Result<T, ErrorResponse> failure(String message, Optional<Throwable> cause) {
-    return new Failure<>(new ErrorResponse(message, cause));
+  static <T, E> Result<T, ErrorResponse> failure(String message, Throwable cause) {
+    return new Failure<>(new ErrorResponse(message, Optional.of(cause)));
   }
 
   default <U> Result<U, E> map(Function<? super T, ? extends U> mapper) {
@@ -63,5 +63,9 @@ public sealed interface Result<T, E> {
     };
   }
 
-  record ErrorResponse(String message, Optional<Throwable> cause) {}
+  record ErrorResponse(String message, Optional<Throwable> cause) {
+    public ErrorResponse(String message) {
+      this(message, Optional.empty());
+    }
+  }
 }

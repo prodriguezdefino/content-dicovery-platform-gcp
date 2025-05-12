@@ -46,7 +46,8 @@ public class Gemini {
       3. If possible, end chunks at sentence boundaries (periods, question marks, exclamation points).
       4. Try to avoid breaking up important phrases or names.
       5. Include some chunk overlap
-      If a topic spans multiple sentences and exceeds the character limit, break the chunk at the most logical word boundary to maintain semantic coherence as much as possible.
+      If a topic spans multiple sentences and exceeds the character limit,
+      break the chunk at the most logical word boundary to maintain semantic coherence as much as possible.
       --
       """;
 
@@ -99,8 +100,7 @@ public class Gemini {
                               .build()),
                   InteractionHelper.EXEC)
               .thenApply(Gemini::response)
-              .exceptionally(
-                  error -> Result.failure("Error while generating chunks.", Optional.of(error)));
+              .exceptionally(error -> Result.failure("Error while generating chunks.", error));
     };
   }
 }

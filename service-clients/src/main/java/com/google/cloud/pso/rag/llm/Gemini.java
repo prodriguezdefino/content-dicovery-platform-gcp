@@ -19,9 +19,7 @@ import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.cloud.pso.rag.common.Models;
 import com.google.cloud.pso.rag.common.Result;
-import com.google.cloud.pso.rag.common.Result.Failure;
-import com.google.cloud.pso.rag.common.Result.Success;
-import com.google.cloud.pso.rag.llm.LLM.ErrorResponse;
+import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.google.cloud.pso.rag.llm.LLM.Exchange;
 import com.google.cloud.pso.rag.llm.LLM.Parameters;
 import com.google.genai.types.Content;
@@ -51,16 +49,10 @@ public class Gemini {
   public record SummarizeRequest(String model, List<String> content, Parameters params)
       implements Summarize {}
 
-  public sealed interface ChatResponse extends LLM.ChatResponse
-      permits ErrorResponse, ChattingResponse {}
+  public record ChatResponse(Exchange answer, Optional<String> blockReason)
+      implements LLM.ChatResponse {}
 
-  public sealed interface SummarizeResponse extends LLM.SummarizationResponse
-      permits ErrorResponse, SummarizationResponse {}
-
-  public record ChattingResponse(Exchange answer, Optional<String> blockReason)
-      implements ChatResponse {}
-
-  public record SummarizationResponse(String content) implements SummarizeResponse {}
+  public record SummarizationResponse(String content) implements LLM.SummarizationResponse {}
 
   static String formatErrorWithResponse(String response) {
     return String.format("Error returned from the model, see response: %s", response);
@@ -90,37 +82,34 @@ public class Gemini {
                     .collect(Collectors.joining("\n")));
   }
 
-  static Result<String, String> extractSummarization(GenerateContentResponse response) {
+  static Result<String, ErrorResponse> extractSummarization(GenerateContentResponse response) {
     return extractResponse(response)
-        .map(content -> Result.<String, String>success(content))
-        .orElseGet(() -> Result.<String, String>failure(response.toString()));
+        .map(content -> Result.<String, ErrorResponse>success(content))
+        .orElseGet(
+            () -> Result.failure(new ErrorResponse(formatErrorWithResponse(response.toString()))));
   }
 
-  static SummarizeResponse summarizeResponse(GenerateContentResponse generatedResponse) {
-    return switch (extractSummarization(generatedResponse)) {
-      case Success<String, ?>(var content) -> new SummarizationResponse(content);
-      case Failure<?, String>(var textResponse) ->
-          new ErrorResponse(formatErrorWithResponse(textResponse));
-    };
+  static Result<? extends LLM.SummarizationResponse, ErrorResponse> summarizeResponse(
+      GenerateContentResponse generatedResponse) {
+    return extractSummarization(generatedResponse).map(SummarizationResponse::new);
   }
 
-  static Result<Exchange, String> extractExchange(GenerateContentResponse response) {
+  static Result<Exchange, ErrorResponse> extractExchange(GenerateContentResponse response) {
     return extractResponse(response)
         .map(text -> new Exchange("model", text))
-        .map(exch -> Result.<Exchange, String>success(exch))
-        .orElseGet(() -> Result.<Exchange, String>failure(response.toString()));
+        .map(exch -> Result.<Exchange, ErrorResponse>success(exch))
+        .orElseGet(
+            () -> Result.failure(new ErrorResponse(formatErrorWithResponse(response.toString()))));
   }
 
-  static ChatResponse chattingResponse(GenerateContentResponse generatedResponse) {
-    return switch (extractExchange(generatedResponse)) {
-      case Success<Exchange, ?>(var exchange) ->
-          new ChattingResponse(exchange, extractModelFeedback(generatedResponse));
-      case Failure<?, String>(var jsonResponse) ->
-          new ErrorResponse(formatErrorWithResponse(jsonResponse));
-    };
+  static Result<? extends LLM.ChatResponse, ErrorResponse> chattingResponse(
+      GenerateContentResponse generatedResponse) {
+    return extractExchange(generatedResponse)
+        .map(exchange -> new ChatResponse(exchange, extractModelFeedback(generatedResponse)));
   }
 
-  public static CompletableFuture<ChatResponse> chat(ChatRequest request) {
+  public static CompletableFuture<Result<? extends LLM.ChatResponse, ErrorResponse>> chat(
+      ChatRequest request) {
     var gemini = Models.gemini(GCPEnvironment.config());
     return CompletableFuture.supplyAsync(
             () ->
@@ -147,11 +136,11 @@ public class Gemini {
                             .build()),
             InteractionHelper.EXEC)
         .thenApply(Gemini::chattingResponse)
-        .exceptionally(
-            error -> new ErrorResponse("Error while generating chat request.", Optional.of(error)));
+        .exceptionally(error -> Result.failure("Error while generating chat request.", error));
   }
 
-  public static CompletableFuture<SummarizeResponse> summarize(SummarizeRequest request) {
+  public static CompletableFuture<Result<? extends LLM.SummarizationResponse, ErrorResponse>>
+      summarize(SummarizeRequest request) {
     var gemini = Models.gemini(GCPEnvironment.config());
     return CompletableFuture.supplyAsync(
             () ->
@@ -178,8 +167,6 @@ public class Gemini {
             InteractionHelper.EXEC)
         .thenApply(Gemini::summarizeResponse)
         .exceptionally(
-            error ->
-                new ErrorResponse(
-                    "Error while generating summarization request.", Optional.of(error)));
+            error -> Result.failure("Error while generating summarization request.", error));
   }
 }

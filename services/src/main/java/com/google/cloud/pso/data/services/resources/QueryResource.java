@@ -26,7 +26,6 @@ import com.google.cloud.pso.data.services.beans.VertexAIService;
 import com.google.cloud.pso.data.services.exceptions.QueryResourceException;
 import com.google.cloud.pso.data.services.utils.PromptUtilities;
 import com.google.cloud.pso.rag.llm.Gemini;
-import com.google.cloud.pso.rag.llm.LLM;
 import com.google.cloud.pso.rag.vector.VectorSearch;
 import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.base.Preconditions;
@@ -117,21 +116,21 @@ public class QueryResource {
       // retrieve the summary of the previous conversation and generate embeddings adding that
       // context to the user query
       var previousFuture =
-          vertexaiService
-              .retrievePreviousSummarizedConversation(lastsQAndAs)
-              .thenApply(
-                  maybeSummary ->
-                      maybeSummary
-                          .map(
-                              summary ->
-                                  switch (summary) {
-                                    case LLM.ErrorResponse(var msg, var cause) ->
-                                        throw cause
-                                            .map(ex -> new RuntimeException(msg, ex))
-                                            .orElse(new RuntimeException(msg));
-                                    case Gemini.SummarizationResponse(var content) -> content;
-                                  })
-                          .orElse(""));
+          lastsQAndAs.isEmpty()
+              ? CompletableFuture.completedFuture("")
+              : vertexaiService
+                  .retrievePreviousSummarizedConversation(lastsQAndAs)
+                  .thenApply(
+                      summary ->
+                          summary
+                              .map(resp -> resp.content())
+                              .orElseThrow(
+                                  error ->
+                                      new QueryResourceException(
+                                          error.message(),
+                                          query.text(),
+                                          query.sessionId(),
+                                          error.cause().get())));
       var contextFuture =
           previousFuture.thenCompose(
               previousSummarizedConversation ->
@@ -203,17 +202,25 @@ public class QueryResource {
                         lastsQAndAs, query, palmRequestContext);
                   })
               .thenApply(
-                  chatResponse ->
-                      switch (chatResponse) {
-                        case LLM.ErrorResponse(var msg, var cause) ->
-                            throw cause
-                                .map(ex -> new RuntimeException(msg, ex))
-                                .orElse(new RuntimeException(msg));
-                        case Gemini.ChattingResponse(var __, var blocked) when blocked
-                                .isPresent() ->
-                            "Response blocked by model. " + blocked.get();
-                        case Gemini.ChattingResponse(var exchange, var __) -> exchange.content();
-                      });
+                  response ->
+                      response
+                          .map(
+                              chat ->
+                                  switch (chat) {
+                                    case Gemini.ChatResponse(var __, var blocked) when blocked
+                                            .isPresent() ->
+                                        "Response blocked by model. " + blocked.get();
+                                    case Gemini.ChatResponse(var exchange, var __) ->
+                                        exchange.content();
+                                  })
+                          .orElseThrow(
+                              error ->
+                                  new QueryResourceException(
+                                      error.message(),
+                                      query.text(),
+                                      query.sessionId(),
+                                      error.cause().get())));
+
       return contextFuture.thenCombine(
           textResponseFuture,
           (context, responseText) -> {
