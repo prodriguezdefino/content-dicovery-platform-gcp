@@ -112,7 +112,10 @@ public class GoogleCredentialsCache {
     try {
       return TOKEN_CACHE.get(credentialsPrincipal);
     } catch (Exception ex) {
-      var msg = "Error while trying to retrieve access token from cache";
+      var msg =
+          String.format(
+              "Error while trying to retrieve access token from cache with principal: %s.",
+              credentialsPrincipal);
       LOG.error(msg, ex);
       throw new RuntimeException(msg, ex);
     }

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.pso.rag.llm;
 
+import static com.google.cloud.pso.rag.common.InteractionHelper.jsonMapper;
+
 import com.google.cloud.pso.rag.common.GCPEnvironment;
 import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.cloud.pso.rag.common.Models;
@@ -75,20 +77,24 @@ public class Gemini {
                                 .orElse(reason)));
   }
 
-  static Optional<String> extractResponse(GenerateContentResponse response) {
+  static Optional<Result<String, ErrorResponse>> extractResponse(GenerateContentResponse response) {
     return Optional.ofNullable(response.parts())
         .map(
             parts ->
                 parts.stream()
                     .flatMap(part -> part.text().stream())
-                    .collect(Collectors.joining("\n")));
+                    .collect(Collectors.joining("\n")))
+        .map(
+            content ->
+                jsonMapper(content, String.class)
+                    .orElseApply(
+                        error ->
+                            new ErrorResponse("Problems capturing response.", Optional.of(error))));
   }
 
   static Result<String, ErrorResponse> extractSummarization(GenerateContentResponse response) {
     return extractResponse(response)
-        .map(content -> Result.<String, ErrorResponse>success(content))
-        .orElseGet(
-            () -> Result.failure(new ErrorResponse(formatErrorWithResponse(response.toString()))));
+        .orElseGet(() -> Result.failure(formatErrorWithResponse(response.toString())));
   }
 
   static Result<? extends LLM.SummarizationResponse, ErrorResponse> summarizeResponse(
@@ -98,10 +104,8 @@ public class Gemini {
 
   static Result<Exchange, ErrorResponse> extractExchange(GenerateContentResponse response) {
     return extractResponse(response)
-        .map(text -> new Exchange("model", text))
-        .map(exch -> Result.<Exchange, ErrorResponse>success(exch))
-        .orElseGet(
-            () -> Result.failure(new ErrorResponse(formatErrorWithResponse(response.toString()))));
+        .map(model -> model.map(text -> new Exchange("model", text)))
+        .orElseGet(() -> Result.failure(formatErrorWithResponse(response.toString())));
   }
 
   static Result<? extends LLM.ChatResponse, ErrorResponse> chattingResponse(

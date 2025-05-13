@@ -55,6 +55,9 @@ LAUNCH_PARAMS=" \
  --matchingEngineIndexEndpointDomain=$INDEX_ENDPOINT_DOMAIN \
  --matchingEngineIndexEndpointDeploymentName=$INDEX_ENDPOINT_DEPLOYMENT \
  --bigTableInstanceName=$RUN_NAME-instance \
+ --embeddingsConfiguration=$EMBEDDINGS_CONFIG \
+ --vectorConfiguration=$VECTOR_CONFIG \
+ --chunkerConfiguration=$CHUNKER_CONFIG \
  --serviceAccount=$DF_SA \
  --usePublicIps=false "
 

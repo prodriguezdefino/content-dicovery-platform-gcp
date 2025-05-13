@@ -34,3 +34,4 @@ python-embeddings/libs/*
 application.properties.local
 
 nbproject
+.DS_Store

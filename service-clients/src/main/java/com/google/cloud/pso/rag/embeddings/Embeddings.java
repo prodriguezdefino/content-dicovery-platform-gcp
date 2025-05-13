@@ -18,7 +18,6 @@ package com.google.cloud.pso.rag.embeddings;
 import com.google.cloud.pso.rag.common.Result;
 import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /** */

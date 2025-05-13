@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.beam.contentextract.transforms;
 
+import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types.Content;
 import com.google.cloud.pso.beam.contentextract.Types.ContentChunks;
 import com.google.cloud.pso.rag.content.Chunks;
@@ -24,6 +25,8 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.PCollection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** */
 public class ContentChunker extends PTransform<PCollection<Content>, PCollection<ContentChunks>> {
@@ -34,13 +37,15 @@ public class ContentChunker extends PTransform<PCollection<Content>, PCollection
 
   @Override
   public PCollection<ContentChunks> expand(PCollection<Content> input) {
-    var chunkerConfig = "gemini-2.0-flash";
+    var options = input.getPipeline().getOptions();
+    var chunkerConfig = options.as(ContentExtractionOptions.class).getChunkerConfiguration();
     return input
         .apply("StableContent", Reshuffle.viaRandomKey())
         .apply("Chunk", ParDo.of(new ChunkContent(chunkerConfig)));
   }
 
   static class ChunkContent extends DoFn<Content, ContentChunks> {
+    private static final Logger LOG = LoggerFactory.getLogger(ChunkContent.class);
 
     private final String chunkerConfig;
 
@@ -50,18 +55,14 @@ public class ContentChunker extends PTransform<PCollection<Content>, PCollection
 
     @ProcessElement
     public void process(@Element Content content, OutputReceiver<ContentChunks> receiver) {
-      Chunks.chunk(ChunksRequests.create(chunkerConfig, content.content()))
-          .thenApply(
-              response ->
-                  response
-                      .map(resp -> new ContentChunks(content.key(), resp.chunks()))
-                      .orElseThrow(
-                          error ->
-                              error
-                                  .cause()
-                                  .map(t -> new RuntimeException(error.message(), t))
-                                  .orElseGet(() -> new RuntimeException(error.message()))))
-          .thenAccept(receiver::output);
+      var chunkResult =
+          Chunks.chunk(ChunksRequests.create(chunkerConfig, content.content())).join();
+      var chunks =
+          chunkResult
+              .map(resp -> new ContentChunks(content.key(), resp.chunks()))
+              .orElseThrow(error -> new RuntimeException(error.message(), error.cause().get()));
+      LOG.info("processed chunks size: {}", chunks, chunks.chunks().size());
+      receiver.output(chunks);
     }
   }
 }
