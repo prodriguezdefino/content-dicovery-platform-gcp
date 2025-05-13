@@ -225,7 +225,8 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
   }
 
   static class MatchingEngineDatapointUpsertDoFn extends DoFn<List<IndexableContent>, Void> {
-
+    private static final Logger LOG =
+        LoggerFactory.getLogger(MatchingEngineDatapointUpsertDoFn.class);
     private final String vectorsConfig;
 
     public MatchingEngineDatapointUpsertDoFn(String vectorsConfig) {
@@ -238,16 +239,19 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
       // index upsert method
       Lists.partition(context.element(), 15)
           .forEach(
-              embeddings ->
-                  Vectors.storeVector(
-                      VectorRequests.store(
-                          vectorsConfig,
-                          embeddings.stream()
-                              .map(
-                                  content ->
-                                      new VectorRequests.Vector(
-                                          Optional.of(content.key()), content.embedding()))
-                              .toList())));
+              embeddings -> {
+                Vectors.storeVector(
+                        VectorRequests.store(
+                            vectorsConfig,
+                            embeddings.stream()
+                                .map(
+                                    content ->
+                                        new VectorRequests.Vector(
+                                            Optional.of(content.key()), content.embedding()))
+                                .toList()))
+                    .join();
+                LOG.info("vector stored count: {}", embeddings.size());
+              });
     }
   }
 }

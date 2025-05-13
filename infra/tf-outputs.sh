@@ -18,9 +18,9 @@ INDEX_ENDPOINT_DOMAIN=$(echo $TF_JSON_OUTPUT | jq .index_endpoint_domain.value |
 INDEX_ENDPOINT_ID=$(echo $TF_JSON_OUTPUT | jq .index_endpoint_id.value | tr -d '"')
 INDEX_ENDPOINT_DEPLOYMENT=deploy$NAME
 SECRET_SERVICE_CONFIG=$(echo $TF_JSON_OUTPUT | jq .secret_service_configuration.value | tr -d '"')
-EMBEDDINGS_CONFIG=$(echo $TF_JSON_OUTPUT | jq .secret_service_configuration.value | tr -d '"')
+EMBEDDINGS_CONFIG=$(echo $TF_JSON_OUTPUT | jq .embeddings_models.value | tr -d '"')
 VECTOR_CONFIG=$(echo $TF_JSON_OUTPUT | jq .vector_storages.value | tr -d '"')
-CHUNKER_CONFIG=$(echo $TF_JSON_OUTPUT | jq .CHUNKER_CONFIG.value | tr -d '"')
+CHUNKER_CONFIG=$(echo $TF_JSON_OUTPUT | jq .chunkers.value | tr -d '"')
 
 echo " "
 echo "******************************************************************************************************************************************************"

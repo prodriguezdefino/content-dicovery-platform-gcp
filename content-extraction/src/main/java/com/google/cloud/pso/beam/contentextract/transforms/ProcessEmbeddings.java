@@ -28,6 +28,8 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.PCollection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** */
 public class ProcessEmbeddings
@@ -47,7 +49,7 @@ public class ProcessEmbeddings
   }
 
   static class EmbeddingsRetriever extends DoFn<ContentChunks, List<IndexableContent>> {
-
+    private static final Logger LOG = LoggerFactory.getLogger(EmbeddingsRetriever.class);
     private final String embeddingsConfig;
 
     public EmbeddingsRetriever(String embeddingsConfig) {
@@ -57,25 +59,27 @@ public class ProcessEmbeddings
     @ProcessElement
     public void process(
         @Element ContentChunks content, OutputReceiver<List<IndexableContent>> receiver) {
-      Embeddings.retrieveEmbeddings(
-              EmbeddingsRequests.create(embeddingsConfig, Embeddings.Types.TEXT, content.chunks()))
-          .thenApply(
-              response ->
-                  response
-                      .map(text -> Embeddings.extractValuesFromEmbeddings(text))
-                      .orElseThrow(
-                          error -> new RuntimeException(error.message(), error.cause().get())))
-          .thenApply(
-              embValues ->
-                  IntStream.range(0, content.chunks().size())
-                      .mapToObj(
-                          idx ->
-                              new IndexableContent(
-                                  content.key() + Utilities.CONTENT_KEY_SEPARATOR + idx,
-                                  content.chunks().get(idx),
-                                  embValues.get(idx)))
-                      .toList())
-          .thenAccept(receiver::output);
+      var embResult =
+          Embeddings.retrieveEmbeddings(
+                  EmbeddingsRequests.create(
+                      embeddingsConfig, Embeddings.Types.TEXT, content.chunks()))
+              .join();
+      var embeddings =
+          embResult
+              .map(embs -> Embeddings.extractValuesFromEmbeddings(embs))
+              .map(
+                  embValues ->
+                      IntStream.range(0, content.chunks().size())
+                          .mapToObj(
+                              idx ->
+                                  new IndexableContent(
+                                      content.key() + Utilities.CONTENT_KEY_SEPARATOR + idx,
+                                      content.chunks().get(idx),
+                                      embValues.get(idx)))
+                          .toList())
+              .orElseThrow(error -> new RuntimeException(error.message(), error.cause().get()));
+      LOG.info("processed embeddings size: {}", embeddings, embeddings.size());
+      receiver.output(embeddings);
     }
   }
 }

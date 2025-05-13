@@ -58,6 +58,7 @@ LAUNCH_PARAMS=" \
  --embeddingsConfiguration=$EMBEDDINGS_CONFIG \
  --vectorConfiguration=$VECTOR_CONFIG \
  --chunkerConfiguration=$CHUNKER_CONFIG \
+ --serviceAccount=$DF_SA \
  --usePublicIps=false "
 
 if (( $# == 4 ))

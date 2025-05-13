@@ -28,14 +28,14 @@
 
     <properties>
         <java.version>21</java.version>
-        <beam.version>2.64.0</beam.version>
+        <beam.version>2.65.0</beam.version>
         <bigquery.version>v2-rev20220924-2.0.0</bigquery.version>
         <google-api-client.version>2.0.0</google-api-client.version>
         <guava.version>31.1-jre</guava.version>
         <junit.version>4.13.2</junit.version>
         <jackson.version>2.14.1</jackson.version>
         <libraries-bom.version>26.8.0</libraries-bom.version>
-        <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <maven-exec-plugin.version>1.6.0</maven-exec-plugin.version>
         <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
         <maven-shade-plugin.version>3.1.0</maven-shade-plugin.version>
@@ -230,7 +230,11 @@
                 <artifactId>failsafe</artifactId>
                 <version>3.3.2</version>
             </dependency>
-
+            <dependency>
+                <groupId>com.google.auto.service</groupId>
+                <artifactId>auto-service</artifactId>
+                <version>1.1.1</version>
+            </dependency>
             <!-- Adds a dependency on the Beam Google Cloud Platform IO module. -->
             <dependency>
                 <groupId>org.apache.beam</groupId>

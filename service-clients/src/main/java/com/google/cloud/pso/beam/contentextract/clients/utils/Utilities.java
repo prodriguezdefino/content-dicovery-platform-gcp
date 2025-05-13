@@ -29,7 +29,8 @@ import dev.failsafe.RetryPolicy;
 import dev.failsafe.function.CheckedRunnable;
 import dev.failsafe.function.CheckedSupplier;
 import java.io.IOException;
-import java.net.URI;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.text.Normalizer;
 import java.time.Duration;
@@ -120,27 +121,33 @@ public class Utilities {
 
   public static Boolean checkIfValidURL(String maybeUrl) {
     try {
-      URI.create(maybeUrl);
+      new URL(maybeUrl);
       return true;
-    } catch (IllegalArgumentException ex) {
+    } catch (MalformedURLException ex) {
       return false;
     }
   }
 
   public static String extractIdFromURL(String url) {
-    var path = URI.create(url).getPath();
-    Preconditions.checkState(!path.isEmpty(), "The URL path should not be empty");
-    if (path.contains("/document/d/")) {
-      return extractIdByPattern(path, "/document/d/");
-    } else if (path.contains("/presentation/d/")) {
-      return extractIdByPattern(path, "/presentation/d/");
-    } else if (path.contains("/spreadsheets/d/")) {
-      return extractIdByPattern(path, "/spreadsheets/d/");
-    } else if (path.contains("/drive/folders/")) {
-      return extractIdByPattern(path, "/drive/folders/");
-    } else {
-      throw new IllegalArgumentException(
-          "The shared URL is not a document or drive folder one: " + url);
+    try {
+      var path = new URL(url).getPath();
+      Preconditions.checkState(!path.isEmpty(), "The URL path should not be empty");
+      if (path.contains("/document/d/")) {
+        return extractIdByPattern(path, "/document/d/");
+      } else if (path.contains("/presentation/d/")) {
+        return extractIdByPattern(path, "/presentation/d/");
+      } else if (path.contains("/spreadsheets/d/")) {
+        return extractIdByPattern(path, "/spreadsheets/d/");
+      } else if (path.contains("/drive/folders/")) {
+        return extractIdByPattern(path, "/drive/folders/");
+      } else {
+        throw new IllegalArgumentException(
+            "The shared URL is not a document or drive folder one: " + url);
+      }
+    } catch (MalformedURLException ex) {
+      var msg = "Problems while parsing the Google drive URL: " + url;
+      LOG.error(msg, ex);
+      throw new IllegalArgumentException(msg, ex);
     }
   }
 

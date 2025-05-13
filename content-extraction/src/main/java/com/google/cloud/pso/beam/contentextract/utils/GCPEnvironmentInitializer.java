@@ -15,7 +15,7 @@
  */
 package com.google.cloud.pso.beam.contentextract.utils;
 
-import autovalue.shaded.com.google.auto.service.AutoService;
+import com.google.auto.service.AutoService;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
 import org.apache.beam.sdk.harness.JvmInitializer;
