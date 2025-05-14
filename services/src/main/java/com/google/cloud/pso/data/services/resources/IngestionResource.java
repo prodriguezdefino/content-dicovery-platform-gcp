@@ -60,16 +60,16 @@ public class IngestionResource {
   @Path("/multipart")
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Timed(name = "content.ingest.strutured", unit = MetricUnits.MILLISECONDS)
-  public CompletableFuture<IngestionResponse> ingestMultipartContent(MultipartContentIngestionRequest request) {
-    return psService.publishMessage(request.toProperJSON()).thenApply(fn)
-    return new IngestionResponse("Ingestion trace id: " + msgId);
-  }
-  
-  static void processException(Throwable ex){
-   var msg = "Problems while executing the ingestion resource. ";
+  public CompletableFuture<IngestionResponse> ingestMultipartContent(
+      MultipartContentIngestionRequest request) {
+    return psService
+        .publishMessage(request.toProperJSON())
+        .thenApply(msgId -> new IngestionResponse("Ingestion trace id: " + msgId))
+        .exceptionally(
+            ex -> {
+              var msg = "Problems while executing the ingestion resource. ";
               LOG.error(msg, ex);
-              throw new IngestionResourceException(
-                   msg + ex.getMessage(), ex);
-  
+              throw new IngestionResourceException(msg + ex.getMessage(), ex);
+            });
   }
 }

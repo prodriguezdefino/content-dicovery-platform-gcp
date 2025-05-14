@@ -23,6 +23,11 @@ public class IngestionResourceException extends RuntimeException {
 
   private final List<String> urls;
 
+  public IngestionResourceException(String message, Throwable cause) {
+    super(message, cause);
+    this.urls = List.of();
+  }
+
   public IngestionResourceException(
       String url, List<String> urls, String message, Throwable cause) {
     super(message, cause);
