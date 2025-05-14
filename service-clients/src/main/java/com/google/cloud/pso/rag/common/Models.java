@@ -24,6 +24,10 @@ import java.util.List;
 /** */
 public class Models {
 
+  public static final String PDF_MIME = "application/pdf";
+  public static final String JSON_MIME = "application/json";
+  public static final String TEXT_MIME = "text/plain";
+
   public static final List<SafetySetting> SAFETY_SETTINGS =
       List.of(
           SafetySetting.builder()
@@ -42,7 +46,7 @@ public class Models {
 
   public static final GenerateContentConfig DEFAULT_CONFIG =
       GenerateContentConfig.builder()
-          .responseMimeType("application/json")
+          .responseMimeType(JSON_MIME)
           .candidateCount(1)
           .safetySettings(SAFETY_SETTINGS)
           .build();

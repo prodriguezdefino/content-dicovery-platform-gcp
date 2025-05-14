@@ -21,15 +21,29 @@ import java.util.List;
 public class ChunksRequests {
   private ChunksRequests() {}
 
-  public static Chunks.ChunkRequest create(String configurationEntry, List<String> dataToChunk) {
+  public static Chunks.ChunkRequest create(
+      String configurationEntry, Chunks.SupportedTypes type, String dataToChunk) {
+    return create(configurationEntry, type, List.of(dataToChunk));
+  }
+
+  public static Chunks.ChunkRequest create(
+      String configurationEntry, Chunks.SupportedTypes type, List<String> dataToChunk) {
     return switch (configurationEntry) {
-      case "gemini-2.0-flash", "gemini-2.0-flash-lite-001" ->
-          new Gemini.TextChunkRequest(configurationEntry, dataToChunk);
+      case "gemini-2.0-flash", "gemini-2.0-flash-lite" ->
+          createGeminiRequest(configurationEntry, type, dataToChunk);
       default ->
           throw new IllegalArgumentException(
               String.format(
                   "Configuration entry (%s) not supported for chunking request creation.",
                   configurationEntry));
+    };
+  }
+
+  static Chunks.ChunkRequest createGeminiRequest(
+      String configurationEntry, Chunks.SupportedTypes type, List<String> dataToChunk) {
+    return switch (type) {
+      case PDF -> new Gemini.PDFChunkRequest(configurationEntry, dataToChunk);
+      case TEXT -> new Gemini.TextChunkRequest(configurationEntry, dataToChunk);
     };
   }
 }

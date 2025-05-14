@@ -28,7 +28,7 @@ public interface Embeddings {
     IMAGE_RAW,
     IMAGE_LINK,
     VIDEO_RAW,
-    VIDEO_LINK,
+    VIDEO_LINK
   }
 
   sealed interface Parameters permits VertexAi.Parameters {}

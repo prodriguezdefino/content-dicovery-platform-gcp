@@ -22,6 +22,10 @@ import java.util.concurrent.CompletableFuture;
 
 /** */
 public interface Chunks {
+  enum SupportedTypes {
+    TEXT,
+    PDF
+  }
 
   sealed interface ChunkRequest permits Gemini.ChunkRequest {}
 
