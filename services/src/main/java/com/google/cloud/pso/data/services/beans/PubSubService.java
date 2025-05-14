@@ -18,10 +18,11 @@ package com.google.cloud.pso.data.services.beans;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
+import com.spotify.futures.ApiFuturesExtra;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
 
 /** */
 public class PubSubService {
@@ -39,14 +40,10 @@ public class PubSubService {
     publisher = Publisher.newBuilder(topic).build();
   }
 
-  public String publishMessage(String message) {
-    try {
-      var pubsubMessage =
-          PubsubMessage.newBuilder().setData(ByteString.copyFromUtf8(message)).build();
-      return publisher.publish(pubsubMessage).get();
-    } catch (InterruptedException | ExecutionException ex) {
-      throw new RuntimeException("Problems while publishing request.", ex);
-    }
+  public CompletableFuture<String> publishMessage(String message) {
+    return ApiFuturesExtra.toCompletableFuture(
+        publisher.publish(
+            PubsubMessage.newBuilder().setData(ByteString.copyFromUtf8(message)).build()));
   }
 
   @PreDestroy

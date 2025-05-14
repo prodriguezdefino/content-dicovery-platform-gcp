@@ -56,7 +56,7 @@ public class ServiceTypes {
     @FormParam("documentContent")
     byte[] content;
 
-    public String toProperJSON() throws URISyntaxException {
+    public String toProperJSON() {
       var json = new JsonObject();
       var document = new JsonObject();
       document.addProperty("id", documentId);
@@ -70,7 +70,7 @@ public class ServiceTypes {
 
   public record GoogleDriveIngestionRequest(String url, List<String> urls) {
 
-    public String toProperJSON() throws URISyntaxException {
+    public String toProperJSON() {
       var json = new JsonObject();
       if (url != null) {
         json.addProperty("url", checkUrl(url));

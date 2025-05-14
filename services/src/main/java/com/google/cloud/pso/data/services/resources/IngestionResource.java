@@ -26,7 +26,7 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import java.net.URISyntaxException;
+import java.util.concurrent.CompletableFuture;
 import org.eclipse.microprofile.metrics.MetricUnits;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
@@ -42,25 +42,34 @@ public class IngestionResource {
   @Path("/gdrive")
   @Produces(MediaType.APPLICATION_JSON)
   @Timed(name = "content.ingest.gdrive", unit = MetricUnits.MILLISECONDS)
-  public IngestionResponse ingestGoogleDriveUrls(GoogleDriveIngestionRequest request) {
-    try {
-      var msgId = psService.publishMessage(request.toProperJSON());
-      return new IngestionResponse("Ingestion trace id: " + msgId);
-    } catch (Exception ex) {
-      var msg = "Problems while executing the ingestion resource. ";
-      LOG.error(msg, ex);
-      throw new IngestionResourceException(
-          request.url(), request.urls(), msg + ex.getMessage(), ex);
-    }
+  public CompletableFuture<IngestionResponse> ingestGoogleDriveUrls(
+      GoogleDriveIngestionRequest request) {
+    return psService
+        .publishMessage(request.toProperJSON())
+        .thenApply(msgId -> new IngestionResponse("Ingestion trace id: " + msgId))
+        .exceptionally(
+            ex -> {
+              var msg = "Problems while executing the ingestion resource. ";
+              LOG.error(msg, ex);
+              throw new IngestionResourceException(
+                  request.url(), request.urls(), msg + ex.getMessage(), ex);
+            });
   }
 
   @POST
   @Path("/multipart")
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Timed(name = "content.ingest.strutured", unit = MetricUnits.MILLISECONDS)
-  public IngestionResponse ingestMultipartContent(MultipartContentIngestionRequest request)
-      throws URISyntaxException {
-    var msgId = psService.publishMessage(request.toProperJSON());
+  public CompletableFuture<IngestionResponse> ingestMultipartContent(MultipartContentIngestionRequest request) {
+    return psService.publishMessage(request.toProperJSON()).thenApply(fn)
     return new IngestionResponse("Ingestion trace id: " + msgId);
+  }
+  
+  static void processException(Throwable ex){
+   var msg = "Problems while executing the ingestion resource. ";
+              LOG.error(msg, ex);
+              throw new IngestionResourceException(
+                   msg + ex.getMessage(), ex);
+  
   }
 }
