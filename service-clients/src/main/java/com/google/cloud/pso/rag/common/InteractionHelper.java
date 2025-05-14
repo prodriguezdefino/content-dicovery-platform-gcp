@@ -49,7 +49,8 @@ public class InteractionHelper {
     try {
       return Result.success(JSON_MAPPER.readValue(value, valueType));
     } catch (JsonProcessingException ex) {
-      return Result.failure(ex);
+      return Result.failure(
+          new IllegalArgumentException("Problems trying to marshall response: " + value, ex));
     }
   }
 
@@ -58,7 +59,8 @@ public class InteractionHelper {
     try {
       return Result.success(JSON_MAPPER.readValue(value, valueTypeReference));
     } catch (JsonProcessingException ex) {
-      return Result.failure(ex);
+      return Result.failure(
+          new IllegalArgumentException("Problems trying to marshall response: " + value, ex));
     }
   }
 

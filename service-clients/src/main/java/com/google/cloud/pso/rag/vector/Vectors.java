@@ -41,15 +41,15 @@ public interface Vectors {
 
   sealed interface DeleteResponse extends Response permits VectorSearch.RemoveResponse {}
 
-  public record Datapoint(String datapointId, List<Double> featureVector) {
+  record Datapoint(String datapointId, List<Double> featureVector) {
     public Datapoint(List<Double> values) {
       this("dummyId", values);
     }
   }
 
-  public record Neighbor(Double distance, Datapoint datapoint) {}
+  record Neighbor(Double distance, Datapoint datapoint) {}
 
-  public record Neighbors(String id, List<Neighbor> neighbors) {}
+  record Neighbors(String id, List<Neighbor> neighbors) {}
 
   static CompletableFuture<Result<? extends SearchResponse, ErrorResponse>> findNearestNeighbors(
       Search request) {

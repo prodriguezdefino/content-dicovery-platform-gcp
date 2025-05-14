@@ -26,6 +26,7 @@ import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.google.cloud.pso.rag.common.Result.Failure;
 import com.google.cloud.pso.rag.common.Result.Success;
 import com.google.genai.types.Content;
+import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import java.util.ArrayList;
@@ -37,9 +38,9 @@ import java.util.stream.Stream;
 /** */
 public class Gemini {
 
-  static final String TEXT_CHUNKING_PROMPT =
+  static final String CHUNKING_INSTRUCTIONS =
       """
-      Analyze the following text and divide it into chunks for generating text embeddings.
+      and divide it into chunks for generating text embeddings.
       Your goal is to create chunks that are:
       1. Each chunk should focus on a single topic or idea.
       2. Aim for a maximum length of 2048 tokens per chunk.
@@ -51,19 +52,34 @@ public class Gemini {
       --
       """;
 
+  static final String TEXT_CHUNKING_PROMPT = "Analyze the following text " + CHUNKING_INSTRUCTIONS;
+  static final String PDF_CHUNKING_PROMPT =
+      "Analyze the provided PDF, extract all the text from it, remove all empty newlines, "
+          + CHUNKING_INSTRUCTIONS;
+
   private static final Content SYSTEM_INSTRUCTION =
       Content.fromParts(
           Part.fromText("You are an efficient data chunker used to generate text embeddings."));
 
   private Gemini() {}
 
-  public sealed interface ChunkRequest extends Chunks.ChunkRequest permits TextChunkRequest {}
+  public sealed interface ChunkRequest extends Chunks.ChunkRequest
+      permits TextChunkRequest, PDFChunkRequest {}
 
   public sealed interface ChunkResponse extends Chunks.ChunkResponse permits TextChunkResponse {}
 
   public record TextChunkRequest(String model, List<String> content) implements ChunkRequest {}
 
+  public record PDFChunkRequest(String model, List<String> locations) implements ChunkRequest {}
+
   public record TextChunkResponse(List<String> chunks) implements ChunkResponse {}
+
+  static String mimeTypeFromType(Chunks.SupportedTypes type) {
+    return switch (type) {
+      case PDF -> Models.PDF_MIME;
+      case TEXT -> Models.TEXT_MIME;
+    };
+  }
 
   static Result<? extends Chunks.ChunkResponse, ErrorResponse> response(
       GenerateContentResponse generatedResponse) {
@@ -72,35 +88,54 @@ public class Gemini {
       case Success<ArrayList<String>, ?>(var chunks) ->
           Result.success(new TextChunkResponse(chunks));
       case Failure<?, Exception>(var ex) ->
-          Result.failure(
-              new ErrorResponse("Error while parsing response from model.", Optional.of(ex)));
+          Result.failure("Error while parsing response from model.", ex);
     };
+  }
+
+  static CompletableFuture<Result<? extends Chunks.ChunkResponse, ErrorResponse>> internalExec(
+      String model, List<Part> parts) {
+    return internalExec(model, parts, null);
+  }
+
+  static CompletableFuture<Result<? extends Chunks.ChunkResponse, ErrorResponse>> internalExec(
+      String model, List<Part> parts, GenerateContentConfig config) {
+    var gemini = Models.gemini(GCPEnvironment.config());
+    var safeConfig =
+        Optional.ofNullable(config)
+            .orElse(
+                Models.DEFAULT_CONFIG.toBuilder()
+                    .systemInstruction(SYSTEM_INSTRUCTION)
+                    .responseSchema(Models.STRING_ARRAY_SCHEMA)
+                    .build());
+    return CompletableFuture.supplyAsync(
+            () ->
+                gemini.models.generateContent(
+                    model, Content.builder().role("user").parts(parts).build(), safeConfig),
+            InteractionHelper.EXEC)
+        .thenApply(Gemini::response)
+        .exceptionally(error -> Result.failure("Error while generating chunks.", error));
   }
 
   public static CompletableFuture<Result<? extends Chunks.ChunkResponse, ErrorResponse>>
       extractChunks(ChunkRequest request) {
-    var gemini = Models.gemini(GCPEnvironment.config());
     return switch (request) {
       case TextChunkRequest(var model, var content) ->
-          CompletableFuture.supplyAsync(
-                  () ->
-                      gemini.models.generateContent(
-                          model,
-                          Content.builder()
-                              .role("user")
-                              .parts(
-                                  Stream.concat(Stream.of(TEXT_CHUNKING_PROMPT), content.stream())
-                                      .filter(text -> !text.isBlank())
-                                      .map(Part::fromText)
-                                      .toList())
-                              .build(),
-                          Models.DEFAULT_CONFIG.toBuilder()
-                              .systemInstruction(SYSTEM_INSTRUCTION)
-                              .responseSchema(Models.STRING_ARRAY_SCHEMA)
-                              .build()),
-                  InteractionHelper.EXEC)
-              .thenApply(Gemini::response)
-              .exceptionally(error -> Result.failure("Error while generating chunks.", error));
+          internalExec(
+              model,
+              Stream.concat(Stream.of(TEXT_CHUNKING_PROMPT), content.stream())
+                  .filter(text -> !text.isBlank())
+                  .map(Part::fromText)
+                  .toList());
+      case PDFChunkRequest(var model, var locations) ->
+          internalExec(
+              model,
+              Stream.concat(
+                      locations.stream()
+                          .map(
+                              uri ->
+                                  Part.fromUri(uri, mimeTypeFromType(Chunks.SupportedTypes.PDF))),
+                      Stream.of(Part.fromText(PDF_CHUNKING_PROMPT)))
+                  .toList());
     };
   }
 }
