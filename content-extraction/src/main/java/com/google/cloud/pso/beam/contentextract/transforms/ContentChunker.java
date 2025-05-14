@@ -56,7 +56,10 @@ public class ContentChunker extends PTransform<PCollection<Content>, PCollection
     @ProcessElement
     public void process(@Element Content content, OutputReceiver<ContentChunks> receiver) {
       var chunkResult =
-          Chunks.chunk(ChunksRequests.create(chunkerConfig, content.content())).join();
+          Chunks.chunk(
+                  ChunksRequests.create(
+                      chunkerConfig, Chunks.SupportedTypes.TEXT, content.content()))
+              .join();
       var chunks =
           chunkResult
               .map(resp -> new ContentChunks(content.key(), resp.chunks()))
