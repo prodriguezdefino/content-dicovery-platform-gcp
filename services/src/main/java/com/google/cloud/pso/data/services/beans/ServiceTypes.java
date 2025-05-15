@@ -16,12 +16,11 @@
 package com.google.cloud.pso.data.services.beans;
 
 import com.google.cloud.pso.beam.contentextract.clients.Types;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.cloud.pso.rag.common.Ingestion.MimeType;
+import com.google.cloud.pso.rag.common.Ingestion.RawData;
+import com.google.cloud.pso.rag.common.Ingestion.Request;
+import com.google.cloud.pso.rag.common.Result;
 import jakarta.ws.rs.FormParam;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Base64;
 import java.util.List;
 
 /** */
@@ -56,37 +55,24 @@ public class ServiceTypes {
     @FormParam("documentContent")
     byte[] content;
 
-    public String toProperJSON() {
-      var json = new JsonObject();
-      var document = new JsonObject();
-      document.addProperty("id", documentId);
-      document.addProperty("content", Base64.getEncoder().encodeToString(content));
-      json.add("document", document);
-      return json.toString();
+    @FormParam("mimeType")
+    String mimeType;
+
+    public Result<Request, Exception> toIngestionRequest() {
+      if (documentId != null
+          && !documentId.isBlank()
+          && content != null
+          && mimeType != null
+          && !mimeType.isBlank())
+        return Result.success(
+            new Request(new RawData(documentId, content, MimeType.valueOf(mimeType))));
+      return Result.failure(
+          new IllegalArgumentException(
+              "The request should have a valid and not empty id, content and mime type."));
     }
   }
 
-  public record IngestionResponse(String status) {}
-
-  public record GoogleDriveIngestionRequest(String url, List<String> urls) {
-
-    public String toProperJSON() {
-      var json = new JsonObject();
-      if (url != null) {
-        json.addProperty("url", checkUrl(url));
-      } else if (urls != null) {
-        var array = new JsonArray();
-        urls.stream().map(u -> checkUrl(u)).forEach(u -> array.add(u));
-        json.add("urls", array);
-      } else throw new IllegalArgumentException("Malformed request.");
-
-      return json.toString();
-    }
-
-    String checkUrl(String maybeUrl) {
-      return URI.create(maybeUrl).toString();
-    }
-  }
+  public record SimpleResponse(String status) {}
 
   public record ContentKeys(List<String> keys) {}
 

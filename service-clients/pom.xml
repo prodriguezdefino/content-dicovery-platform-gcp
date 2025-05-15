@@ -60,7 +60,12 @@
         <dependency>
             <groupId>com.google.genai</groupId>
             <artifactId>google-genai</artifactId>
-            <version>0.5.0</version>
+            <version>0.6.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.spotify</groupId>
+            <artifactId>futures-extra</artifactId>
+            <version>4.3.3</version>
         </dependency>
         <dependency>
             <groupId>net.bytebuddy</groupId>

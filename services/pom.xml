@@ -63,11 +63,6 @@
             <artifactId>quarkus-arc</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.spotify</groupId>
-            <artifactId>futures-extra</artifactId>
-            <version>4.2.0</version>
-        </dependency>
-        <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigtable</artifactId>
         </dependency>

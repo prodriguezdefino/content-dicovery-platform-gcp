@@ -177,7 +177,7 @@ public class VectorSearch {
                     case 200 ->
                         responseMapper
                             .apply(httpResponse.body())
-                            .orElseApply(error -> marshalError(httpResponse.body(), error));
+                            .failMap(error -> marshalError(httpResponse.body(), error));
                     default -> Result.failure(error(httpResponse, request));
                   });
     };

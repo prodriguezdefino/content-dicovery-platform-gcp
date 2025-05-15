@@ -15,10 +15,12 @@
  */
 package com.google.cloud.pso.data.services.beans;
 
+import com.google.cloud.pso.rag.common.Ingestion.Request;
+import com.google.cloud.pso.rag.common.InteractionHelper;
+import com.google.cloud.pso.rag.common.Result;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
-import com.spotify.futures.ApiFuturesExtra;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
@@ -40,10 +42,13 @@ public class PubSubService {
     publisher = Publisher.newBuilder(topic).build();
   }
 
-  public CompletableFuture<String> publishMessage(String message) {
-    return ApiFuturesExtra.toCompletableFuture(
-        publisher.publish(
-            PubsubMessage.newBuilder().setData(ByteString.copyFromUtf8(message)).build()));
+  public Result<CompletableFuture<String>, Exception> publishIngestion(Request request) {
+    return InteractionHelper.jsonMapper(request)
+        .map(
+            payload ->
+                publisher.publish(
+                    PubsubMessage.newBuilder().setData(ByteString.copyFromUtf8(payload)).build()))
+        .map(InteractionHelper::toCompletableFuture);
   }
 
   @PreDestroy

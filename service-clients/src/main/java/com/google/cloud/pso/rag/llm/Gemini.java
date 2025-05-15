@@ -87,7 +87,7 @@ public class Gemini {
         .map(
             content ->
                 jsonMapper(content, String.class)
-                    .orElseApply(
+                    .failMap(
                         error ->
                             new ErrorResponse("Problems capturing response.", Optional.of(error))));
   }
