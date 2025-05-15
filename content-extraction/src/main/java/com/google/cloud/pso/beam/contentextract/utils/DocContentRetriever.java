@@ -23,8 +23,8 @@ import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.cloud.pso.beam.contentextract.Types.*;
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
-import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
+import com.google.cloud.pso.beam.contentextract.transforms.RefreshContentTransform.ContentProcessed;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.Serializable;
@@ -210,7 +210,7 @@ public class DocContentRetriever implements Serializable {
         .findFirst();
   }
 
-  public Optional<File> filterFilesUpForRefresh(Types.ContentProcessed content) {
+  public Optional<File> filterFilesUpForRefresh(ContentProcessed content) {
     return shouldRefreshContent(content.contentId(), content.processedAtInMillis());
   }
 

@@ -16,8 +16,9 @@
 package com.google.cloud.pso.beam.contentextract;
 
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.rag.common.Ingestion;
+import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.common.collect.ImmutableMap;
-import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -110,9 +111,10 @@ public class Types {
       implements ProcessingError {
 
     public PubsubMessage toPubsubMessage() {
-      var json = new JsonObject();
-      json.addProperty("retry", contentId());
-      return new PubsubMessage(json.toString().getBytes(), metadata());
+      return InteractionHelper.jsonMapper(new Ingestion.GoogleDrive(contentId()))
+          .map(body -> new PubsubMessage(body.getBytes(), metadata()))
+          .orElseThrow(
+              error -> new RuntimeException("Problems while trying to serialize retriable."));
     }
   }
 

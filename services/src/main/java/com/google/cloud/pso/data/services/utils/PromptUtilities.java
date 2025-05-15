@@ -15,8 +15,7 @@
  */
 package com.google.cloud.pso.data.services.utils;
 
-import com.google.cloud.pso.beam.contentextract.clients.Types;
-import com.google.common.collect.Lists;
+import com.google.cloud.pso.rag.llm.LLM;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -54,8 +53,6 @@ public class PromptUtilities {
       %s
       """;
 
-  public static final List<Types.Example> EXCHANGE_EXAMPLES = Lists.newArrayList();
-
   public static String formatChatContextPrompt(
       List<String> contentData,
       Optional<String> botContextExpertise,
@@ -69,7 +66,7 @@ public class PromptUtilities {
         contentData.stream().collect(Collectors.joining(" ")));
   }
 
-  public static List<String> formatChatSummaryPrompt(List<Types.Exchange> exchanges) {
+  public static List<String> formatChatSummaryPrompt(List<LLM.Exchange> exchanges) {
     return Stream.concat(
             Stream.of(CHAT_SUMMARY_PROMPT_TEMPLATE),
             exchanges.stream().map(ex -> String.format("%s: %s", ex.author(), ex.content())))

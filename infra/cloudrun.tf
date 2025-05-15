@@ -1,6 +1,6 @@
 locals {
-    service_name = "${var.run_name}-service"
-    configuration = <<EOL
+  service_name  = "${var.run_name}-service"
+  configuration = <<EOL
       {
         "project.id" : "${var.project}",
         "region" : "${var.region}",
@@ -55,32 +55,32 @@ resource "google_cloud_run_v2_service" "services" {
   template {
     service_account = google_service_account.dataflow_runner_sa.email
     containers {
-      image ="${var.region}-docker.pkg.dev/${var.project}/content-dicovery-platform-${var.run_name}/${var.run_name}-services:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project}/content-dicovery-platform-${var.run_name}/${var.run_name}-services:latest"
       startup_probe {
-          initial_delay_seconds = 5
-          timeout_seconds = 1
-          period_seconds = 3
-          failure_threshold = 3
-          tcp_socket {
-            port = 8080
-          }
+        initial_delay_seconds = 5
+        timeout_seconds       = 1
+        period_seconds        = 3
+        failure_threshold     = 3
+        tcp_socket {
+          port = 8080
         }
-        liveness_probe {
-          initial_delay_seconds = 5
-          timeout_seconds = 1
-          period_seconds = 10
-          failure_threshold = 3
-          http_get {
-            path = "/q/health/live"
-          }
+      }
+      liveness_probe {
+        initial_delay_seconds = 5
+        timeout_seconds       = 1
+        period_seconds        = 10
+        failure_threshold     = 3
+        http_get {
+          path = "/q/health/live"
         }
-        env {
-            name = "JAVA_OPTS"
-            value = "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dsecretmanager.configuration.version=${google_secret_manager_secret_version.service_config_version.name}"
-        }
+      }
+      env {
+        name  = "JAVA_OPTS"
+        value = "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dsecretmanager.configuration.version=${google_secret_manager_secret_version.service_config_version.name}"
+      }
       resources {
         limits = {
-          cpu = "2"
+          cpu    = "4"
           memory = "2Gi"
         }
       }
@@ -88,8 +88,8 @@ resource "google_cloud_run_v2_service" "services" {
   }
 
   traffic {
-    type = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
-    percent         = 100
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
   }
 
   lifecycle {
@@ -103,33 +103,33 @@ resource "google_cloud_run_v2_service" "services" {
 
 resource "google_cloud_run_service_iam_member" "cloudrun_permission_robotsa" {
   location = var.region
-  project = var.project
-  service = google_cloud_run_v2_service.services.name
-  role = "roles/run.invoker"
-  member = "serviceAccount:${google_service_account.dataflow_runner_sa.email}"
+  project  = var.project
+  service  = google_cloud_run_v2_service.services.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.dataflow_runner_sa.email}"
 }
 
 resource "google_cloud_run_service_iam_member" "additional_permissions" {
   location = var.region
-  project = var.project
-  service = google_cloud_run_v2_service.services.name
-  role = "roles/run.invoker"
+  project  = var.project
+  service  = google_cloud_run_v2_service.services.name
+  role     = "roles/run.invoker"
 
   for_each = var.additional_authz_cloudrunservice
-  member = each.value
+  member   = each.value
 }
 
 resource "google_cloud_run_service_iam_member" "workspace_domain_permission" {
   location = var.region
-  project = var.project
-  service = google_cloud_run_v2_service.services.name
-  role = "roles/run.invoker"
-  member = "domain:${var.workspace_domain}"
+  project  = var.project
+  service  = google_cloud_run_v2_service.services.name
+  role     = "roles/run.invoker"
+  member   = "domain:${var.workspace_domain}"
 }
 
 resource "google_api_gateway_api" "api_gateway" {
-  project = var.project
-  provider = google-beta
+  project      = var.project
+  provider     = google-beta
   api_id       = var.run_name
   display_name = "${var.run_name}-gateway-api"
 
@@ -137,10 +137,10 @@ resource "google_api_gateway_api" "api_gateway" {
 }
 
 resource "google_api_gateway_api_config" "gateway_cfg" {
-  project = var.project
-  provider = google-beta
-  api           = google_api_gateway_api.api_gateway.api_id
-  api_config_id = "${var.run_name}-config"
+  project              = var.project
+  provider             = google-beta
+  api                  = google_api_gateway_api.api_gateway.api_id
+  api_config_id_prefix = "${var.run_name}-config"
 
   gateway_config {
     backend_config {
@@ -156,7 +156,7 @@ resource "google_api_gateway_api_config" "gateway_cfg" {
           "service-descriptors/openapi.yaml",
           {
             backend_service_url = google_cloud_run_v2_service.services.uri,
-            gcloud_audiences = var.gcloud_audiences
+            gcloud_audiences    = var.gcloud_audiences
           }
         )
       )

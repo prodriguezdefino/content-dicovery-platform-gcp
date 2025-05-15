@@ -15,11 +15,11 @@
  */
 package com.google.cloud.pso.data.services.beans;
 
-import com.google.cloud.pso.beam.contentextract.clients.Types;
 import com.google.cloud.pso.rag.common.Ingestion.MimeType;
 import com.google.cloud.pso.rag.common.Ingestion.RawData;
 import com.google.cloud.pso.rag.common.Ingestion.Request;
 import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.llm.LLM;
 import jakarta.ws.rs.FormParam;
 import java.util.List;
 
@@ -115,8 +115,8 @@ public class ServiceTypes {
 
   public record QAndA(String question, String answer) {
 
-    public List<Types.Exchange> toExchange() {
-      return List.of(new Types.Exchange("user", question), new Types.Exchange("bot", answer));
+    public List<LLM.Exchange> toExchange() {
+      return List.of(new LLM.Exchange("user", question), new LLM.Exchange("bot", answer));
     }
   }
 

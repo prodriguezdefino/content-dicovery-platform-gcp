@@ -121,10 +121,10 @@ definitions:
   Request:
     type: object
     properties:
-      googleDriveUrls:
+      googleDrive:
         type: array
         items:
-          type: string
+          $ref: '#/definitions/GoogleDrive'
       rawData:
         type: object
         properties:
@@ -135,12 +135,21 @@ definitions:
           mimeType:
             type: string
       references:
-        type: object
-        properties:
-          url:
-            type: string
-          mimeType:
-            type: string
+        type: array
+        items:
+          $ref: '#/definitions/Reference'
+  GoogleDrive:
+    type: object
+    properties:
+      urlOrId:
+        type: string
+  Reference:
+    type: object
+    properties:
+      url:
+        type: string
+      mimeType:
+        type: string
   IngestionResponse:
     type: object
     properties:

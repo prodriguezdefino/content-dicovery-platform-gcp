@@ -4,11 +4,11 @@
 * agreement with Google.
 */
 locals {
-  min_nodes  = 1
-  max_nodes  = 5
-  cpu_target = 80
-  content_table_name = "content_per_embedding"
-  content_cf_name    = "data"
+  min_nodes                = 1
+  max_nodes                = 5
+  cpu_target               = 80
+  content_table_name       = "content_per_embedding"
+  content_cf_name          = "data"
   query_context_table_name = "query_context_by_session"
   query_context_cf_name    = "exchange"
 }
@@ -24,13 +24,13 @@ resource "google_bigtable_instance" "instance" {
     storage_type = "SSD"
 
     autoscaling_config {
-      min_nodes  = "${local.min_nodes}"
-      max_nodes  = "${local.max_nodes}"
-      cpu_target = "${local.cpu_target}"
+      min_nodes  = local.min_nodes
+      max_nodes  = local.max_nodes
+      cpu_target = local.cpu_target
     }
   }
-  
-  deletion_protection=false
+
+  deletion_protection = false
 }
 
 resource "google_bigtable_table" "content_table" {

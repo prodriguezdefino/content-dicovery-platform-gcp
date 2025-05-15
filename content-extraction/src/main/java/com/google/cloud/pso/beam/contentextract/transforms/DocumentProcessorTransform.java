@@ -21,12 +21,9 @@ import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
 import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTransform.DocumentProcessingResult;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
-import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
 import com.google.cloud.pso.rag.common.Ingestion.Request;
 import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.cloud.pso.rag.common.Result;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -231,16 +228,16 @@ public class DocumentProcessorTransform
           .flatMap(
               request ->
                   switch (request) {
-                    case Request(var gdocsUrls, var __, var ___) when gdocsUrls.isPresent() -> {
+                    case Request(var gDrives, var __, var ___) when gDrives.isPresent() -> {
                       // nothing to be done here, let the pipeline continue processing
-                      gdocsUrls
+                      gDrives
                           .get()
                           .forEach(
-                              url ->
+                              gDrive ->
                                   context.output(
                                       googleContent,
                                       new Types.Transport(
-                                          url, context.element().getAttributeMap())));
+                                          gDrive.urlOrId(), context.element().getAttributeMap())));
                       yield Result.success(true);
                     }
                     case Request(var __, var maybeData, var ___) when maybeData.isPresent() -> {

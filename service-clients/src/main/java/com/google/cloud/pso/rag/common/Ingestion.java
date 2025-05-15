@@ -30,7 +30,7 @@ public interface Ingestion {
   }
 
   record Request(
-      Optional<List<String>> googleDriveUrls,
+      Optional<List<GoogleDrive>> googleDrive,
       Optional<RawData> rawData,
       Optional<List<Reference>> references) {
     public Request(RawData data) {
@@ -38,7 +38,7 @@ public interface Ingestion {
     }
 
     public Result<Void, Exception> validate() {
-      if (googleDriveUrls.isEmpty() && rawData.isEmpty() && references.isEmpty()) {
+      if (googleDrive.isEmpty() && rawData.isEmpty() && references.isEmpty()) {
         return Result.failure(
             new IllegalArgumentException(
                 "At least a Google Drive file, raw data or location reference should be provided."));
@@ -47,7 +47,7 @@ public interface Ingestion {
     }
   }
 
-  record GoogleDrive(String url) {}
+  record GoogleDrive(String urlOrId) {}
 
   record RawData(String id, byte[] data, MimeType mimeType) {}
 
