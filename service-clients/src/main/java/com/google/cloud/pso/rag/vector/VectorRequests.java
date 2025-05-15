@@ -28,6 +28,10 @@ public class VectorRequests {
     public Vector(List<Double> values) {
       this(Optional.empty(), values);
     }
+
+    public Vector(String id, List<Double> values) {
+      this(Optional.of(id), values);
+    }
   }
 
   public static Vectors.Store store(String configurationEntry, List<Vector> vectors) {
