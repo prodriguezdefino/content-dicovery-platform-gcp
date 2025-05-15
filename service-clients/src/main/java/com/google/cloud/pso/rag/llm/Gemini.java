@@ -39,7 +39,8 @@ public class Gemini {
       Content.fromParts(
           Part.fromText(
               "You are a succinct summarization bot, "
-                  + "which focus strictly on the provided content."));
+                  + "which focus strictly on the provided content "
+                  + "and returns text without formatting."));
 
   sealed interface Chat extends LLM.ChatRequest permits ChatRequest {}
 
