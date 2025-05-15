@@ -32,7 +32,6 @@ import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
 import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
 import java.io.IOException;
 import java.util.List;
-import org.apache.beam.sdk.values.KV;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;

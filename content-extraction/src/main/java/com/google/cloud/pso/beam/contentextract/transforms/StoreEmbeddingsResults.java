@@ -31,7 +31,6 @@ import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
