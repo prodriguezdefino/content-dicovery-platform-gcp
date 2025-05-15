@@ -111,17 +111,6 @@ public class ContentExtractionTest {
   }
 
   @Test
-  public void testEmbeddingToJSON() {
-    KV<String, Iterable<KV<String, Iterable<Double>>>> kv =
-        KV.of(
-            "someid",
-            List.of(KV.of("1", List.of(3.5, 4.5, 0.9)), KV.of("2", List.of(1.2, 4.2, 3.1))));
-
-    var res = ExtractionUtils.addEmbeddingsIdentifiers(kv);
-    System.out.println(res);
-  }
-
-  @Test
   public void testNewId() {
     var expected = "name_some_2022_info___18Ds2syb04";
     Assert.assertEquals(
