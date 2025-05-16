@@ -70,14 +70,23 @@ public class Gemini {
 
   public record TextChunkRequest(String model, List<String> content) implements ChunkRequest {}
 
-  public record PDFChunkRequest(String model, List<String> locations) implements ChunkRequest {}
+  public record PDFChunkRequest(String model, List<String> contents, Chunks.SupportedTypes type)
+      implements ChunkRequest {}
 
   public record TextChunkResponse(List<String> chunks) implements ChunkResponse {}
 
   static String mimeTypeFromType(Chunks.SupportedTypes type) {
     return switch (type) {
-      case PDF -> Models.PDF_MIME;
+      case PDF_URL, PDF_BINARY -> Models.PDF_MIME;
       case TEXT -> Models.TEXT_MIME;
+    };
+  }
+
+  static Part partFromType(Chunks.SupportedTypes type, String content) {
+    return switch (type) {
+      case PDF_BINARY -> Part.fromBytes(content.getBytes(), mimeTypeFromType(type));
+      case PDF_URL -> Part.fromUri(content, mimeTypeFromType(type));
+      case TEXT -> Part.fromText(content);
     };
   }
 
@@ -126,14 +135,11 @@ public class Gemini {
                   .filter(text -> !text.isBlank())
                   .map(Part::fromText)
                   .toList());
-      case PDFChunkRequest(var model, var locations) ->
+      case PDFChunkRequest(var model, var contents, var type) ->
           internalExec(
               model,
               Stream.concat(
-                      locations.stream()
-                          .map(
-                              uri ->
-                                  Part.fromUri(uri, mimeTypeFromType(Chunks.SupportedTypes.PDF))),
+                      contents.stream().map(item -> partFromType(type, item)),
                       Stream.of(Part.fromText(PDF_CHUNKING_PROMPT)))
                   .toList());
     };

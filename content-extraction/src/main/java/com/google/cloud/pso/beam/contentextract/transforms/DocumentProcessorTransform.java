@@ -19,9 +19,11 @@ import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types;
 import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTransform.DocumentProcessingResult;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
+import com.google.cloud.pso.rag.common.Ingestion;
 import com.google.cloud.pso.rag.common.Ingestion.Request;
 import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.content.Chunks;
 import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
 import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import java.util.Base64;
@@ -228,39 +230,13 @@ public class DocumentProcessorTransform
           .flatMap(
               request ->
                   switch (request) {
-                    case Request(var gDrives, var __, var ___) when gDrives.isPresent() -> {
-                      // nothing to be done here, let the pipeline continue processing
-                      gDrives
-                          .get()
-                          .forEach(
-                              gDrive ->
-                                  context.output(
-                                      googleContent,
-                                      new Types.Transport(
-                                          gDrive.urlOrId(), context.element().getAttributeMap())));
-                      yield Result.success(true);
-                    }
-                    case Request(var __, var maybeData, var ___) when maybeData.isPresent() -> {
-                      var rawData = maybeData.get();
-                      yield switch (rawData.mimeType()) {
-                        case TEXT -> {
-                          var content =
-                              new Types.Content(
-                                  rawData.id(),
-                                  List.of(new String(Base64.getDecoder().decode(rawData.data()))));
-                          context.output(rawContent, content);
-                          yield Result.success(true);
-                        }
-                        default ->
-                            Result.failure(
-                                new IllegalArgumentException(
-                                    "Mime type not supported: " + rawData));
-                      };
-                    }
-                    default ->
-                        Result.failure(
-                            new IllegalArgumentException(
-                                "Ingestion request not supported: " + request));
+                    case Request(var gDrives, var __, var ___) when gDrives.isPresent() ->
+                        gDriveContent(gDrives.get(), context);
+                    case Request(var __, var maybeData, var ___) when maybeData.isPresent() ->
+                        rawDataContent(maybeData.get(), context);
+                    case Request(var __, var ___, var maybeRefs) when maybeRefs.isPresent() ->
+                        referencesContent(maybeRefs.get(), context);
+                    default -> Result.failure(notSupported(request.toString()));
                   })
           .orElse(
               ex -> {
@@ -270,6 +246,56 @@ public class DocumentProcessorTransform
                 context.output(failures, new Types.Discardable(payload, ex));
                 return false;
               });
+    }
+
+    static Exception notSupported(String request) {
+      return new IllegalArgumentException("Ingestion request not supported: " + request);
+    }
+
+    static Result<Boolean, Exception> gDriveContent(
+        List<Ingestion.GoogleDrive> gDrives, ProcessContext context) {
+      gDrives.forEach(
+          gDrive ->
+              context.output(
+                  googleContent,
+                  new Types.Transport(gDrive.urlOrId(), context.element().getAttributeMap())));
+      return Result.success(true);
+    }
+
+    static Result<Boolean, Exception> rawDataContent(
+        Ingestion.RawData rawData, ProcessContext context) {
+      return switch (rawData.mimeType()) {
+        case TEXT -> {
+          var content =
+              new Types.Content(
+                  rawData.id(),
+                  List.of(new String(Base64.getDecoder().decode(rawData.data()))),
+                  Chunks.SupportedTypes.TEXT);
+          context.output(rawContent, content);
+          yield Result.success(true);
+        }
+        default -> Result.failure(notSupported(rawData.toString()));
+      };
+    }
+
+    static Result<Boolean, Exception> referencesContent(
+        List<Ingestion.Reference> references, ProcessContext context) {
+      return references.stream()
+          .map(
+              ref ->
+                  switch (ref.mimeType()) {
+                    case PDF -> {
+                      var content =
+                          new Types.Content(
+                              ref.url(), List.of(ref.url()), Chunks.SupportedTypes.PDF_URL);
+                      context.output(rawContent, content);
+                      yield Result.<Boolean, Exception>success(true);
+                    }
+                    default -> Result.<Boolean, Exception>failure(notSupported(ref.toString()));
+                  })
+          .filter(Result::failed)
+          .findAny()
+          .orElse(Result.success(true));
     }
   }
 }

@@ -23,6 +23,7 @@ import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.cloud.pso.beam.contentextract.Types.*;
 import com.google.cloud.pso.beam.contentextract.transforms.RefreshContentTransform.ContentProcessed;
 import com.google.cloud.pso.rag.common.Utilities;
+import com.google.cloud.pso.rag.content.Chunks;
 import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
 import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import com.google.common.collect.Lists;
@@ -104,7 +105,8 @@ public class DocContentRetriever implements Serializable {
                           .map(v -> v.replace("\n", " "))
                           .orElse(""))
               .filter(text -> !text.isBlank())
-              .toList());
+              .toList(),
+          Chunks.SupportedTypes.TEXT);
     } catch (Exception ex) {
       var errMsg = "errors while trying to retrieve spreadsheet content, id: " + sheetId;
       LOG.error(errMsg, ex);
@@ -137,7 +139,8 @@ public class DocContentRetriever implements Serializable {
                           .orElse(""))
               .filter(text -> !text.isBlank())
               .map(text -> text.replace("\n", ""))
-              .toList());
+              .toList(),
+          Chunks.SupportedTypes.TEXT);
     } catch (Exception ex) {
       var errMsg = "errors while trying to retrieve presentation content, id: " + presentationId;
       LOG.error(errMsg, ex);
@@ -171,7 +174,8 @@ public class DocContentRetriever implements Serializable {
               .map(Optional::get)
               .filter(text -> !text.isBlank())
               .map(text -> text.replace("\n", ""))
-              .toList());
+              .toList(),
+          Chunks.SupportedTypes.TEXT);
     } catch (Exception ex) {
       var errMsg = "errors while trying to retrieve document content, id: " + documentId;
       LOG.error(errMsg, ex);

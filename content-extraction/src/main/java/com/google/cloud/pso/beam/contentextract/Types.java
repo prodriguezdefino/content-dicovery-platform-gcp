@@ -16,7 +16,10 @@
 package com.google.cloud.pso.beam.contentextract;
 
 import com.google.cloud.pso.rag.common.Ingestion;
+import com.google.cloud.pso.rag.common.Ingestion.GoogleDrive;
+import com.google.cloud.pso.rag.common.Ingestion.MimeType;
 import com.google.cloud.pso.rag.common.InteractionHelper;
+import com.google.cloud.pso.rag.content.Chunks;
 import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
@@ -111,7 +114,7 @@ public class Types {
       implements ProcessingError {
 
     public PubsubMessage toPubsubMessage() {
-      return InteractionHelper.jsonMapper(new Ingestion.GoogleDrive(contentId()))
+      return InteractionHelper.jsonMapper(new GoogleDrive(contentId()))
           .map(body -> new PubsubMessage(body.getBytes(), metadata()))
           .orElseThrow(
               error -> new RuntimeException("Problems while trying to serialize retriable."));
@@ -123,7 +126,8 @@ public class Types {
     DELETE
   }
 
-  public record Content(String key, List<String> content) implements Serializable {}
+  public record Content(String key, List<String> content, Chunks.SupportedTypes type)
+      implements Serializable {}
 
   public record ContentChunks(String key, List<String> chunks) implements Serializable {}
 
