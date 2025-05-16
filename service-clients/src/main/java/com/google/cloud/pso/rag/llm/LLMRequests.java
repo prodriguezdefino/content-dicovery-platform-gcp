@@ -16,6 +16,7 @@
 package com.google.cloud.pso.rag.llm;
 
 import java.util.List;
+import java.util.Optional;
 
 /** */
 public class LLMRequests {
@@ -24,9 +25,18 @@ public class LLMRequests {
 
   public static LLM.ChatRequest chat(
       String configurationEntry, List<LLM.Exchange> interactions, LLM.Parameters params) {
+    return chat(configurationEntry, null, interactions, params);
+  }
+
+  public static LLM.ChatRequest chat(
+      String configurationEntry,
+      String context,
+      List<LLM.Exchange> interactions,
+      LLM.Parameters params) {
     return switch (configurationEntry) {
       case "gemini-2.0-flash", "gemini-2.0-flash-lite-001" ->
-          new Gemini.ChatRequest(configurationEntry, interactions, params);
+          new Gemini.ChatRequest(
+              configurationEntry, Optional.ofNullable(context), interactions, params);
       default ->
           throw new IllegalArgumentException(
               String.format(

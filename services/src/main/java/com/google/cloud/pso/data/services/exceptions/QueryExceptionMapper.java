@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.data.services.exceptions;
 
+import com.google.cloud.pso.data.services.beans.ServiceTypes.SimpleResponse;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -24,31 +25,21 @@ import java.util.Optional;
 @Provider
 public class QueryExceptionMapper implements ExceptionMapper<Throwable> {
 
-  public record ErrorResponse(String error) {}
-
   @Override
   public Response toResponse(Throwable t) {
     if (t instanceof QueryResourceException qre) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(
-              new ErrorResponse(
+              new SimpleResponse(
                   qre.getMessage()
                       + String.format(
                           " Query: '%s'. Session id: '%s'",
                           qre.getQueryText(), qre.getSessionId())))
           .build();
     }
-    if (t instanceof IngestionResourceException ire) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(
-              new ErrorResponse(
-                  ire.getMessage()
-                      + String.format(" provided urls '%s'", ire.getUrls().toString())))
-          .build();
-    }
     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
         .entity(
-            new ErrorResponse(
+            new SimpleResponse(
                 Optional.ofNullable(t).map(e -> e.getMessage()).orElse("Not Specified.")))
         .build();
   }

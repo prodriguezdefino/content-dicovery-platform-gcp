@@ -16,51 +16,51 @@
 package com.google.cloud.pso.data.services.resources;
 
 import com.google.cloud.pso.data.services.beans.PubSubService;
-import com.google.cloud.pso.data.services.beans.ServiceTypes.GoogleDriveIngestionRequest;
-import com.google.cloud.pso.data.services.beans.ServiceTypes.IngestionResponse;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.MultipartContentIngestionRequest;
-import com.google.cloud.pso.data.services.exceptions.IngestionResourceException;
+import com.google.cloud.pso.data.services.utils.ResponseUtils;
+import com.google.cloud.pso.rag.common.Ingestion.Request;
+import com.google.cloud.pso.rag.common.Result;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import java.net.URISyntaxException;
+import jakarta.ws.rs.core.Response;
+import java.util.concurrent.CompletableFuture;
 import org.eclipse.microprofile.metrics.MetricUnits;
 import org.eclipse.microprofile.metrics.annotation.Timed;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Path("/ingest/content")
 public class IngestionResource {
-  private static final Logger LOG = LoggerFactory.getLogger(IngestionResource.class);
-
   @Inject PubSubService psService;
 
   @POST
-  @Path("/gdrive")
+  @Path("/")
   @Produces(MediaType.APPLICATION_JSON)
-  @Timed(name = "content.ingest.gdrive", unit = MetricUnits.MILLISECONDS)
-  public IngestionResponse ingestGoogleDriveUrls(GoogleDriveIngestionRequest request) {
-    try {
-      var msgId = psService.publishMessage(request.toProperJSON());
-      return new IngestionResponse("Ingestion trace id: " + msgId);
-    } catch (Exception ex) {
-      var msg = "Problems while executing the ingestion resource. ";
-      LOG.error(msg, ex);
-      throw new IngestionResourceException(
-          request.url(), request.urls(), msg + ex.getMessage(), ex);
-    }
+  @Timed(name = "content.ingest", unit = MetricUnits.MILLISECONDS)
+  public CompletableFuture<Response> ingestContent(Request request) {
+    return processResult(request.validate().flatMap(__ -> psService.publishIngestion(request)));
   }
 
   @POST
   @Path("/multipart")
   @Consumes(MediaType.MULTIPART_FORM_DATA)
-  @Timed(name = "content.ingest.strutured", unit = MetricUnits.MILLISECONDS)
-  public IngestionResponse ingestMultipartContent(MultipartContentIngestionRequest request)
-      throws URISyntaxException {
-    var msgId = psService.publishMessage(request.toProperJSON());
-    return new IngestionResponse("Ingestion trace id: " + msgId);
+  @Timed(name = "content.ingest.multipart", unit = MetricUnits.MILLISECONDS)
+  public CompletableFuture<Response> ingestMultipartContent(
+      MultipartContentIngestionRequest request) {
+    return processResult(
+        request.toIngestionRequest().flatMap(body -> psService.publishIngestion(body)));
+  }
+
+  static CompletableFuture<Response> processResult(
+      Result<CompletableFuture<String>, ? extends Throwable> result) {
+    return result
+        .map(
+            future ->
+                future
+                    .thenApply(msgId -> ResponseUtils.ok("Ingestion trace id: " + msgId))
+                    .exceptionally(ex -> ResponseUtils.serverError(ex)))
+        .orElse(ex -> CompletableFuture.completedFuture(ResponseUtils.badRequest(ex)));
   }
 }

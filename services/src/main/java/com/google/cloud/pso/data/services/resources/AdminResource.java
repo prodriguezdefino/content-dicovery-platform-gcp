@@ -15,13 +15,13 @@
  */
 package com.google.cloud.pso.data.services.resources;
 
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.data.services.beans.BeansProducer;
 import com.google.cloud.pso.data.services.beans.BigTableService;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentInfo;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentKeys;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.ContentUrl;
 import com.google.cloud.pso.data.services.beans.ServiceTypes.Info;
+import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import com.google.cloud.pso.rag.vector.VectorRequests;
 import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.collect.Lists;

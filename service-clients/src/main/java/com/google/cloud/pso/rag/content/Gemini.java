@@ -40,22 +40,22 @@ public class Gemini {
 
   static final String CHUNKING_INSTRUCTIONS =
       """
-      and divide it into chunks for generating text embeddings.
-      Your goal is to create chunks that are:
+      extract all the text from it, remove all newline characters and empty lines replacing them
+      with a single space character, and divide it into chunks for generating text embeddings.
+      Your response should be formatted as a non formatted JSON string array, each item being a text chunk.
+      Your definitions chunks creations are:
       1. Each chunk should focus on a single topic or idea.
       2. Aim for a maximum length of 2048 tokens per chunk.
       3. If possible, end chunks at sentence boundaries (periods, question marks, exclamation points).
       4. Try to avoid breaking up important phrases or names.
-      5. Include some chunk overlap
-      If a topic spans multiple sentences and exceeds the character limit,
+      5. Include some chunk overlap, a handful of words at least.
+      6. If a topic spans multiple sentences and exceeds the character limit,
       break the chunk at the most logical word boundary to maintain semantic coherence as much as possible.
       --
       """;
 
-  static final String TEXT_CHUNKING_PROMPT = "Analyze the following text " + CHUNKING_INSTRUCTIONS;
-  static final String PDF_CHUNKING_PROMPT =
-      "Analyze the provided PDF, extract all the text from it, remove all empty newlines, "
-          + CHUNKING_INSTRUCTIONS;
+  static final String TEXT_CHUNKING_PROMPT = "Analyze the following text, " + CHUNKING_INSTRUCTIONS;
+  static final String PDF_CHUNKING_PROMPT = "Analyze the provided PDF, " + CHUNKING_INSTRUCTIONS;
 
   private static final Content SYSTEM_INSTRUCTION =
       Content.fromParts(
@@ -70,14 +70,23 @@ public class Gemini {
 
   public record TextChunkRequest(String model, List<String> content) implements ChunkRequest {}
 
-  public record PDFChunkRequest(String model, List<String> locations) implements ChunkRequest {}
+  public record PDFChunkRequest(String model, List<String> contents, Chunks.SupportedTypes type)
+      implements ChunkRequest {}
 
   public record TextChunkResponse(List<String> chunks) implements ChunkResponse {}
 
   static String mimeTypeFromType(Chunks.SupportedTypes type) {
     return switch (type) {
-      case PDF -> Models.PDF_MIME;
+      case PDF_URL, PDF_BINARY -> Models.PDF_MIME;
       case TEXT -> Models.TEXT_MIME;
+    };
+  }
+
+  static Part partFromType(Chunks.SupportedTypes type, String content) {
+    return switch (type) {
+      case PDF_BINARY -> Part.fromBytes(content.getBytes(), mimeTypeFromType(type));
+      case PDF_URL -> Part.fromUri(content, mimeTypeFromType(type));
+      case TEXT -> Part.fromText(content);
     };
   }
 
@@ -126,14 +135,11 @@ public class Gemini {
                   .filter(text -> !text.isBlank())
                   .map(Part::fromText)
                   .toList());
-      case PDFChunkRequest(var model, var locations) ->
+      case PDFChunkRequest(var model, var contents, var type) ->
           internalExec(
               model,
               Stream.concat(
-                      locations.stream()
-                          .map(
-                              uri ->
-                                  Part.fromUri(uri, mimeTypeFromType(Chunks.SupportedTypes.PDF))),
+                      contents.stream().map(item -> partFromType(type, item)),
                       Stream.of(Part.fromText(PDF_CHUNKING_PROMPT)))
                   .toList());
     };

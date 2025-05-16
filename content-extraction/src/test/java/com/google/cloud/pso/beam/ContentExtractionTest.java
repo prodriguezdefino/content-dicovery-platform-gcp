@@ -25,14 +25,13 @@ import com.google.api.services.docs.v1.model.TextRun;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
-import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
 import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
+import com.google.cloud.pso.rag.common.Utilities;
+import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import java.io.IOException;
 import java.util.List;
-import org.apache.beam.sdk.values.KV;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
@@ -108,17 +107,6 @@ public class ContentExtractionTest {
           System.out.println(docContent.key());
           jsonLines.forEach(line -> System.out.println(line.getValue()));
         });
-  }
-
-  @Test
-  public void testEmbeddingToJSON() {
-    KV<String, Iterable<KV<String, Iterable<Double>>>> kv =
-        KV.of(
-            "someid",
-            List.of(KV.of("1", List.of(3.5, 4.5, 0.9)), KV.of("2", List.of(1.2, 4.2, 3.1))));
-
-    var res = ExtractionUtils.addEmbeddingsIdentifiers(kv);
-    System.out.println(res);
   }
 
   @Test

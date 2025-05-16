@@ -13,12 +13,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.contentextract.clients.utils;
+package com.google.cloud.pso.rag.common;
 
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.Preconditions;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.common.collect.Lists;
@@ -166,7 +166,7 @@ public class Utilities {
   public static String prefixIdFromContentId(String contentId) {
     var embeddingsIdParts = contentId.split(CONTENT_KEY_SEPARATOR);
     if (embeddingsIdParts.length != 3) {
-      LOG.warn("Expected a 3 part embeddings id, got {}. Returning empty string.", contentId);
+      LOG.warn("Expected a 3 part content id, got {}. Returning empty string.", contentId);
       return "";
     }
     // we only keep the file id part, discarding doc name and embeddings sequence
@@ -176,11 +176,19 @@ public class Utilities {
   public static String fileIdFromContentId(String contentId) {
     var embeddingsIdParts = contentId.split(CONTENT_KEY_SEPARATOR);
     if (embeddingsIdParts.length != 3) {
-      LOG.warn("Expected a 3 part embeddings id, got {}. Returning empty string.", contentId);
+      LOG.warn("Expected a 3 part content id, got {}. Returning empty string.", contentId);
       return "";
     }
     // we only keep the file id part, discarding doc name and embeddings sequence
     return embeddingsIdParts[1];
+  }
+
+  public static boolean checkIfGoogleDriveRelatedId(String contentId) {
+    return contentId.split(CONTENT_KEY_SEPARATOR).length == 3;
+  }
+
+  public static String urlFromNonGDriveContentId(String contentId) {
+    return contentId.split(CONTENT_KEY_SEPARATOR)[0];
   }
 
   public static String reconstructDocumentLinkFromEmbeddingsId(

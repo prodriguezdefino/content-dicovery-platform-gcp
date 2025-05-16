@@ -15,9 +15,9 @@
  */
 package com.google.cloud.pso.data.services.beans;
 
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
-import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
+import com.google.cloud.pso.rag.common.Utilities;
+import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import jakarta.annotation.PostConstruct;
@@ -63,11 +63,11 @@ public class BeansProducer {
   private Interactions interactions;
 
   private final Integer maxNeighbors = 3;
-  private final Double maxNeighborDistance = 10.0;
-  private final Double temperature = 0.1;
+  private final Double minNeighborDistance = 0.4;
+  private final Double temperature = 0.5;
   private final Integer maxOutputTokens = 1024;
-  private final Integer topK = 20;
-  private final Double topP = 0.5;
+  private final Integer topK = 40;
+  private final Double topP = 0.95;
 
   private String configuredBotContextExpertise = "";
   private Boolean includeOwnKnowledgeEnrichment = true;
@@ -164,7 +164,7 @@ public class BeansProducer {
     return new ServiceTypes.ResourceConfiguration(
         logInteraction,
         maxNeighbors,
-        maxNeighborDistance,
+        minNeighborDistance,
         temperature,
         maxOutputTokens,
         topK,

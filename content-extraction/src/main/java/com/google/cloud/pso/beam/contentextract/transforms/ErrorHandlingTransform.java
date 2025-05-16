@@ -135,10 +135,7 @@ public class ErrorHandlingTransform
       extends SimpleFunction<WithFailures.ExceptionElement<T>, ProcessingError> {
     @Override
     public ProcessingError apply(WithFailures.ExceptionElement<T> f) {
-      if (f.exception() instanceof ContentIdExtractError cexe
-          && f.element() instanceof PubsubMessage pMsg) {
-        return new Discardable(new String(pMsg.getPayload()), cexe);
-      } else if ((f.exception() instanceof DocumentIdError dexe
+      if ((f.exception() instanceof DocumentIdError dexe
           && f.element() instanceof Types.Transport t)) {
         return createMaybeRetriable(dexe, t);
       } else if (f.exception() instanceof DocumentContentError dcexe

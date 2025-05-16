@@ -18,51 +18,13 @@ package com.google.cloud.pso.beam.contentextract.utils;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.pso.beam.contentextract.Types;
-import com.google.cloud.pso.beam.contentextract.Types.ContentIdExtractError;
-import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
-import com.google.cloud.pso.beam.contentextract.Types.Transport;
-import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.util.List;
-import java.util.stream.IntStream;
-import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.io.FileIO;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.values.KV;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** */
 public class ExtractionUtils {
-
-  private static final Logger LOG = LoggerFactory.getLogger(ExtractionUtils.class);
-
-  public static List<Transport> extractContentId(PubsubMessage msg) {
-    try {
-      var json = new Gson().fromJson(new String(msg.getPayload()), JsonObject.class);
-      if (json.has("url"))
-        return List.of(new Transport(json.get("url").getAsString(), msg.getAttributeMap()));
-      else if (json.has("urls"))
-        return json.get("urls").getAsJsonArray().asList().stream()
-            .map(e -> new Transport(e.getAsString(), msg.getAttributeMap()))
-            .toList();
-      else if (json.has("retry"))
-        return List.of(new Transport(json.get("retry").getAsString(), msg.getAttributeMap()));
-      else if (json.has("retries"))
-        return json.get("retries").getAsJsonArray().asList().stream()
-            .map(e -> new Transport(e.getAsString(), msg.getAttributeMap()))
-            .toList();
-      else
-        throw new IllegalArgumentException(
-            "Provided JSON does not have the expected fields ('url', 'urls', 'retries', 'retry')");
-    } catch (Exception ex) {
-      var errMsg =
-          "Error while trying to extract the content id. Message: " + new String(msg.getPayload());
-      LOG.error(errMsg);
-      throw new ContentIdExtractError(errMsg, ex);
-    }
-  }
 
   public static List<KV<String, String>> docContentToKeyedJSONLFormat(Types.Content content) {
     return content.content().stream()
@@ -73,26 +35,6 @@ public class ExtractionUtils {
               return json.toString();
             })
         .map(jsonl -> KV.of(content.key(), jsonl))
-        .toList();
-  }
-
-  public static List<IndexableContent> addEmbeddingsIdentifiers(
-      KV<String, Iterable<KV<String, Iterable<Double>>>> content) {
-    var embeddings =
-        StreamSupport.stream(content.getValue().spliterator(), false)
-            .map(
-                val ->
-                    KV.of(
-                        val.getKey(),
-                        StreamSupport.stream(val.getValue().spliterator(), false).toList()))
-            .toList();
-    return IntStream.range(0, embeddings.size())
-        .mapToObj(
-            i ->
-                new IndexableContent(
-                    content.getKey() + Utilities.CONTENT_KEY_SEPARATOR + i,
-                    embeddings.get(i).getKey(),
-                    embeddings.get(i).getValue()))
         .toList();
   }
 

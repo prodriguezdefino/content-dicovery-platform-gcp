@@ -18,10 +18,9 @@ package com.google.cloud.pso.beam.contentextract.transforms;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
-import com.google.cloud.pso.beam.contentextract.clients.Types;
-import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
+import com.google.cloud.pso.rag.common.Utilities;
+import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
@@ -54,6 +53,8 @@ import org.slf4j.LoggerFactory;
 /** */
 public class RefreshContentTransform extends PTransform<PBegin, PDone> {
   private static final Logger LOG = LoggerFactory.getLogger(RefreshContentTransform.class);
+
+  public record ContentProcessed(String contentId, Long processedAtInMillis) {}
 
   public static RefreshContentTransform create() {
     return new RefreshContentTransform();
@@ -117,8 +118,7 @@ public class RefreshContentTransform extends PTransform<PBegin, PDone> {
     public void process(ProcessContext context) {
       var lastRefresh = Instant.now().minus(Duration.standardHours(lastRefreshHoursAgo));
       fetcher
-          .filterFilesUpForRefresh(
-              new Types.ContentProcessed(context.element(), lastRefresh.getMillis()))
+          .filterFilesUpForRefresh(new ContentProcessed(context.element(), lastRefresh.getMillis()))
           .map(file -> file.getWebViewLink())
           .map(
               url -> {

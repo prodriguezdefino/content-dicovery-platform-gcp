@@ -207,10 +207,10 @@ public class VertexAi {
     return switch (request) {
       case Text __ when httpResponse.statusCode() == 200 ->
           jsonMapper(httpResponse.body(), TextResponse.class)
-              .orElseApply(error -> marshalFailure(error));
+              .failMap(error -> marshalFailure(error));
       case Multimodal __ when httpResponse.statusCode() == 200 ->
           jsonMapper(httpResponse.body(), MultimodalResponse.class)
-              .orElseApply(error -> marshalFailure(error));
+              .failMap(error -> marshalFailure(error));
       default ->
           Result.failure(
               String.format(

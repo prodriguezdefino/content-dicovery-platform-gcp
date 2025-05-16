@@ -42,7 +42,7 @@ public class ChunksRequests {
   static Chunks.ChunkRequest createGeminiRequest(
       String configurationEntry, Chunks.SupportedTypes type, List<String> dataToChunk) {
     return switch (type) {
-      case PDF -> new Gemini.PDFChunkRequest(configurationEntry, dataToChunk);
+      case PDF_URL, PDF_BINARY -> new Gemini.PDFChunkRequest(configurationEntry, dataToChunk, type);
       case TEXT -> new Gemini.TextChunkRequest(configurationEntry, dataToChunk);
     };
   }

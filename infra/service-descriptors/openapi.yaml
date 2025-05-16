@@ -26,7 +26,7 @@ paths:
           description: OK
           schema:
             type: object
-  /ingest/content/gdrive:
+  /ingest/content:
     post:
       security:
         - google_id_token: []
@@ -42,7 +42,7 @@ paths:
         - name: body
           in: body
           schema:
-            $ref: '#/definitions/GoogleDriveIngestionRequest'
+            $ref: '#/definitions/Request'
       consumes:
         - application/json
       produces:
@@ -118,10 +118,37 @@ definitions:
         type: array
         items:
           type: string
-  GoogleDriveIngestionRequest:
+  Request:
+    type: object
+    properties:
+      googleDrive:
+        type: array
+        items:
+          $ref: '#/definitions/GoogleDrive'
+      rawData:
+        type: object
+        properties:
+          id:
+            type: string
+          data:
+            type: string
+          mimeType:
+            type: string
+      references:
+        type: array
+        items:
+          $ref: '#/definitions/Reference'
+  GoogleDrive:
+    type: object
+    properties:
+      urlOrId:
+        type: string
+  Reference:
     type: object
     properties:
       url:
+        type: string
+      mimeType:
         type: string
   IngestionResponse:
     type: object
