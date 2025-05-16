@@ -39,13 +39,15 @@ public class Gemini {
       Content.fromParts(
           Part.fromText(
               "You are a succinct summarization bot, "
-                  + "which focus strictly on the provided content."));
+                  + "which focus strictly on the provided content "
+                  + "and returns text without formatting."));
 
   sealed interface Chat extends LLM.ChatRequest permits ChatRequest {}
 
   sealed interface Summarize extends LLM.SummarizationRequest permits SummarizeRequest {}
 
-  public record ChatRequest(String model, List<Exchange> exchanges, Parameters params)
+  public record ChatRequest(
+      String model, Optional<String> context, List<Exchange> exchanges, Parameters params)
       implements Chat {}
 
   public record SummarizeRequest(String model, List<String> content, Parameters params)
@@ -87,7 +89,7 @@ public class Gemini {
         .map(
             content ->
                 jsonMapper(content, String.class)
-                    .orElseApply(
+                    .failMap(
                         error ->
                             new ErrorResponse("Problems capturing response.", Optional.of(error))));
   }
@@ -138,6 +140,11 @@ public class Gemini {
                                 request.params().temperature(),
                                 request.params().maxOutputTokens())
                             .toBuilder()
+                            .systemInstruction(
+                                request
+                                    .context()
+                                    .map(context -> Content.fromParts(Part.fromText(context)))
+                                    .orElse(Content.builder().build()))
                             .responseSchema(Models.STRING_SCHEMA)
                             .build()),
             InteractionHelper.EXEC)

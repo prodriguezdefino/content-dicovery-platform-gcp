@@ -21,10 +21,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.google.api.core.ApiFuture;
+import com.spotify.futures.ApiFuturesExtra;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -80,5 +83,9 @@ public class InteractionHelper {
         .header("Content-Type", "application/json; charset=utf-8")
         .method("POST", HttpRequest.BodyPublishers.ofString(body))
         .build();
+  }
+
+  public static <T> CompletableFuture<T> toCompletableFuture(ApiFuture<T> future) {
+    return ApiFuturesExtra.toCompletableFuture(future, EXEC);
   }
 }

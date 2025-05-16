@@ -17,14 +17,15 @@ package com.google.cloud.pso.beam.contentextract.transforms;
 
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTransform.DocumentProcessingResult;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
-import com.google.cloud.pso.beam.contentextract.utils.ExtractionUtils;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import com.google.cloud.pso.rag.common.Ingestion.Request;
+import com.google.cloud.pso.rag.common.InteractionHelper;
+import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -66,28 +67,19 @@ public class DocumentProcessorTransform
                     .as(ContentExtractionOptions.class)
                     .getServiceAccount()));
 
-    var maybePubSubMessageContent =
+    var rawContentAndGoogleUrls =
         input.apply(
-            "CheckIfContentIsIncluded",
-            ParDo.of(new CheckIfContentIsIncludedDoFn())
+            "DistributeByContent",
+            ParDo.of(new DistributeByContentDoFn())
                 .withOutputTags(
-                    CheckIfContentIsIncludedDoFn.pubsubMessageContent,
-                    TupleTagList.of(CheckIfContentIsIncludedDoFn.documentContent)
-                        .and(CheckIfContentIsIncludedDoFn.failures)));
-
-    var maybeUrls =
-        maybePubSubMessageContent
-            .get(CheckIfContentIsIncludedDoFn.pubsubMessageContent)
-            .apply(
-                "ExtractContentId",
-                FlatMapElements.into(TypeDescriptor.of(Types.Transport.class))
-                    .via(ExtractionUtils::extractContentId)
-                    .exceptionsVia(new ErrorHandlingTransform.ErrorHandler<>()));
+                    DistributeByContentDoFn.googleContent,
+                    TupleTagList.of(DistributeByContentDoFn.rawContent)
+                        .and(DistributeByContentDoFn.failures)));
 
     // In case the identifier is a folder then we need to crawl it an extract all the docs in there
     var maybeDocIds =
-        maybeUrls
-            .output()
+        rawContentAndGoogleUrls
+            .get(DistributeByContentDoFn.googleContent)
             .apply(
                 "MaybeCrawlFolders",
                 FlatMapElements.into(TypeDescriptor.of(Types.Transport.class))
@@ -129,14 +121,14 @@ public class DocumentProcessorTransform
 
     var outputContent =
         PCollectionList.of(maybeDocContents.output())
-            .and(maybePubSubMessageContent.get(CheckIfContentIsIncludedDoFn.documentContent))
+            .and(rawContentAndGoogleUrls.get(DistributeByContentDoFn.rawContent))
             .apply("FlattenOutputs", Flatten.pCollections());
 
     return DocumentProcessingResult.of(
         input.getPipeline(),
         outputContent,
         maybeDocIds.failures(),
-        maybeUrls.failures(),
+        rawContentAndGoogleUrls.get(DistributeByContentDoFn.failures),
         maybeDocContents.failures());
   }
 
@@ -222,48 +214,62 @@ public class DocumentProcessorTransform
     }
   }
 
-  static class CheckIfContentIsIncludedDoFn extends DoFn<PubsubMessage, PubsubMessage> {
-    private static final Logger LOG = LoggerFactory.getLogger(CheckIfContentIsIncludedDoFn.class);
+  static class DistributeByContentDoFn extends DoFn<PubsubMessage, Types.Transport> {
+    private static final Logger LOG = LoggerFactory.getLogger(DistributeByContentDoFn.class);
 
-    static final TupleTag<PubsubMessage> pubsubMessageContent = new TupleTag<>() {};
-    static final TupleTag<Types.Content> documentContent = new TupleTag<>() {};
+    static final TupleTag<Types.Transport> googleContent = new TupleTag<>() {};
+    static final TupleTag<Types.Content> rawContent = new TupleTag<>() {};
     static final TupleTag<Types.ProcessingError> failures = new TupleTag<>() {};
 
     @ProcessElement
     public void process(ProcessContext context) {
       var payload = new String(context.element().getPayload());
-      try {
-        var json = new Gson().fromJson(payload, JsonObject.class);
-
-        if (json.has("document")) {
-          // the document property is present, the message should have the content included, so
-          // there is no need to extract it from Google Drive.
-          var document = json.getAsJsonObject("document");
-          if (document.has("id") && document.has("content")) {
-            var content =
-                new Types.Content(
-                    document.get("id").getAsString(),
-                    Stream.of(
-                            new String(
-                                    Base64.getDecoder()
-                                        .decode(document.get("content").getAsString()))
-                                .split("\n"))
-                        .toList());
-            LOG.info("Extracted {} from document json.", content.toString());
-            context.output(documentContent, content);
-          } else {
-            throw new IllegalArgumentException(
-                "The provided document does not contain a document 'id' or a 'content' property.");
-          }
-        } else {
-          // nothing to be done here, let the pipeline continue processing
-          context.output(pubsubMessageContent, context.element());
-        }
-      } catch (Exception ex) {
-        var errMsg = "Error while trying to review if the message contains the document content.";
-        LOG.error(errMsg);
-        context.output(failures, new Types.Discardable(payload, ex));
-      }
+      InteractionHelper.jsonMapper(payload, Request.class)
+          .flatMap(
+              request ->
+                  switch (request) {
+                    case Request(var gDrives, var __, var ___) when gDrives.isPresent() -> {
+                      // nothing to be done here, let the pipeline continue processing
+                      gDrives
+                          .get()
+                          .forEach(
+                              gDrive ->
+                                  context.output(
+                                      googleContent,
+                                      new Types.Transport(
+                                          gDrive.urlOrId(), context.element().getAttributeMap())));
+                      yield Result.success(true);
+                    }
+                    case Request(var __, var maybeData, var ___) when maybeData.isPresent() -> {
+                      var rawData = maybeData.get();
+                      yield switch (rawData.mimeType()) {
+                        case TEXT -> {
+                          var content =
+                              new Types.Content(
+                                  rawData.id(),
+                                  List.of(new String(Base64.getDecoder().decode(rawData.data()))));
+                          context.output(rawContent, content);
+                          yield Result.success(true);
+                        }
+                        default ->
+                            Result.failure(
+                                new IllegalArgumentException(
+                                    "Mime type not supported: " + rawData));
+                      };
+                    }
+                    default ->
+                        Result.failure(
+                            new IllegalArgumentException(
+                                "Ingestion request not supported: " + request));
+                  })
+          .orElse(
+              ex -> {
+                var errMsg =
+                    "Error while trying to review if the message contains the document content.";
+                LOG.error(errMsg, ex);
+                context.output(failures, new Types.Discardable(payload, ex));
+                return false;
+              });
     }
   }
 }

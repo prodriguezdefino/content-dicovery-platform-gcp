@@ -67,7 +67,14 @@ public sealed interface Result<T, E> {
     };
   }
 
-  default <U> Result<T, U> orElseApply(Function<? super E, ? extends U> failureMapper) {
+  default T orElse(Function<? super E, T> exceptionMapper) {
+    return switch (this) {
+      case Success<T, E>(var value) -> value;
+      case Failure<T, E>(var error) -> exceptionMapper.apply(error);
+    };
+  }
+
+  default <U> Result<T, U> failMap(Function<? super E, ? extends U> failureMapper) {
     return switch (this) {
       case Success<T, ?>(var value) -> Result.success(value);
       case Failure<?, E>(var error) -> Result.failure(failureMapper.apply(error));

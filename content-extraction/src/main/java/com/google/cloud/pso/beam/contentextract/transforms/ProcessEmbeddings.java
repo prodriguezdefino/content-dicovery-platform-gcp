@@ -18,7 +18,7 @@ package com.google.cloud.pso.beam.contentextract.transforms;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types.ContentChunks;
 import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
-import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
+import com.google.cloud.pso.rag.common.Utilities;
 import com.google.cloud.pso.rag.embeddings.Embeddings;
 import com.google.cloud.pso.rag.embeddings.EmbeddingsRequests;
 import java.util.List;

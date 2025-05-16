@@ -24,7 +24,7 @@ import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowCell;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
-import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
+import com.google.cloud.pso.rag.common.Utilities;
 import com.google.protobuf.ByteString;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;

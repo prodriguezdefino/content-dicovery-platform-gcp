@@ -68,8 +68,8 @@ The Google Drive ingestion is done by sending a HTTP request simielar to the nex
 ```bash
 $ > curl -X POST -H "Content-Type: application/json" \
     -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-    https://<service-address>/ingest/content/gdrive \
-    -d $'{"url":"https://docs.google.com/document/d/somevalid-googledocid"}'
+    https://<service-address>/ingest/content \
+    -d $'{"googleDrive" : [{"urlOrId" : "https://docs.google.com/document/d/somevalid-googledocid"}]}'
 ```
 This request will indicate the platform to grab the document from the provided `url` and in case the service account that runs the ingestion has access permissions to the document, it will extract the content from it and store the information for indexing, later discovery and retrieval.
 
@@ -82,6 +82,7 @@ In the case of wanting to include the content of an article, document, or page t
 $ > curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
   -F documentId=<somedocid> \
   -F documentContent=@</some/local/directory/file/to/upload> \
+  -F mimeType=<a supported type> \
   https://<service-address>/ingest/content/multipart
 ```
 

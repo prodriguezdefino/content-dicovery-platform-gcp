@@ -15,10 +15,10 @@
  */
 package com.google.cloud.pso.beam.contentextract;
 
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.rag.common.Ingestion;
+import com.google.cloud.pso.rag.common.InteractionHelper;
+import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
-import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -55,13 +55,6 @@ public class Types {
           .map(GoogleDriveAPIMimeTypes::get)
           .orElse(GoogleDriveAPIMimeTypes.UNKNOWN);
     }
-
-    public Map<String, String> incrementRetriesCountOnMap(Map<String, String> map) {
-      var newMap = Maps.newHashMap(map);
-      Integer newCount = retriesCount(newMap) + 1;
-      newMap.put(RETRY_COUNT_KEY, newCount.toString());
-      return newMap;
-    }
   }
 
   public static class TransportCoder extends CustomCoder<Transport> {
@@ -87,13 +80,6 @@ public class Types {
     @SuppressWarnings("unchecked")
     public Transport decode(InputStream inStream) throws CoderException, IOException {
       return new Transport(dataCoder.decode(inStream), metadataCoder.decode(inStream));
-    }
-  }
-
-  public static class ContentIdExtractError extends IllegalArgumentException {
-
-    public ContentIdExtractError(String message, Throwable cause) {
-      super(message, cause);
     }
   }
 
@@ -125,9 +111,10 @@ public class Types {
       implements ProcessingError {
 
     public PubsubMessage toPubsubMessage() {
-      var json = new JsonObject();
-      json.addProperty("retry", contentId());
-      return new PubsubMessage(json.toString().getBytes(), metadata());
+      return InteractionHelper.jsonMapper(new Ingestion.GoogleDrive(contentId()))
+          .map(body -> new PubsubMessage(body.getBytes(), metadata()))
+          .orElseThrow(
+              error -> new RuntimeException("Problems while trying to serialize retriable."));
     }
   }
 

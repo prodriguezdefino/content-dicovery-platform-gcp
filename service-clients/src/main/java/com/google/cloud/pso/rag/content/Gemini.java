@@ -40,22 +40,22 @@ public class Gemini {
 
   static final String CHUNKING_INSTRUCTIONS =
       """
-      and divide it into chunks for generating text embeddings.
-      Your goal is to create chunks that are:
+      extract all the text from it, remove all newline characters and empty lines replacing them
+      with a single space character, and divide it into chunks for generating text embeddings.
+      Your response should be formatted as a non formatted JSON string array, each item being a text chunk.
+      Your definitions chunks creations are:
       1. Each chunk should focus on a single topic or idea.
       2. Aim for a maximum length of 2048 tokens per chunk.
       3. If possible, end chunks at sentence boundaries (periods, question marks, exclamation points).
       4. Try to avoid breaking up important phrases or names.
-      5. Include some chunk overlap
-      If a topic spans multiple sentences and exceeds the character limit,
+      5. Include some chunk overlap, a handful of words at least.
+      6. If a topic spans multiple sentences and exceeds the character limit,
       break the chunk at the most logical word boundary to maintain semantic coherence as much as possible.
       --
       """;
 
-  static final String TEXT_CHUNKING_PROMPT = "Analyze the following text " + CHUNKING_INSTRUCTIONS;
-  static final String PDF_CHUNKING_PROMPT =
-      "Analyze the provided PDF, extract all the text from it, remove all empty newlines, "
-          + CHUNKING_INSTRUCTIONS;
+  static final String TEXT_CHUNKING_PROMPT = "Analyze the following text, " + CHUNKING_INSTRUCTIONS;
+  static final String PDF_CHUNKING_PROMPT = "Analyze the provided PDF, " + CHUNKING_INSTRUCTIONS;
 
   private static final Content SYSTEM_INSTRUCTION =
       Content.fromParts(

@@ -21,16 +21,16 @@ import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types.IndexableContent;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
-import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
+import com.google.cloud.pso.rag.common.Utilities;
+import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import com.google.cloud.pso.rag.vector.VectorRequests;
+import com.google.cloud.pso.rag.vector.VectorRequests.Vector;
 import com.google.cloud.pso.rag.vector.Vectors;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -110,17 +110,13 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
 
     @ProcessElement
     public void processElement(ProcessContext context) {
+      LOG.info("ids to remove {}", context.element());
       // remove data from the matching engine index
       Vectors.removeVectors(VectorRequests.remove(vectorsConfig, context.element()));
 
       // remove all the content rows with prefix
       try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceId)) {
-        tableAdminClient.dropRowRange(
-            tableId,
-            context.element().stream()
-                .map(s -> Utilities.prefixIdFromContentId(s))
-                .findFirst()
-                .orElse("NA"));
+        context.element().forEach(contentId -> tableAdminClient.dropRowRange(tableId, contentId));
       } catch (Exception ex) {
         LOG.error("problems while removing content ids from BigTable.", ex);
         throw new RuntimeException(ex);
@@ -142,31 +138,34 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
 
     @ProcessElement
     public void processElement(ProcessContext context) {
-      var contentIds = context.element().stream().map(c -> c.key()).collect(Collectors.toSet());
-      context.element().stream()
-          .findFirst()
-          .ifPresent(
-              first -> {
-                // we assume all the contents come with the same prefix id since all the content is
-                // from the same document
-                var prefix = Utilities.prefixIdFromContentId(first.key());
-                try (var dataClient = BigtableDataClient.create(projectId, instanceId)) {
-                  var notPresentKeys = Lists.<String>newArrayList();
-                  // iterate on already existing entries for this content id
-                  for (var row : dataClient.readRows(Query.create(tableId).prefix(prefix))) {
-                    if (!contentIds.contains(row.getKey().toStringUtf8())) {
-                      // mark those not present in the current content for deletion
-                      notPresentKeys.add(row.getKey().toStringUtf8());
-                    }
-                  }
-                  if (!notPresentKeys.isEmpty()) {
-                    context.output(notPresentKeys);
-                  }
-                } catch (Exception ex) {
-                  LOG.error("problems while reading prefixed content ids from BigTable.", ex);
-                  throw new RuntimeException(ex);
-                }
-              });
+      if (!context.element().isEmpty()) {
+        var contentIds = context.element().stream().map(c -> c.key()).toList();
+        captureNotPresentIds(contentIds).ifPresent(idsToRemove -> context.output(idsToRemove));
+      }
+    }
+
+    Optional<List<String>> captureNotPresentIds(List<String> contentIds) {
+      try (var dataClient = BigtableDataClient.create(projectId, instanceId)) {
+        // we assume all the contents come with the same prefix id since all the content
+        // is from the same document
+        var prefix = Utilities.prefixIdFromContentId(contentIds.getFirst());
+        var notPresentKeys = Lists.<String>newArrayList();
+        // iterate on already existing entries for this content id
+        for (var row : dataClient.readRows(Query.create(tableId).prefix(prefix))) {
+          if (!contentIds.contains(row.getKey().toStringUtf8())) {
+            // mark those not present in the current content for deletion
+            notPresentKeys.add(row.getKey().toStringUtf8());
+          }
+        }
+        if (!notPresentKeys.isEmpty()) {
+          return Optional.of(notPresentKeys);
+        } else {
+          return Optional.empty();
+        }
+      } catch (Exception ex) {
+        LOG.error("problems while reading prefixed content ids from BigTable.", ex);
+        throw new RuntimeException(ex);
+      }
     }
   }
 
@@ -184,43 +183,39 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
 
     @ProcessElement
     public void processElement(ProcessContext context) {
-      var timestamp = Instant.now().getMillis() * 1000;
       context.element().stream()
           // create the mutation on the KV
-          .map(
-              content ->
-                  KV.of(
-                      ByteString.copyFromUtf8(content.key()),
-                      (Iterable<Mutation>)
-                          Lists.newArrayList(
-                              Mutation.newBuilder()
-                                  .setSetCell(
-                                      Mutation.SetCell.newBuilder()
-                                          .setTimestampMicros(timestamp)
-                                          .setValue(ByteString.copyFromUtf8(content.content()))
-                                          .setColumnQualifier(
-                                              ByteString.copyFromUtf8(columnQualifierContent))
-                                          .setFamilyName(columnFamilyName)
-                                          .build())
-                                  .build(),
-                              Mutation.newBuilder()
-                                  .setSetCell(
-                                      Mutation.SetCell.newBuilder()
-                                          .setTimestampMicros(timestamp)
-                                          .setValue(
-                                              ByteString.copyFromUtf8(
-                                                  Utilities.reconstructDocumentLinkFromEmbeddingsId(
-                                                      content.key(),
-                                                      fetcher.retrieveFileType(
-                                                          Utilities.fileIdFromContentId(
-                                                              content.key())))))
-                                          .setColumnQualifier(
-                                              ByteString.copyFromUtf8(columnQualifierLink))
-                                          .setFamilyName(columnFamilyName)
-                                          .build())
-                                  .build())))
+          .map(content -> KV.of(ByteString.copyFromUtf8(content.key()), createMutation(content)))
           // send the data to storage
           .forEach(kv -> context.output(kv));
+    }
+
+    Iterable<Mutation> createMutation(IndexableContent content) {
+      var timestamp = Instant.now().getMillis() * 1000;
+      return List.of(
+          Mutation.newBuilder()
+              .setSetCell(
+                  Mutation.SetCell.newBuilder()
+                      .setTimestampMicros(timestamp)
+                      .setValue(ByteString.copyFromUtf8(content.content()))
+                      .setColumnQualifier(ByteString.copyFromUtf8(columnQualifierContent))
+                      .setFamilyName(columnFamilyName)
+                      .build())
+              .build(),
+          Mutation.newBuilder()
+              .setSetCell(
+                  Mutation.SetCell.newBuilder()
+                      .setTimestampMicros(timestamp)
+                      .setValue(
+                          ByteString.copyFromUtf8(
+                              Utilities.reconstructDocumentLinkFromEmbeddingsId(
+                                  content.key(),
+                                  fetcher.retrieveFileType(
+                                      Utilities.fileIdFromContentId(content.key())))))
+                      .setColumnQualifier(ByteString.copyFromUtf8(columnQualifierLink))
+                      .setFamilyName(columnFamilyName)
+                      .build())
+              .build());
     }
   }
 
@@ -244,10 +239,7 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
                         VectorRequests.store(
                             vectorsConfig,
                             embeddings.stream()
-                                .map(
-                                    content ->
-                                        new VectorRequests.Vector(
-                                            Optional.of(content.key()), content.embedding()))
+                                .map(content -> new Vector(content.key(), content.embedding()))
                                 .toList()))
                     .join();
                 LOG.info("vector stored count: {}", embeddings.size());
