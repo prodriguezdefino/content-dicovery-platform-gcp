@@ -207,6 +207,42 @@ variable llms {
   default = ["gemini-2.0-flash"]
 }
 
+variable "alloy_db_name" {
+  description = "The name of the database to be used within the AlloyDB instance."
+  type        = string
+  default     = "postgres"
+}
+
+variable "alloy_schema_name" {
+  description = "The name of the database to be used within the AlloyDB instance."
+  type        = string
+  default     = "public"
+}
+
+variable "alloy_table_name" {
+  description = "The name of the database to be used within the AlloyDB instance."
+  type        = string
+  default     = "rag_embeddings"
+}
+
+variable "alloy_user" {
+  description = "The name of the database to be used within the AlloyDB instance."
+  type        = string
+  default     = "postgres"
+}
+
+variable "pass" {
+  description = "The name of the database to be used within the AlloyDB instance."
+  type        = string
+  default     = "1514131211"
+}
+
+resource "random_password" "alloy_password" {
+  length           = 16
+  special          = true
+  override_special = "_%@"
+}
+
 output "df_sa" {
   value = google_service_account.dataflow_runner_sa.email
 }
@@ -253,4 +289,35 @@ output vector_storages {
 
 output chunkers {
   value = one(var.chunkers)
+}
+
+output "alloydb_instance_ip_address" {
+  description = "The private IP address of the AlloyDB primary instance."
+  value       = google_alloydb_instance.primary_instance.ip_address
+}
+
+output "alloydb_database_name" {
+  description = "The name of the alloydb database created."
+  value       = var.alloy_db_name
+}
+
+output "alloydb_schema" {
+  description = "The name of the alloydb schema created."
+  value       = var.alloy_schema_name
+}
+
+output "alloy_table_name" {
+  description = "The name of the alloydb table created."
+  value       = var.alloy_table_name
+}
+
+output "alloy_user" {
+  description = "The name of the alloydb username created."
+  value       = var.alloy_user
+}
+
+output "alloy_pass" {
+  description = "The initial password for the 'postgres' user (sensitive)."
+  value       = random_password.alloy_password.result
+  sensitive   = true
 }

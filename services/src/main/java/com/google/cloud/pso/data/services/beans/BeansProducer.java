@@ -53,6 +53,12 @@ public class BeansProducer {
   private String bigTableContentColumnQualifierLink;
   private String bigTableContentColumnQualifierContext;
   private String serviceAccount;
+  private String alloyDBipAddress;
+  private String alloyDBDatabaseName;
+  private String alloyDBUser;
+  private String alloyDBPassword;
+  private String alloyDBSchema;
+  private String alloyDBTable;
   private Boolean logInteraction;
   private Interactions interactions;
 
@@ -113,6 +119,13 @@ public class BeansProducer {
             .map(jse -> jse.getAsBoolean())
             .orElse(false);
 
+    alloyDBipAddress = configuration.get("alloy.ipAddress").getAsString();
+    alloyDBDatabaseName = configuration.get("alloy.databaseName").getAsString();
+    alloyDBUser = configuration.get("alloy.username").getAsString();
+    alloyDBPassword = configuration.get("alloy.password").getAsString();
+    alloyDBSchema = configuration.get("alloy.schema").getAsString();
+    alloyDBTable = configuration.get("alloy.table").getAsString();
+
     // we assume the service account for the current container has permissions to make requests to
     // the needed Google services.
     GCPEnvironment.trySetup(
@@ -124,7 +137,14 @@ public class BeansProducer {
                 matchingEngineIndexEndpointDomain,
                 matchingEngineIndexEndpointId,
                 matchingEngineIndexId,
-                matchingEngineIndexDeploymentId)));
+                matchingEngineIndexDeploymentId),
+            new GCPEnvironment.alloyDBConfig(
+                alloyDBipAddress,
+                alloyDBDatabaseName,
+                alloyDBUser,
+                alloyDBPassword,
+                alloyDBSchema,
+                alloyDBTable)));
     interactions =
         new Interactions(
             configuration.get("embeddings_models").getAsJsonArray().get(0).getAsString(),

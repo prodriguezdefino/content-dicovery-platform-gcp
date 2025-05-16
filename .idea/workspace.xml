@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="e0fcc3a5-34ac-4652-894c-9cd31a2c57bc" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/infra/alloydb.tf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/service-clients/src/main/java/com/google/cloud/pso/rag/common/JDBCHelper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/service-clients/src/main/java/com/google/cloud/pso/rag/vector/AlloyDB.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/main.tf" beforeDir="false" afterPath="$PROJECT_DIR$/infra/main.tf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/service-clients/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/service-clients/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/service-clients/src/main/java/com/google/cloud/pso/rag/common/GCPEnvironment.java" beforeDir="false" afterPath="$PROJECT_DIR$/service-clients/src/main/java/com/google/cloud/pso/rag/common/GCPEnvironment.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/service-clients/src/main/java/com/google/cloud/pso/rag/vector/VectorRequests.java" beforeDir="false" afterPath="$PROJECT_DIR$/service-clients/src/main/java/com/google/cloud/pso/rag/vector/VectorRequests.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/service-clients/src/main/java/com/google/cloud/pso/rag/vector/Vectors.java" beforeDir="false" afterPath="$PROJECT_DIR$/service-clients/src/main/java/com/google/cloud/pso/rag/vector/Vectors.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/src/main/java/com/google/cloud/pso/data/services/beans/BeansProducer.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/src/main/java/com/google/cloud/pso/data/services/beans/BeansProducer.java" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CodeStyleSettingsInfer">
+    <option name="done" value="true" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectCodeStyleSettingsMigration">
+    <option name="version" value="2" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="2wQVymZ3s17ovOLmPvDs1sqxGA3" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.AlloyDB.executor": "Run",
+    "Application.AlloyDBTest.executor": "Run",
+    "Application.Test.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/whaite/Documents/dev/rag/whaite/content-dicovery-platform-gcp",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.28653628",
+    "settings.editor.selected.configurable": "google-java-format.settings"
+  },
+  "keyToStringList": {
+    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
+      "yaml"
+    ]
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="com.google.cloud.pso.rag.vector" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.Test">
+    <configuration name="AlloyDBTest" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.google.cloud.pso.rag.vector.AlloyDBTest" />
+      <module name="googledocs-content-service-clients" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.google.cloud.pso.rag.vector.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.google.cloud.pso.rag.vector.Test" />
+      <module name="googledocs-content-service-clients" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.google.cloud.pso.rag.vector.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.Test" />
+        <item itemvalue="Application.AlloyDBTest" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="e0fcc3a5-34ac-4652-894c-9cd31a2c57bc" name="Changes" comment="" />
+      <created>1745974045246</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1745974045246</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

@@ -24,7 +24,13 @@ locals {
         "embeddings_models" : ${jsonencode(var.embeddings_models)},
         "vector_storages" : ${jsonencode(var.vector_storages)},
         "llms" : ${jsonencode(var.llms)},
-        "chunkers" : ${jsonencode(var.chunkers)}
+        "chunkers" : ${jsonencode(var.chunkers)},
+        "alloy.ipAddress" : "${google_alloydb_instance.primary_instance.ip_address}",
+        "alloy.databaseName" : "${var.alloy_db_name}",
+        "alloy.username" : "${var.alloy_user}",
+        "alloy.password" : "${random_password.alloy_password.result}",
+        "alloy.schema" : "${var.alloy_schema_name}",
+        "alloy.table" : "${var.alloy_table_name}"
       }
 EOL
 }

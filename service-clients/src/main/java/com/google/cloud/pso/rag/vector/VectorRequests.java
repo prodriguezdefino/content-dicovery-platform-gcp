@@ -36,17 +36,18 @@ public class VectorRequests {
 
   public static Vectors.Store store(
       String configurationEntry, String idPrefix, List<Vector> vectors) {
+    var datapoints = IntStream.range(0, vectors.size())
+            .mapToObj(
+                    idx -> {
+                      var vector = vectors.get(idx);
+                      return new Vectors.Datapoint(
+                              vector.id().orElse(idPrefix + idx), vector.values());
+                    })
+            .toList();
+
     return switch (configurationEntry) {
-      case "vector_search" ->
-          new VectorSearch.UpsertRequest(
-              IntStream.range(0, vectors.size())
-                  .mapToObj(
-                      idx -> {
-                        var vector = vectors.get(idx);
-                        return new Vectors.Datapoint(
-                            vector.id().orElse(idPrefix + idx), vector.values());
-                      })
-                  .toList());
+      case "vector_search" -> new VectorSearch.UpsertRequest(datapoints);
+      case "alloydb" -> new AlloyDB.UpsertRequest(datapoints);
       default ->
           throw new IllegalArgumentException(
               String.format(
@@ -57,14 +58,14 @@ public class VectorRequests {
 
   public static Vectors.Search find(
       String configurationEntry, List<Vector> vectors, Integer quantity) {
+    var queries = vectors.stream()
+            .map(
+                vector ->
+                            new VectorSearch.Query(new Vectors.Datapoint(vector.values()), quantity))
+            .toList();
     return switch (configurationEntry) {
-      case "vector_search" ->
-          new VectorSearch.SearchRequest(
-              vectors.stream()
-                  .map(
-                      vector ->
-                          new VectorSearch.Query(new Vectors.Datapoint(vector.values()), quantity))
-                  .toList());
+      case "vector_search" -> new VectorSearch.SearchRequest(queries);
+      case "alloydb" -> new AlloyDB.SearchRequest(queries);
       default ->
           throw new IllegalArgumentException(
               String.format(
@@ -76,6 +77,7 @@ public class VectorRequests {
   public static Vectors.Delete remove(String configurationEntry, List<String> vectorIds) {
     return switch (configurationEntry) {
       case "vector_search" -> new VectorSearch.RemoveRequest(vectorIds);
+      case "alloydb" -> new AlloyDB.RemoveRequest(vectorIds);
       default ->
           throw new IllegalArgumentException(
               String.format(

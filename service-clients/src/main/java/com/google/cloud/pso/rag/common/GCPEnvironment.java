@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.rag.common;
 
+import com.google.cloud.pso.rag.vector.AlloyDB;
 import com.google.common.base.Preconditions;
 import java.util.function.Supplier;
 
@@ -26,11 +27,20 @@ public class GCPEnvironment {
   public record VectorSearchConfig(
       String indexDomain, String indexPath, String indexId, String deploymentId) {}
 
+  public record alloyDBConfig(
+      String ipAddressDB,
+      String databaseName,
+      String user,
+      String password,
+      String schema,
+      String table) {}
+
   public record Config(
       String project,
       String region,
       Supplier<String> serviceAccountEmailSupplier,
-      VectorSearchConfig vectorSearchConfig) {}
+      VectorSearchConfig vectorSearchConfig,
+      alloyDBConfig alloyDBConfig) {}
 
   private final Config config;
 
