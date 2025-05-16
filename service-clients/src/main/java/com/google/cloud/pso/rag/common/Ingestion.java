@@ -26,7 +26,8 @@ public interface Ingestion {
     PDF,
     IMAGE,
     VIDEO,
-    AUDIO
+    AUDIO,
+    GOOGLE
   }
 
   record Request(

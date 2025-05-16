@@ -148,7 +148,7 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
       try (var dataClient = BigtableDataClient.create(projectId, instanceId)) {
         // we assume all the contents come with the same prefix id since all the content
         // is from the same document
-        var prefix = Utilities.prefixIdFromContentId(contentIds.getFirst());
+        var prefix = contentIdPrefix(contentIds.getFirst());
         var notPresentKeys = Lists.<String>newArrayList();
         // iterate on already existing entries for this content id
         for (var row : dataClient.readRows(Query.create(tableId).prefix(prefix))) {
@@ -166,6 +166,13 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
         LOG.error("problems while reading prefixed content ids from BigTable.", ex);
         throw new RuntimeException(ex);
       }
+    }
+
+    static String contentIdPrefix(String contentId) {
+      if (Utilities.checkIfGoogleDriveRelatedId(contentId)) {
+        return Utilities.prefixIdFromContentId(contentId);
+      }
+      return Utilities.urlFromNonGDriveContentId(contentId);
     }
   }
 
@@ -206,16 +213,19 @@ public class StoreEmbeddingsResults extends PTransform<PCollection<List<Indexabl
               .setSetCell(
                   Mutation.SetCell.newBuilder()
                       .setTimestampMicros(timestamp)
-                      .setValue(
-                          ByteString.copyFromUtf8(
-                              Utilities.reconstructDocumentLinkFromEmbeddingsId(
-                                  content.key(),
-                                  fetcher.retrieveFileType(
-                                      Utilities.fileIdFromContentId(content.key())))))
+                      .setValue(ByteString.copyFromUtf8(populateLink(content)))
                       .setColumnQualifier(ByteString.copyFromUtf8(columnQualifierLink))
                       .setFamilyName(columnFamilyName)
                       .build())
               .build());
+    }
+
+    String populateLink(IndexableContent content) {
+      if (Utilities.checkIfGoogleDriveRelatedId(content.key())) {
+        return Utilities.reconstructDocumentLinkFromEmbeddingsId(
+            content.key(), fetcher.retrieveFileType(Utilities.fileIdFromContentId(content.key())));
+      }
+      return Utilities.urlFromNonGDriveContentId(content.key());
     }
   }
 

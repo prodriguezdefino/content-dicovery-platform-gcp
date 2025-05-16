@@ -46,6 +46,10 @@ public sealed interface Result<T, E> {
     return new Failure<>(new ErrorResponse(message, Optional.empty()));
   }
 
+  default boolean failed() {
+    return this instanceof Failure<?, ?>;
+  }
+
   default <U> Result<U, E> map(Function<? super T, ? extends U> mapper) {
     return switch (this) {
       case Success<T, E>(var value) -> new Success<>(mapper.apply(value));
