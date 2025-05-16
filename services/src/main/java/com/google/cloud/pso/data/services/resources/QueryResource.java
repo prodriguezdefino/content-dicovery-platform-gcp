@@ -150,7 +150,7 @@ public class QueryResource {
                                               .filter(
                                                   n ->
                                                       n.distance()
-                                                          < configuration.maxNeighborDistance())
+                                                          > configuration.minNeighborDistance())
                                               .sorted(
                                                   (n1, n2) ->
                                                       -n1.distance().compareTo(n2.distance()))

@@ -15,9 +15,9 @@
  */
 package com.google.cloud.pso.beam.contentextract;
 
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
 import com.google.cloud.pso.rag.common.Ingestion;
 import com.google.cloud.pso.rag.common.InteractionHelper;
+import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.io.InputStream;

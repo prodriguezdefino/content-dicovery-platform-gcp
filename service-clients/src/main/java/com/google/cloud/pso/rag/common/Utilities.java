@@ -13,12 +13,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.contentextract.clients.utils;
+package com.google.cloud.pso.rag.common;
 
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.Preconditions;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.common.collect.Lists;

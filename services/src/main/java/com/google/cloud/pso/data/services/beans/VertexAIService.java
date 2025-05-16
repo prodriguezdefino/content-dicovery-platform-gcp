@@ -57,9 +57,7 @@ public class VertexAIService {
 
   @Timed(name = "palm.chat.prediction", unit = MetricUnits.MILLISECONDS)
   public CompletableFuture<Result<? extends LLM.ChatResponse, ErrorResponse>> retrieveChatResponse(
-      List<ServiceTypes.QAndA> lastsQAndAs,
-      ServiceTypes.UserQuery query,
-      String palmRequestContext) {
+      List<ServiceTypes.QAndA> lastsQAndAs, ServiceTypes.UserQuery query, String context) {
 
     var exchanges =
         Stream.concat(
@@ -74,7 +72,10 @@ public class VertexAIService {
 
     return LLM.chat(
         LLMRequests.chat(
-            interactions.llm(), exchanges, llmParameters(Optional.ofNullable(query.parameters()))));
+            interactions.llm(),
+            context,
+            exchanges,
+            llmParameters(Optional.ofNullable(query.parameters()))));
   }
 
   @Timed(name = "embeddings.prediction", unit = MetricUnits.MILLISECONDS)

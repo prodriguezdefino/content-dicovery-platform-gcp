@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.contentextract.clients;
+package com.google.cloud.pso.rag.drive;
 
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -22,8 +22,8 @@ import com.google.api.services.docs.v1.Docs;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.slides.v1.Slides;
-import com.google.cloud.pso.beam.contentextract.clients.utils.Utilities;
 import com.google.cloud.pso.rag.common.GoogleCredentialsCache;
+import com.google.cloud.pso.rag.common.Utilities;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Optional;

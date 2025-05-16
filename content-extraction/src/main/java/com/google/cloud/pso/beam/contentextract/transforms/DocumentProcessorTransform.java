@@ -17,13 +17,13 @@ package com.google.cloud.pso.beam.contentextract.transforms;
 
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.Types;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveAPIMimeTypes;
-import com.google.cloud.pso.beam.contentextract.clients.GoogleDriveClient;
 import com.google.cloud.pso.beam.contentextract.transforms.DocumentProcessorTransform.DocumentProcessingResult;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
 import com.google.cloud.pso.rag.common.Ingestion.Request;
 import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.cloud.pso.rag.common.Result;
+import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
+import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;

@@ -85,7 +85,7 @@ public class ServiceTypes {
   public record ResourceConfiguration(
       Boolean logInteractions,
       Integer maxNeighbors,
-      Double maxNeighborDistance,
+      Double minNeighborDistance,
       Double temperature,
       Integer maxOutputTokens,
       Integer topK,
@@ -116,7 +116,7 @@ public class ServiceTypes {
   public record QAndA(String question, String answer) {
 
     public List<LLM.Exchange> toExchange() {
-      return List.of(new LLM.Exchange("user", question), new LLM.Exchange("bot", answer));
+      return List.of(new LLM.Exchange("user", question), new LLM.Exchange("model", answer));
     }
   }
 

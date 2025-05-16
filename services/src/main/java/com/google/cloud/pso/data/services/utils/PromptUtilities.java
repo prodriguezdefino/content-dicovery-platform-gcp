@@ -33,7 +33,7 @@ public class PromptUtilities {
   public static final String DEFAULT_BOT_CONTEXT_EXPERTISE =
       "You are an expert in Google Cloud Platform related technologies.";
   public static final String ADD_ENRICH_STATEMENT =
-      " and enrich the response with your knowledge when relevant";
+      " and enrich the response with your own knowledge when relevant";
   private static final String CHAT_CONTEXT_PROMPT_TEMPLATE =
       """
       %s
