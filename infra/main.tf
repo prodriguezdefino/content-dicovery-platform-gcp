@@ -112,6 +112,12 @@ resource "google_project_service" "policytroubleshooter_service" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "alloydb_api" {
+  project                    = var.project
+  service                    = "alloydb.googleapis.com"
+  disable_on_destroy         = false
+}
+
 resource "google_service_account" "dataflow_runner_sa" {
   project    = var.project
   account_id = "${var.run_name}-sa"

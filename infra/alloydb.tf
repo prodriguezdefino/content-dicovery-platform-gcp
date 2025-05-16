@@ -1,8 +1,15 @@
+
+data "google_compute_network" "default_network" {
+  name    = "default"
+  project = var.project
+}
+
 # AlloyDB Cluster
 resource "google_alloydb_cluster" "default_cluster" {
   project    = var.project
   location   = var.region
-  cluster_id = "alloydb-cluster-rag"
+  cluster_id = "rag-${var.run_name}"
+  network    = data.google_compute_network.default_network.self_link
   initial_user {
     user     = var.alloy_user
     password = var.pass

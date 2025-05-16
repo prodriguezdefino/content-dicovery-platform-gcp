@@ -37,7 +37,8 @@ public class GCPEnvironmentInitializer implements JvmInitializer {
                 extractionOptions.getMatchingEngineIndexEndpointDomain(),
                 extractionOptions.getMatchingEngineIndexEndpointId(),
                 extractionOptions.getMatchingEngineIndexId(),
-                extractionOptions.getMatchingEngineIndexEndpointDeploymentName()));
+                extractionOptions.getMatchingEngineIndexEndpointDeploymentName()), 
+                null);
     GCPEnvironment.trySetup(config);
   }
 }
