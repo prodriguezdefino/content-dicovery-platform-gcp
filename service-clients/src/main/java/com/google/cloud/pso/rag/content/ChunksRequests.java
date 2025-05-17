@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.rag.content;
 
+import com.google.cloud.pso.rag.common.Ingestion;
 import java.util.List;
 
 /** */
@@ -22,12 +23,12 @@ public class ChunksRequests {
   private ChunksRequests() {}
 
   public static Chunks.ChunkRequest create(
-      String configurationEntry, Chunks.SupportedTypes type, String dataToChunk) {
+      String configurationEntry, Ingestion.SupportedType type, String dataToChunk) {
     return create(configurationEntry, type, List.of(dataToChunk));
   }
 
   public static Chunks.ChunkRequest create(
-      String configurationEntry, Chunks.SupportedTypes type, List<String> dataToChunk) {
+      String configurationEntry, Ingestion.SupportedType type, List<String> dataToChunk) {
     return switch (configurationEntry) {
       case "gemini-2.0-flash", "gemini-2.0-flash-lite" ->
           createGeminiRequest(configurationEntry, type, dataToChunk);
@@ -40,10 +41,13 @@ public class ChunksRequests {
   }
 
   static Chunks.ChunkRequest createGeminiRequest(
-      String configurationEntry, Chunks.SupportedTypes type, List<String> dataToChunk) {
+      String configurationEntry, Ingestion.SupportedType type, List<String> dataToChunk) {
     return switch (type) {
-      case PDF_URL, PDF_BINARY -> new Gemini.PDFChunkRequest(configurationEntry, dataToChunk, type);
+      case PDF, PDF_LINK -> new Gemini.PDFChunkRequest(configurationEntry, dataToChunk, type);
+      case JPEG, JPEG_LINK, PNG, PNG_LINK, WEBP, WEBP_LINK ->
+          new Gemini.ImageChunkRequest(configurationEntry, dataToChunk, type);
       case TEXT -> new Gemini.TextChunkRequest(configurationEntry, dataToChunk);
+      default -> throw new IllegalArgumentException("Type is not supported: " + type);
     };
   }
 }

@@ -15,19 +15,62 @@
  */
 package com.google.cloud.pso.rag.common;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 /** */
 public interface Ingestion {
 
-  enum MimeType {
-    TEXT,
-    PDF,
-    IMAGE,
-    VIDEO,
-    AUDIO,
-    GOOGLE
+  enum SupportedType {
+    @JsonProperty("text/plain")
+    TEXT("text/plain"),
+    @JsonProperty("application/pdf")
+    PDF("application/pdf"),
+    @JsonProperty("link/pdf")
+    PDF_LINK("link/pdf"),
+    @JsonProperty("image/png")
+    PNG("image/png"),
+    @JsonProperty("link/png")
+    PNG_LINK("link/png"),
+    @JsonProperty("image/jpeg")
+    JPEG("image/jpeg"),
+    @JsonProperty("link/jpeg")
+    JPEG_LINK("link/jpeg"),
+    @JsonProperty("image/webp")
+    WEBP("image/webp"),
+    @JsonProperty("link/webp")
+    WEBP_LINK("link/webp");
+
+    private String value;
+
+    private SupportedType(String value) {
+      this.value = value;
+    }
+
+    public String mimeType() {
+      return value;
+    }
+
+    public SupportedType toLink() {
+
+      return switch (this) {
+        case JPEG -> JPEG_LINK;
+        case PDF -> PDF_LINK;
+        case PNG -> PNG_LINK;
+        case WEBP -> WEBP_LINK;
+        default ->
+            throw new IllegalArgumentException(this.name() + " does not have a link version.");
+      };
+    }
+
+    public static SupportedType fromString(String value) {
+      return Arrays.stream(SupportedType.values())
+          .filter(type -> type.value.equals(value))
+          .findFirst()
+          .orElseThrow(() -> new IllegalArgumentException("Invalid type: " + value));
+    }
   }
 
   record Request(
@@ -36,6 +79,10 @@ public interface Ingestion {
       Optional<List<Reference>> references) {
     public Request(RawData data) {
       this(Optional.empty(), Optional.of(data), Optional.empty());
+    }
+
+    public Request(GoogleDrive gdrive) {
+      this(Optional.of(List.of(gdrive)), Optional.empty(), Optional.empty());
     }
 
     public Result<Void, Exception> validate() {
@@ -50,7 +97,7 @@ public interface Ingestion {
 
   record GoogleDrive(String urlOrId) {}
 
-  record RawData(String id, byte[] data, MimeType mimeType) {}
+  record RawData(String id, byte[] data, SupportedType mimeType) {}
 
-  record Reference(String url, MimeType mimeType) {}
+  record Reference(String url, SupportedType mimeType) {}
 }

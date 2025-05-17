@@ -19,11 +19,12 @@ import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.pso.beam.contentextract.ContentExtractionOptions;
 import com.google.cloud.pso.beam.contentextract.utils.DocContentRetriever;
+import com.google.cloud.pso.rag.common.Ingestion;
+import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.cloud.pso.rag.common.Utilities;
 import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -116,18 +117,21 @@ public class RefreshContentTransform extends PTransform<PBegin, PDone> {
 
     @ProcessElement
     public void process(ProcessContext context) {
-      var lastRefresh = Instant.now().minus(Duration.standardHours(lastRefreshHoursAgo));
-      fetcher
-          .filterFilesUpForRefresh(new ContentProcessed(context.element(), lastRefresh.getMillis()))
-          .map(file -> file.getWebViewLink())
-          .map(
-              url -> {
-                var json = new JsonObject();
-                json.addProperty("url", url);
-                return json;
-              })
-          .map(json -> new PubsubMessage(json.toString().getBytes(), Maps.newHashMap()))
-          .ifPresent(pmsg -> context.output(pmsg));
+      if (Utilities.checkIfGoogleDriveRelatedId(context.element())) {
+        var lastRefresh = Instant.now().minus(Duration.standardHours(lastRefreshHoursAgo));
+        fetcher
+            .filterFilesUpForRefresh(
+                new ContentProcessed(context.element(), lastRefresh.getMillis()))
+            .map(file -> file.getWebViewLink())
+            .map(
+                url ->
+                    InteractionHelper.jsonMapper(
+                            new Ingestion.Request(new Ingestion.GoogleDrive(url)))
+                        .orElseThrow(
+                            ex -> new RuntimeException("Can't process element for refresh.", ex)))
+            .map(json -> new PubsubMessage(json.getBytes(), Maps.newHashMap()))
+            .ifPresent(pmsg -> context.output(pmsg));
+      }
     }
   }
 
