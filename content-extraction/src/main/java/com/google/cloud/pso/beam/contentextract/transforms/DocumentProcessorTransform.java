@@ -23,7 +23,6 @@ import com.google.cloud.pso.rag.common.Ingestion;
 import com.google.cloud.pso.rag.common.Ingestion.Request;
 import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.cloud.pso.rag.common.Result;
-import com.google.cloud.pso.rag.content.Chunks;
 import com.google.cloud.pso.rag.drive.GoogleDriveAPIMimeTypes;
 import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import java.util.Base64;
@@ -270,7 +269,7 @@ public class DocumentProcessorTransform
               new Types.Content(
                   rawData.id(),
                   List.of(new String(Base64.getDecoder().decode(rawData.data()))),
-                  Chunks.SupportedTypes.TEXT);
+                  rawData.mimeType());
           context.output(rawContent, content);
           yield Result.success(true);
         }
@@ -284,10 +283,9 @@ public class DocumentProcessorTransform
           .map(
               ref ->
                   switch (ref.mimeType()) {
-                    case PDF -> {
+                    case PDF, PNG -> {
                       var content =
-                          new Types.Content(
-                              ref.url(), List.of(ref.url()), Chunks.SupportedTypes.PDF_URL);
+                          new Types.Content(ref.url(), List.of(ref.url()), ref.mimeType().toLink());
                       context.output(rawContent, content);
                       yield Result.<Boolean, Exception>success(true);
                     }

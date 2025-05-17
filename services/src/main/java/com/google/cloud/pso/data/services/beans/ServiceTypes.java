@@ -15,9 +15,9 @@
  */
 package com.google.cloud.pso.data.services.beans;
 
-import com.google.cloud.pso.rag.common.Ingestion.MimeType;
 import com.google.cloud.pso.rag.common.Ingestion.RawData;
 import com.google.cloud.pso.rag.common.Ingestion.Request;
+import com.google.cloud.pso.rag.common.Ingestion.SupportedType;
 import com.google.cloud.pso.rag.common.Result;
 import com.google.cloud.pso.rag.llm.LLM;
 import jakarta.ws.rs.FormParam;
@@ -65,7 +65,7 @@ public class ServiceTypes {
           && mimeType != null
           && !mimeType.isBlank())
         return Result.success(
-            new Request(new RawData(documentId, content, MimeType.valueOf(mimeType))));
+            new Request(new RawData(documentId, content, SupportedType.fromString(mimeType))));
       return Result.failure(
           new IllegalArgumentException(
               "The request should have a valid and not empty id, content and mime type."));

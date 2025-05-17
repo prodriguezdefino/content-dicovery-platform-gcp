@@ -19,6 +19,7 @@ import static com.google.cloud.pso.rag.common.InteractionHelper.jsonMapper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.cloud.pso.rag.common.GCPEnvironment;
+import com.google.cloud.pso.rag.common.Ingestion;
 import com.google.cloud.pso.rag.common.InteractionHelper;
 import com.google.cloud.pso.rag.common.Models;
 import com.google.cloud.pso.rag.common.Result;
@@ -40,22 +41,32 @@ public class Gemini {
 
   static final String CHUNKING_INSTRUCTIONS =
       """
-      extract all the text from it, remove all newline characters and empty lines replacing them
-      with a single space character, and divide it into chunks for generating text embeddings.
-      Your response should be formatted as a non formatted JSON string array, each item being a text chunk.
       Your definitions chunks creations are:
-      1. Each chunk should focus on a single topic or idea.
-      2. Aim for a maximum length of 2048 tokens per chunk.
+      1. Aim to generate chunks with a size ranging between 200, when possible, and 2048 tokens as maximum.
+      2. Each chunk should focus on a single topic or idea, unless they are too short.
       3. If possible, end chunks at sentence boundaries (periods, question marks, exclamation points).
       4. Try to avoid breaking up important phrases or names.
-      5. Include some chunk overlap, a handful of words at least.
+      5. Include some chunk overlap, enough words to capture the ideas at least.
       6. If a topic spans multiple sentences and exceeds the character limit,
       break the chunk at the most logical word boundary to maintain semantic coherence as much as possible.
+      Your response should be formatted as a non formatted JSON string array, each array item being the chunked text.
       --
       """;
-
-  static final String TEXT_CHUNKING_PROMPT = "Analyze the following text, " + CHUNKING_INSTRUCTIONS;
-  static final String PDF_CHUNKING_PROMPT = "Analyze the provided PDF, " + CHUNKING_INSTRUCTIONS;
+  static final String TEXT_BASED_INSTRUCTIONS =
+      """
+      extract all the text from it, remove all newline characters and empty lines replacing them
+      with a single space character, and divide it into chunks which will be used to generate text embeddings.
+      """;
+  static final String TEXT_CHUNKING_PROMPT =
+      "Analyze the following text, " + TEXT_BASED_INSTRUCTIONS + CHUNKING_INSTRUCTIONS;
+  static final String PDF_CHUNKING_PROMPT =
+      "Analyze the provided PDF, " + TEXT_BASED_INSTRUCTIONS + CHUNKING_INSTRUCTIONS;
+  static final String IMAGE_CHUNKING_PROMPT =
+      """
+      Analyze the provided image and generate a non-formatted description of what is shown in it with a deep level of detail.
+      Then, use that description and divide it into chunks which will be used to generate text embeddings.
+      """
+          + CHUNKING_INSTRUCTIONS;
 
   private static final Content SYSTEM_INSTRUCTION =
       Content.fromParts(
@@ -64,29 +75,29 @@ public class Gemini {
   private Gemini() {}
 
   public sealed interface ChunkRequest extends Chunks.ChunkRequest
-      permits TextChunkRequest, PDFChunkRequest {}
+      permits TextChunkRequest, PDFChunkRequest, ImageChunkRequest {}
 
   public sealed interface ChunkResponse extends Chunks.ChunkResponse permits TextChunkResponse {}
 
   public record TextChunkRequest(String model, List<String> content) implements ChunkRequest {}
 
-  public record PDFChunkRequest(String model, List<String> contents, Chunks.SupportedTypes type)
+  public record PDFChunkRequest(String model, List<String> contents, Ingestion.SupportedType type)
+      implements ChunkRequest {}
+
+  public record ImageChunkRequest(String model, List<String> contents, Ingestion.SupportedType type)
       implements ChunkRequest {}
 
   public record TextChunkResponse(List<String> chunks) implements ChunkResponse {}
 
-  static String mimeTypeFromType(Chunks.SupportedTypes type) {
+  static Part partFromType(Ingestion.SupportedType type, String content) {
     return switch (type) {
-      case PDF_URL, PDF_BINARY -> Models.PDF_MIME;
-      case TEXT -> Models.TEXT_MIME;
-    };
-  }
-
-  static Part partFromType(Chunks.SupportedTypes type, String content) {
-    return switch (type) {
-      case PDF_BINARY -> Part.fromBytes(content.getBytes(), mimeTypeFromType(type));
-      case PDF_URL -> Part.fromUri(content, mimeTypeFromType(type));
+      case PDF, JPEG, PNG, WEBP -> Part.fromBytes(content.getBytes(), type.mimeType());
+      case PDF_LINK -> Part.fromUri(content, Ingestion.SupportedType.PDF.mimeType());
       case TEXT -> Part.fromText(content);
+      case JPEG_LINK -> Part.fromUri(content, Ingestion.SupportedType.JPEG.mimeType());
+      case PNG_LINK -> Part.fromUri(content, Ingestion.SupportedType.PNG.mimeType());
+      case WEBP_LINK -> Part.fromUri(content, Ingestion.SupportedType.WEBP.mimeType());
+      default -> throw new IllegalArgumentException("Type not supported: " + type);
     };
   }
 
@@ -141,6 +152,13 @@ public class Gemini {
               Stream.concat(
                       contents.stream().map(item -> partFromType(type, item)),
                       Stream.of(Part.fromText(PDF_CHUNKING_PROMPT)))
+                  .toList());
+      case ImageChunkRequest(var model, var contents, var type) ->
+          internalExec(
+              model,
+              Stream.concat(
+                      contents.stream().map(item -> partFromType(type, item)),
+                      Stream.of(Part.fromText(IMAGE_CHUNKING_PROMPT)))
                   .toList());
     };
   }
