@@ -25,7 +25,6 @@ import com.google.cloud.pso.rag.common.Utilities;
 import com.google.cloud.pso.rag.drive.GoogleDriveClient;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.coders.KvCoder;
