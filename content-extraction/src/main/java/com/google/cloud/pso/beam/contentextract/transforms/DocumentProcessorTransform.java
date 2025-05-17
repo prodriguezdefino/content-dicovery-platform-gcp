@@ -283,7 +283,7 @@ public class DocumentProcessorTransform
           .map(
               ref ->
                   switch (ref.mimeType()) {
-                    case PDF, PNG -> {
+                    case PDF, PNG, JPEG, WEBP -> {
                       var content =
                           new Types.Content(ref.url(), List.of(ref.url()), ref.mimeType().toLink());
                       context.output(rawContent, content);
