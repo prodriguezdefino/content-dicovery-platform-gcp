@@ -220,33 +220,26 @@ variable "alloy_db_name" {
 }
 
 variable "alloy_schema_name" {
-  description = "The name of the database to be used within the AlloyDB instance."
+  description = "The name of the schme to be used within the AlloyDB instance."
   type        = string
   default     = "public"
 }
 
 variable "alloy_table_name" {
-  description = "The name of the database to be used within the AlloyDB instance."
+  description = "The name of the table to be used within the AlloyDB instance."
   type        = string
   default     = "rag_embeddings"
 }
 
 variable "alloy_user" {
-  description = "The name of the database to be used within the AlloyDB instance."
+  description = "The name of the user to be used within the AlloyDB instance."
   type        = string
   default     = "postgres"
 }
 
-variable "pass" {
-  description = "The name of the database to be used within the AlloyDB instance."
+variable "alloy_password" {
+  description = "The password to be used within the AlloyDB instance."
   type        = string
-  default     = "1514131211"
-}
-
-resource "random_password" "alloy_password" {
-  length           = 16
-  special          = true
-  override_special = "_%@"
 }
 
 output "df_sa" {
@@ -324,6 +317,6 @@ output "alloy_user" {
 
 output "alloy_pass" {
   description = "The initial password for the 'postgres' user (sensitive)."
-  value       = random_password.alloy_password.result
-  sensitive   = true
+  value       = var.alloy_password
+#   sensitive   = true
 }

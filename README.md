@@ -22,6 +22,8 @@ This platform uses Terraform for the setup of all its components. For those that
 
 The complete deployment as of today (June 2023) can take up to 90 mintues to complete, the biggest culprit being the Matching Engine related components that take the majority of that time to be created and readily available. With time this extended runtimes will only improve.
 
+If you are using AlloyDB to store vectors please follow these additional config steps.
+
 ## First setup
 
 The setup should be executable from the scripts included in the repository.

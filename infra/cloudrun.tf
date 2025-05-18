@@ -28,7 +28,7 @@ locals {
         "alloy.ipAddress" : "${google_alloydb_instance.primary_instance.ip_address}",
         "alloy.databaseName" : "${var.alloy_db_name}",
         "alloy.username" : "${var.alloy_user}",
-        "alloy.password" : "${random_password.alloy_password.result}",
+        "alloy.password" : "${var.alloy_password}",
         "alloy.schema" : "${var.alloy_schema_name}",
         "alloy.table" : "${var.alloy_table_name}"
       }

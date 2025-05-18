@@ -68,8 +68,20 @@ public class VectorRequests {
                             new VectorSearch.Query(new Vectors.Datapoint(vector.values()), quantity))
             .toList();
     return switch (configurationEntry) {
-      case "vector_search" -> new VectorSearch.SearchRequest(queries);
-      case "alloydb" -> new AlloyDB.SearchRequest(queries);
+      case "vector_search" ->
+          new VectorSearch.SearchRequest(
+              vectors.stream()
+                  .map(
+                      vector ->
+                          new VectorSearch.Query(new Vectors.Datapoint(vector.values()), quantity))
+                  .toList());
+      case "alloydb" ->
+          new AlloyDB.SearchRequest(
+              vectors.stream()
+                  .map(
+                      vector ->
+                          new AlloyDB.Query(new Vectors.Datapoint(vector.values()), quantity))
+                  .toList());
       default ->
           throw new IllegalArgumentException(
               String.format(

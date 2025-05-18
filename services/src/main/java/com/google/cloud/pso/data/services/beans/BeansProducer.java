@@ -138,7 +138,7 @@ public class BeansProducer {
                 matchingEngineIndexEndpointId,
                 matchingEngineIndexId,
                 matchingEngineIndexDeploymentId),
-            new GCPEnvironment.alloyDBConfig(
+            new GCPEnvironment.AlloyDBConfig(
                 alloyDBipAddress,
                 alloyDBDatabaseName,
                 alloyDBUser,

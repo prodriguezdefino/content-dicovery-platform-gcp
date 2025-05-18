@@ -101,7 +101,7 @@ public class AlloyDB {
   /*
   Nearest neighbor search types.
   */
-  public record SearchRequest(List<VectorSearch.Query> queries) implements Vectors.Search {}
+  public record SearchRequest(List<AlloyDB.Query> queries) implements Vectors.Search {}
 
   public record NeighborsResponse(List<Vectors.Neighbors> nearestNeighbors)
       implements Vectors.SearchResponse {}
