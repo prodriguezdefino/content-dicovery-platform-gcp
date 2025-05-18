@@ -198,7 +198,7 @@ variable "embeddings_models" {
 variable "vector_storages" {
   description = "A list of storage engines in use for embeddings vector searches."
   type        = set(string)
-  default     = ["vector_search"]
+  default     = ["vector_search", "alloydb"]
 }
 
 variable "chunkers" {
