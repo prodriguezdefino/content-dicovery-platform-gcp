@@ -23,9 +23,9 @@ import java.util.concurrent.CompletableFuture;
 /** */
 public interface Chunks {
 
-  sealed interface ChunkRequest permits Gemini.ChunkRequest {}
+  sealed interface ChunkRequest permits Gemini.ChunkRequest, LangChainChunks.LangChainRecursiveCharacterSplitterRequest {}
 
-  sealed interface ChunkResponse permits Gemini.ChunkResponse {
+  sealed interface ChunkResponse permits Gemini.ChunkResponse, LangChainChunks.LangChainChunkResponse {
     List<String> chunks();
   }
 
@@ -33,6 +33,7 @@ public interface Chunks {
       ChunkRequest request) {
     return switch (request) {
       case Gemini.ChunkRequest geminiRequest -> Gemini.extractChunks(geminiRequest);
+      case LangChainChunks.LangChainRecursiveCharacterSplitterRequest langChainRequest -> LangChainChunks.extractChunks(langChainRequest);
     };
   }
 }
