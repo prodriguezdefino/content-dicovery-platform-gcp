@@ -47,6 +47,8 @@ public class ChunksRequests {
       case JPEG, JPEG_LINK, PNG, PNG_LINK, WEBP, WEBP_LINK ->
           new Gemini.ImageChunkRequest(configurationEntry, dataToChunk, type);
       case TEXT -> new Gemini.TextChunkRequest(configurationEntry, dataToChunk);
+      case VIDEO, VIDEO_LINK ->
+          new Gemini.VideoChunkRequest(configurationEntry, dataToChunk, type);
       default -> throw new IllegalArgumentException("Type is not supported: " + type);
     };
   }
