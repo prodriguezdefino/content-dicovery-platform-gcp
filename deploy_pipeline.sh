@@ -59,7 +59,13 @@ LAUNCH_PARAMS=" \
  --vectorConfiguration=$VECTOR_CONFIG \
  --chunkerConfiguration=$CHUNKER_CONFIG \
  --serviceAccount=$DF_SA \
- --usePublicIps=false "
+ --usePublicIps=false \
+ --alloyIpAddress=$ALLOY_IP_ADDRESS \
+ --alloyDatabaseName=$ALLOY_DB_NAME \
+ --alloySchema=$ALLOY_SCHEMA \
+ --alloyTableName=$ALLOY_TABLE_NAME \
+ --alloyUser=$ALLOY_USER \
+ --alloyPass=$ALLOY_PASS "
 
 if (( $# == 4 ))
 then

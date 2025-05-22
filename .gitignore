@@ -35,3 +35,7 @@ application.properties.local
 
 nbproject
 .DS_Store
+
+
+# IntelliJ IDEA Project Files
+.idea/

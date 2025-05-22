@@ -26,11 +26,20 @@ public class GCPEnvironment {
   public record VectorSearchConfig(
       String indexDomain, String indexPath, String indexId, String deploymentId) {}
 
+  public record AlloyDBConfig(
+      String ipAddressDB,
+      String databaseName,
+      String user,
+      String password,
+      String schema,
+      String table) {}
+
   public record Config(
       String project,
       String region,
       Supplier<String> serviceAccountEmailSupplier,
-      VectorSearchConfig vectorSearchConfig) {}
+      VectorSearchConfig vectorSearchConfig,
+      AlloyDBConfig alloyDBConfig) {}
 
   private final Config config;
 

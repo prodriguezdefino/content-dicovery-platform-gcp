@@ -21,6 +21,12 @@ SECRET_SERVICE_CONFIG=$(echo $TF_JSON_OUTPUT | jq .secret_service_configuration.
 EMBEDDINGS_CONFIG=$(echo $TF_JSON_OUTPUT | jq .embeddings_models.value | tr -d '"')
 VECTOR_CONFIG=$(echo $TF_JSON_OUTPUT | jq .vector_storages.value | tr -d '"')
 CHUNKER_CONFIG=$(echo $TF_JSON_OUTPUT | jq .chunkers.value | tr -d '"')
+ALLOY_IP_ADDRESS=$(echo $TF_JSON_OUTPUT | jq .alloydb_instance_ip_address.value | tr -d '"')
+ALLOY_DB_NAME=$(echo $TF_JSON_OUTPUT | jq .alloydb_database_name.value | tr -d '"')
+ALLOY_SCHEMA=$(echo $TF_JSON_OUTPUT | jq .alloydb_schema.value | tr -d '"')
+ALLOY_TABLE_NAME=$(echo $TF_JSON_OUTPUT | jq .alloy_table_name.value | tr -d '"')
+ALLOY_USER=$(echo $TF_JSON_OUTPUT | jq .alloy_user.value | tr -d '"')
+ALLOY_PASS=$(echo $TF_JSON_OUTPUT | jq .alloy_pass.value | tr -d '"')
 
 echo " "
 echo "******************************************************************************************************************************************************"
