@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2025 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.pso.rag.vector;
 
 import com.google.cloud.pso.rag.common.GCPEnvironment;
@@ -11,9 +26,9 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static com.google.cloud.pso.rag.common.JDBCHelper.executeSQLStmtAsync;
+import static com.google.cloud.pso.rag.common.JDBCHelper.pGvectorToListDouble;
 
 public class AlloyDB {
 
@@ -55,7 +70,7 @@ public class AlloyDB {
             + "    all_neighbors_w_distance\n"
             + ")\n"
             + "SELECT \n"
-            + "  internalId, queryVectorId, query_embedding, \n"
+            + "  internalId, queryVectorId, \n"
             + "  neighborId, neighborEmbedding, distance\n"
             + "FROM\n"
             + "  vectors_with_distance\n"
@@ -108,12 +123,10 @@ public class AlloyDB {
 
   public record Query(Vectors.Datapoint datapoint, Integer neighborCount) {}
 
-  record NNSearchSQLResultRow(
-      Integer internalId,
-      String queryVectorId,
-      String neighborId,
-      PGvector neighborEmbedding,
-      Double distance) {}
+  record NNSearchSQLResultCompID(Integer internalId, String queryVectorId) {}
+  ;
+
+  record NNSearchResultRow(NNSearchSQLResultCompID compID, Vectors.Neighbor neighbor) {}
   ;
 
   /*
@@ -142,68 +155,44 @@ public class AlloyDB {
   }
 
   /*
-  Nearest neighbor search helper.
+  Nearest neighbor search helpers.
   */
-  static Result<Stream<NNSearchSQLResultRow>, Exception> StreamSearchResultSet(
-      ResultSet resultSet) {
-    try {
-      return Result.success(
-          JDBCHelper.streamResultSet(
-              resultSet,
-              rs -> {
-                int internalId = rs.getInt("internalId");
-                String queryVectorId = rs.getString("queryVectorId");
-                String neighborId = rs.getString("neighborId");
-                PGvector neighborEmbedding = (PGvector) resultSet.getObject("neighborEmbedding");
-                Double distance = rs.getDouble("distance");
-                return new NNSearchSQLResultRow(
-                    internalId, queryVectorId, neighborId, neighborEmbedding, distance);
-              }));
-    } catch (SQLException e) {
-      return Result.failure(e);
-    }
-  }
-
-  static void addResultRowToMap(
-      Map<Integer, Vectors.Neighbors> integerNeighborsMap,
-      NNSearchSQLResultRow nnSearchSQLResultRow) {
+  static NNSearchResultRow nnSearchResultRowFromResultSet(ResultSet rs) throws SQLException {
+    int internalId = rs.getInt("internalId");
+    String queryVectorId = rs.getString("queryVectorId");
+    NNSearchSQLResultCompID compID = new NNSearchSQLResultCompID(internalId, queryVectorId);
+    String neighborId = rs.getString("neighborId");
+    PGvector neighborEmbedding = (PGvector) rs.getObject("neighborEmbedding");
+    Double distance = rs.getDouble("distance");
     Vectors.Datapoint datapoint =
-        new Vectors.Datapoint(
-            nnSearchSQLResultRow.neighborId,
-            JDBCHelper.pGvectorToListDouble(nnSearchSQLResultRow.neighborEmbedding));
-    Vectors.Neighbor neighbor = new Vectors.Neighbor(nnSearchSQLResultRow.distance, datapoint);
-
-    integerNeighborsMap
-        .computeIfAbsent(
-            nnSearchSQLResultRow.internalId,
-            k -> new Vectors.Neighbors(nnSearchSQLResultRow.queryVectorId, new ArrayList<>()))
-        .neighbors()
-        .add(neighbor);
+        new Vectors.Datapoint(neighborId, pGvectorToListDouble(neighborEmbedding));
+    Vectors.Neighbor neighbor = new Vectors.Neighbor(distance, datapoint);
+    return new NNSearchResultRow(compID, neighbor);
   }
 
   static Result<NeighborsResponse, ErrorResponse> neighborsResponseFromResultSet(
       ResultSet resultSet) {
     /*
      * result from DB has <internalId, queryVectorId, neighborId, neighborEmbedding, distance>
-     * this has to be mapped to <<queryVectorId,<neighborId,neighborEmbedding>[]>, distance>[]
+     * this has to be mapped to <vectorQueryId,<distance, neighborId, neighborEmbedding>[]>[]
      * respecting the order of the queries in the request
      */
-    Map<Integer, Vectors.Neighbors> internalIdToNeighborsMap = new LinkedHashMap<>();
-    Result<Stream<NNSearchSQLResultRow>, Exception> nnSearchSQLResultStream =
-        StreamSearchResultSet(resultSet);
-
-    return switch (nnSearchSQLResultStream) {
-      case Result.Failure<?, Exception>(var error) ->
-          Result.failure("Errors occurred while parsing search results", error);
-      case Success<Stream<NNSearchSQLResultRow>, ?>(var resultSetStream) -> {
-        resultSetStream.forEach(
-            nnSearchSQLResultRow -> {
-              addResultRowToMap(internalIdToNeighborsMap, nnSearchSQLResultRow);
-            });
-        yield Result.success(
-            new NeighborsResponse(new ArrayList<>(internalIdToNeighborsMap.values())));
-      }
-    };
+    try {
+      return Result.success(
+          new NeighborsResponse(
+              JDBCHelper.streamResultSet(resultSet, AlloyDB::nnSearchResultRowFromResultSet)
+                  .collect(Collectors.groupingBy(NNSearchResultRow::compID))
+                  .entrySet()
+                  .stream()
+                  .map(
+                      entry ->
+                          new Vectors.Neighbors(
+                              entry.getKey().queryVectorId,
+                              entry.getValue().stream().map(NNSearchResultRow::neighbor).toList()))
+                  .toList()));
+    } catch (SQLException e) {
+      return Result.failure("Errors occurred while parsing search results", e);
+    }
   }
 
   static Result<CompletableFuture<ResultSet>, Exception> executeInternal(Vectors.Request request) {

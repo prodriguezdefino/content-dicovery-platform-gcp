@@ -62,11 +62,6 @@ public class VectorRequests {
 
   public static Vectors.Search find(
       String configurationEntry, List<Vector> vectors, Integer quantity) {
-    var queries = vectors.stream()
-            .map(
-                vector ->
-                            new VectorSearch.Query(new Vectors.Datapoint(vector.values()), quantity))
-            .toList();
     return switch (configurationEntry) {
       case "vector_search" ->
           new VectorSearch.SearchRequest(
