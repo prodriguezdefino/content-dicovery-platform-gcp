@@ -17,16 +17,13 @@ package com.google.cloud.pso.rag.common;
 
 import com.pgvector.PGvector;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -35,15 +32,63 @@ import java.util.stream.StreamSupport;
 public class JDBCHelper {
   private static final ExecutorService databaseExecutor = Executors.newFixedThreadPool(1);
 
-  public static CompletableFuture<ResultSet> executeSQLStmtAsync(
-      String sql, String jdbcUrl, String user, String password) {
+  public static CompletableFuture<ResultSet> executeBatchPstmtAsync(
+      String jdbcUrl,
+      String user,
+      String password,
+      String sql,
+      Consumer<PreparedStatement> paramSetter) {
+    return executePstmtAsync(
+        jdbcUrl,
+        user,
+        password,
+        sql,
+        paramSetter,
+        pstmt -> {
+          try {
+            pstmt.executeBatch();
+          } catch (SQLException e) {
+            throw new RuntimeException(e);
+          }
+        });
+  }
+
+  public static CompletableFuture<ResultSet> executeSinglePstmtAsync(
+      String jdbcUrl,
+      String user,
+      String password,
+      String sql,
+      Consumer<PreparedStatement> paramSetter) {
+    return executePstmtAsync(
+        jdbcUrl,
+        user,
+        password,
+        sql,
+        paramSetter,
+        pstmt -> {
+          try {
+            pstmt.execute();
+          } catch (SQLException e) {
+            throw new RuntimeException(e);
+          }
+        });
+  }
+
+  public static CompletableFuture<ResultSet> executePstmtAsync(
+      String jdbcUrl,
+      String user,
+      String password,
+      String sql,
+      Consumer<PreparedStatement> paramSetter,
+      Consumer<PreparedStatement> pstmtExecutor) {
     return CompletableFuture.supplyAsync(
         () -> {
-          // JDBC operations happen in a thread from databaseExecutor
-          try (Connection connection = DriverManager.getConnection(jdbcUrl, user, password);
-              Statement stmt = connection.createStatement()) {
-            stmt.execute(sql);
-            return stmt.getResultSet();
+          try (Connection connection = DriverManager.getConnection(jdbcUrl, user, password); ) {
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            paramSetter.accept(pstmt);
+            pstmtExecutor.accept(pstmt);
+            return pstmt.getResultSet();
+
           } catch (SQLException e) {
             throw new RuntimeException("Database error during query: " + e.getMessage(), e);
           }

@@ -20,21 +20,21 @@ import com.google.cloud.pso.rag.common.JDBCHelper;
 import com.google.cloud.pso.rag.common.Result;
 import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.pgvector.PGvector;
-import com.google.cloud.pso.rag.common.Result.Success;
+
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.google.cloud.pso.rag.common.JDBCHelper.executeSQLStmtAsync;
-import static com.google.cloud.pso.rag.common.JDBCHelper.pGvectorToListDouble;
+import static com.google.cloud.pso.rag.common.JDBCHelper.*;
 
 public class AlloyDB {
 
   private AlloyDB() {}
 
-  static String searchSQLStatement(SearchRequest request) {
+  static PreparedStmtParams searchPstmtParams(SearchRequest request) {
     var alloyDBConfig = GCPEnvironment.config().alloyDBConfig();
     String queriesToSearchForStr =
         IntStream.range(0, request.queries().size())
@@ -48,63 +48,82 @@ public class AlloyDB {
                         request.queries().get(i).neighborCount()))
             .collect(Collectors.joining(" UNION ALL\n"));
 
-    return String.format(
-        "WITH query_vectors AS (\n"
-            + " %s "
-            + " ), all_neighbors_w_distance as (\n"
-            + "  SELECT \n"
-            + "    t1.internalId, t1.id queryVectorId, \n"
-            + "    t1.embedding query_embedding, t2.id neighborId, \n"
-            + "    t2.embedding neighborEmbedding, t1.max_nn,\n"
-            + "    t1.embedding <=> t2.embedding distance\n"
-            + "  FROM \n"
-            + "    query_vectors t1\n"
-            + "  CROSS JOIN\n"
-            + "    %s.%s t2\n"
-            + "), vectors_with_distance AS (\n"
-            + "  SELECT \n"
-            + "    internalId, queryVectorId, query_embedding, \n"
-            + "    neighborId, neighborEmbedding, distance, max_nn,\n"
-            + "    row_number() OVER(PARTITION BY internalId ORDER BY distance) rn\n"
-            + "  FROM \n"
-            + "    all_neighbors_w_distance\n"
-            + ")\n"
-            + "SELECT \n"
-            + "  internalId, queryVectorId, \n"
-            + "  neighborId, neighborEmbedding, distance\n"
-            + "FROM\n"
-            + "  vectors_with_distance\n"
-            + "WHERE \n"
-            + "  rn <= max_nn\n"
-            + "ORDER BY\n"
-            + "  internalId asc",
-        queriesToSearchForStr, alloyDBConfig.schema(), alloyDBConfig.table());
+    String searchSql =
+        String.format(
+            "WITH query_vectors AS (\n"
+                + " %s "
+                + " ), all_neighbors_w_distance as (\n"
+                + "  SELECT \n"
+                + "    t1.internalId, t1.id queryVectorId, \n"
+                + "    t1.embedding query_embedding, t2.id neighborId, \n"
+                + "    t2.embedding neighborEmbedding, t1.max_nn,\n"
+                + "    t1.embedding <=> t2.embedding distance\n"
+                + "  FROM \n"
+                + "    query_vectors t1\n"
+                + "  CROSS JOIN\n"
+                + "    %s.%s t2\n"
+                + "), vectors_with_distance AS (\n"
+                + "  SELECT \n"
+                + "    internalId, queryVectorId, query_embedding, \n"
+                + "    neighborId, neighborEmbedding, distance, max_nn,\n"
+                + "    row_number() OVER(PARTITION BY internalId ORDER BY distance) rn\n"
+                + "  FROM \n"
+                + "    all_neighbors_w_distance\n"
+                + ")\n"
+                + "SELECT \n"
+                + "  internalId, queryVectorId, \n"
+                + "  neighborId, neighborEmbedding, distance\n"
+                + "FROM\n"
+                + "  vectors_with_distance\n"
+                + "WHERE \n"
+                + "  rn <= max_nn\n"
+                + "ORDER BY\n"
+                + "  internalId asc",
+            queriesToSearchForStr, alloyDBConfig.schema(), alloyDBConfig.table());
+    return new PreparedStmtParams(searchSql, pstmt -> {});
   }
 
-  static String upsertSQLStatement(UpsertRequest request) {
+  static PreparedStmtParams upsertPstmtParams(UpsertRequest request) {
     var alloyDBConfig = GCPEnvironment.config().alloyDBConfig();
-    String recordsToUpsert =
-        request.datapoints.stream()
-            .map(
-                datapoint ->
-                    String.format(
-                        "('%s' ,('%s'))", datapoint.datapointId(), datapoint.featureVector()))
-            .collect(Collectors.joining(","));
-    return String.format(
-        "INSERT INTO %s.%s (id, embedding) VALUES %s ON CONFLICT "
-            + "(id) DO UPDATE SET embedding = EXCLUDED.embedding; ",
-        alloyDBConfig.schema(), alloyDBConfig.table(), recordsToUpsert);
+    String upsertSql =
+        String.format(
+            "INSERT INTO %s.%s (id, embedding) VALUES (? ,CAST(? as vector)) ON CONFLICT "
+                + "(id) DO UPDATE SET embedding = EXCLUDED.embedding; ",
+            alloyDBConfig.schema(), alloyDBConfig.table());
+
+    return new PreparedStmtParams(
+        upsertSql,
+        pstmt -> {
+          request
+              .datapoints()
+              .forEach(
+                  datapoint -> {
+                    try {
+                      pstmt.setString(1, datapoint.datapointId());
+                      pstmt.setString(2, datapoint.featureVector().toString());
+                      pstmt.addBatch();
+                    } catch (SQLException e) {
+                      throw new RuntimeException(e);
+                    }
+                  });
+        });
   }
 
-  static String removeSQLStatement(RemoveRequest request) {
+  static PreparedStmtParams removePstmtParams(RemoveRequest request) {
     var alloyDBConfig = GCPEnvironment.config().alloyDBConfig();
-    return String.format(
-        "DELETE FROM %s.%s WHERE id in (%s);",
-        alloyDBConfig.schema(),
-        alloyDBConfig.table(),
-        request.datapointIds.stream()
-            .map(id -> String.format("'%s'", id))
-            .collect(Collectors.joining(",")));
+    String removeSql =
+        String.format(
+            "DELETE FROM %s.%s WHERE id = ANY(?);", alloyDBConfig.schema(), alloyDBConfig.table());
+    return new PreparedStmtParams(
+        removeSql,
+        ptsmt -> {
+          try {
+            ptsmt.setArray(
+                1, ptsmt.getConnection().createArrayOf("TEXT", request.datapointIds.toArray()));
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   static String alloyJDBCUrl() {
@@ -113,10 +132,14 @@ public class AlloyDB {
         "jdbc:postgresql://%s:5432/%s", alloyDBConfig.ipAddressDB(), alloyDBConfig.databaseName());
   }
 
+  public record PreparedStmtParams(
+      String sqlString, Consumer<PreparedStatement> pstmtParamSetter) {}
+  ;
+
   /*
   Nearest neighbor search types.
   */
-  public record SearchRequest(List<AlloyDB.Query> queries) implements Vectors.Search {}
+  public record SearchRequest(List<Query> queries) implements Vectors.Search {}
 
   public record NeighborsResponse(List<Vectors.Neighbors> nearestNeighbors)
       implements Vectors.SearchResponse {}
@@ -143,11 +166,11 @@ public class AlloyDB {
 
   public record RemoveResponse() implements Vectors.DeleteResponse {}
 
-  static String buildQuery(Vectors.Request request) {
+  static PreparedStmtParams getPstmtParams(Vectors.Request request) {
     return switch (request) {
-      case SearchRequest searchRequest -> searchSQLStatement(searchRequest);
-      case UpsertRequest upsertRequest -> upsertSQLStatement(upsertRequest);
-      case RemoveRequest removeRequest -> removeSQLStatement(removeRequest);
+      case SearchRequest searchRequest -> searchPstmtParams(searchRequest);
+      case UpsertRequest upsertRequest -> upsertPstmtParams(upsertRequest);
+      case RemoveRequest removeRequest -> removePstmtParams(removeRequest);
       default ->
           throw new IllegalStateException(
               "Request type not implemented for VectorSearch: " + request);
@@ -180,7 +203,7 @@ public class AlloyDB {
     try {
       return Result.success(
           new NeighborsResponse(
-              JDBCHelper.streamResultSet(resultSet, AlloyDB::nnSearchResultRowFromResultSet)
+              streamResultSet(resultSet, AlloyDB::nnSearchResultRowFromResultSet)
                   .collect(Collectors.groupingBy(NNSearchResultRow::compID))
                   .entrySet()
                   .stream()
@@ -196,12 +219,41 @@ public class AlloyDB {
   }
 
   static Result<CompletableFuture<ResultSet>, Exception> executeInternal(Vectors.Request request) {
-    String sql = buildQuery(request);
+    PreparedStmtParams pstmtParams = getPstmtParams(request);
     String jdbcUrl = alloyJDBCUrl();
     var alloyDBConfig = GCPEnvironment.config().alloyDBConfig();
     try {
-      return Result.success(
-          executeSQLStmtAsync(sql, jdbcUrl, alloyDBConfig.user(), alloyDBConfig.password()));
+      switch (request) {
+        case SearchRequest searchRequest -> {
+          return Result.success(
+              executeSinglePstmtAsync(
+                  jdbcUrl,
+                  alloyDBConfig.user(),
+                  alloyDBConfig.password(),
+                  pstmtParams.sqlString(),
+                  pstmtParams.pstmtParamSetter()));
+        }
+        case UpsertRequest upsertRequest -> {
+          return Result.success(
+              executeBatchPstmtAsync(
+                  jdbcUrl,
+                  alloyDBConfig.user(),
+                  alloyDBConfig.password(),
+                  pstmtParams.sqlString(),
+                  pstmtParams.pstmtParamSetter()));
+        }
+        case RemoveRequest removeRequest -> {
+          return Result.success(
+              executeSinglePstmtAsync(
+                  jdbcUrl,
+                  alloyDBConfig.user(),
+                  alloyDBConfig.password(),
+                  pstmtParams.sqlString(),
+                  pstmtParams.pstmtParamSetter()));
+        }
+        default -> throw new IllegalStateException("Unexpected value: " + request);
+      }
+
     } catch (Exception e) {
       return Result.failure(e);
     }
@@ -217,7 +269,7 @@ public class AlloyDB {
                       "Errors occurred while executing search SQL statement.",
                       Optional.of(error))));
       case Result.Success<CompletableFuture<ResultSet>, ?>(var value) ->
-          value.thenApply(resultSet -> neighborsResponseFromResultSet(resultSet));
+          value.thenApply(rs -> neighborsResponseFromResultSet(rs));
     };
   }
 
