@@ -16,6 +16,7 @@
 package com.google.cloud.pso.rag.common;
 
 import com.pgvector.PGvector;
+import org.postgresql.PGConnection;
 
 import java.sql.*;
 import java.util.Iterator;
@@ -32,63 +33,40 @@ import java.util.stream.StreamSupport;
 public class JDBCHelper {
   private static final ExecutorService databaseExecutor = Executors.newFixedThreadPool(1);
 
-  public static CompletableFuture<ResultSet> executeBatchPstmtAsync(
+  public static CompletableFuture<Integer> executeUpdateAsync(
       String jdbcUrl,
       String user,
       String password,
       String sql,
       Consumer<PreparedStatement> paramSetter) {
-    return executePstmtAsync(
-        jdbcUrl,
-        user,
-        password,
-        sql,
-        paramSetter,
-        pstmt -> {
-          try {
-            pstmt.executeBatch();
-          } catch (SQLException e) {
-            throw new RuntimeException(e);
-          }
-        });
-  }
-
-  public static CompletableFuture<ResultSet> executeSinglePstmtAsync(
-      String jdbcUrl,
-      String user,
-      String password,
-      String sql,
-      Consumer<PreparedStatement> paramSetter) {
-    return executePstmtAsync(
-        jdbcUrl,
-        user,
-        password,
-        sql,
-        paramSetter,
-        pstmt -> {
-          try {
-            pstmt.execute();
-          } catch (SQLException e) {
-            throw new RuntimeException(e);
-          }
-        });
-  }
-
-  public static CompletableFuture<ResultSet> executePstmtAsync(
-      String jdbcUrl,
-      String user,
-      String password,
-      String sql,
-      Consumer<PreparedStatement> paramSetter,
-      Consumer<PreparedStatement> pstmtExecutor) {
     return CompletableFuture.supplyAsync(
         () -> {
           try (Connection connection = DriverManager.getConnection(jdbcUrl, user, password); ) {
             PreparedStatement pstmt = connection.prepareStatement(sql);
             paramSetter.accept(pstmt);
-            pstmtExecutor.accept(pstmt);
-            return pstmt.getResultSet();
+            ;
+            return pstmt.executeUpdate();
+          } catch (SQLException e) {
+            throw new RuntimeException("Database error during query: " + e.getMessage(), e);
+          }
+        },
+        databaseExecutor);
+  }
 
+  public static CompletableFuture<ResultSet> executeQueryAsync(
+      String jdbcUrl,
+      String user,
+      String password,
+      String sql,
+      Consumer<PreparedStatement> paramSetter) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            Connection connection = DriverManager.getConnection(jdbcUrl, user, password);
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            paramSetter.accept(pstmt);
+            pstmt.execute();
+            return pstmt.getResultSet();
           } catch (SQLException e) {
             throw new RuntimeException("Database error during query: " + e.getMessage(), e);
           }
@@ -133,6 +111,10 @@ public class JDBCHelper {
             () -> {
               try {
                 rs.close();
+                Statement stmt = rs.getStatement();
+                Connection conn = stmt.getConnection();
+                stmt.close();
+                conn.close();
               } catch (SQLException e) {
                 throw new RuntimeException(e);
               }

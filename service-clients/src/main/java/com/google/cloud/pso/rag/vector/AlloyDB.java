@@ -20,6 +20,7 @@ import com.google.cloud.pso.rag.common.JDBCHelper;
 import com.google.cloud.pso.rag.common.Result;
 import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.pgvector.PGvector;
+import org.postgresql.PGConnection;
 
 import java.sql.*;
 import java.util.*;
@@ -36,17 +37,9 @@ public class AlloyDB {
 
   static PreparedStmtParams searchPstmtParams(SearchRequest request) {
     var alloyDBConfig = GCPEnvironment.config().alloyDBConfig();
+    String singleQuery = "SELECT ? AS internalId, ? AS id, ?::vector AS embedding, ? AS max_nn";
     String queriesToSearchForStr =
-        IntStream.range(0, request.queries().size())
-            .mapToObj(
-                i ->
-                    String.format(
-                        "SELECT %d internalId, '%s' id, '%s'::vector AS embedding, %d max_nn",
-                        i,
-                        request.queries().get(i).datapoint().datapointId(),
-                        request.queries().get(i).datapoint().featureVector(),
-                        request.queries().get(i).neighborCount()))
-            .collect(Collectors.joining(" UNION ALL\n"));
+        String.join(" UNION ALL\n", Collections.nCopies(request.queries().size(), singleQuery));
 
     String searchSql =
         String.format(
@@ -80,28 +73,47 @@ public class AlloyDB {
                 + "ORDER BY\n"
                 + "  internalId asc",
             queriesToSearchForStr, alloyDBConfig.schema(), alloyDBConfig.table());
-    return new PreparedStmtParams(searchSql, pstmt -> {});
+
+    return new PreparedStmtParams(
+        searchSql,
+        pstmt -> {
+          IntStream.range(0, request.queries().size())
+              .forEach(
+                  i -> {
+                    Query query = request.queries().get(i);
+                    try {
+                      pstmt.setInt(i * 4 + 1, i);
+                      pstmt.setString(i * 4 + 2, query.datapoint().datapointId());
+                      pstmt.setString(i * 4 + 3, query.datapoint().featureVector().toString());
+                      pstmt.setInt(i * 4 + 4, query.neighborCount());
+                    } catch (SQLException e) {
+                      throw new RuntimeException(e);
+                    }
+                  });
+        });
   }
 
   static PreparedStmtParams upsertPstmtParams(UpsertRequest request) {
     var alloyDBConfig = GCPEnvironment.config().alloyDBConfig();
+    String singleInsertValue = "(? ,CAST(? as vector))";
+    String insertValues =
+        String.join(",\n", Collections.nCopies(request.datapoints().size(), singleInsertValue));
     String upsertSql =
         String.format(
-            "INSERT INTO %s.%s (id, embedding) VALUES (? ,CAST(? as vector)) ON CONFLICT "
+            "INSERT INTO %s.%s (id, embedding) VALUES %s ON CONFLICT "
                 + "(id) DO UPDATE SET embedding = EXCLUDED.embedding; ",
-            alloyDBConfig.schema(), alloyDBConfig.table());
+            alloyDBConfig.schema(), alloyDBConfig.table(), insertValues);
 
     return new PreparedStmtParams(
         upsertSql,
         pstmt -> {
-          request
-              .datapoints()
+          IntStream.range(0, request.datapoints().size())
               .forEach(
-                  datapoint -> {
+                  i -> {
+                    Vectors.Datapoint datapoint = request.datapoints.get(i);
                     try {
-                      pstmt.setString(1, datapoint.datapointId());
-                      pstmt.setString(2, datapoint.featureVector().toString());
-                      pstmt.addBatch();
+                      pstmt.setString(i * 2 + 1, datapoint.datapointId());
+                      pstmt.setString(i * 2 + 2, datapoint.featureVector().toString());
                     } catch (SQLException e) {
                       throw new RuntimeException(e);
                     }
@@ -146,7 +158,7 @@ public class AlloyDB {
 
   public record Query(Vectors.Datapoint datapoint, Integer neighborCount) {}
 
-  record NNSearchSQLResultCompID(Integer internalId, String queryVectorId) {}
+  record NNSearchSQLResultCompID(int internalId, String queryVectorId) {}
   ;
 
   record NNSearchResultRow(NNSearchSQLResultCompID compID, Vectors.Neighbor neighbor) {}
@@ -181,12 +193,13 @@ public class AlloyDB {
   Nearest neighbor search helpers.
   */
   static NNSearchResultRow nnSearchResultRowFromResultSet(ResultSet rs) throws SQLException {
+    ((PGConnection) rs.getStatement().getConnection()).addDataType("vector", PGvector.class);
     int internalId = rs.getInt("internalId");
     String queryVectorId = rs.getString("queryVectorId");
     NNSearchSQLResultCompID compID = new NNSearchSQLResultCompID(internalId, queryVectorId);
     String neighborId = rs.getString("neighborId");
     PGvector neighborEmbedding = (PGvector) rs.getObject("neighborEmbedding");
-    Double distance = rs.getDouble("distance");
+    Double distance = (Double) rs.getDouble("distance");
     Vectors.Datapoint datapoint =
         new Vectors.Datapoint(neighborId, pGvectorToListDouble(neighborEmbedding));
     Vectors.Neighbor neighbor = new Vectors.Neighbor(distance, datapoint);
@@ -201,7 +214,7 @@ public class AlloyDB {
      * respecting the order of the queries in the request
      */
     try {
-      return Result.success(
+      NeighborsResponse neighborsResponse =
           new NeighborsResponse(
               streamResultSet(resultSet, AlloyDB::nnSearchResultRowFromResultSet)
                   .collect(Collectors.groupingBy(NNSearchResultRow::compID))
@@ -210,58 +223,46 @@ public class AlloyDB {
                   .map(
                       entry ->
                           new Vectors.Neighbors(
-                              entry.getKey().queryVectorId,
+                              entry.getKey().queryVectorId(),
                               entry.getValue().stream().map(NNSearchResultRow::neighbor).toList()))
-                  .toList()));
+                  .toList());
+      return Result.success(neighborsResponse);
     } catch (SQLException e) {
       return Result.failure("Errors occurred while parsing search results", e);
     }
   }
 
-  static Result<CompletableFuture<ResultSet>, Exception> executeInternal(Vectors.Request request) {
+  static Result<CompletableFuture<Integer>, Exception> executeUpdateInternal(
+      Vectors.Request request) {
     PreparedStmtParams pstmtParams = getPstmtParams(request);
     String jdbcUrl = alloyJDBCUrl();
     var alloyDBConfig = GCPEnvironment.config().alloyDBConfig();
-    try {
-      switch (request) {
-        case SearchRequest searchRequest -> {
-          return Result.success(
-              executeSinglePstmtAsync(
-                  jdbcUrl,
-                  alloyDBConfig.user(),
-                  alloyDBConfig.password(),
-                  pstmtParams.sqlString(),
-                  pstmtParams.pstmtParamSetter()));
-        }
-        case UpsertRequest upsertRequest -> {
-          return Result.success(
-              executeBatchPstmtAsync(
-                  jdbcUrl,
-                  alloyDBConfig.user(),
-                  alloyDBConfig.password(),
-                  pstmtParams.sqlString(),
-                  pstmtParams.pstmtParamSetter()));
-        }
-        case RemoveRequest removeRequest -> {
-          return Result.success(
-              executeSinglePstmtAsync(
-                  jdbcUrl,
-                  alloyDBConfig.user(),
-                  alloyDBConfig.password(),
-                  pstmtParams.sqlString(),
-                  pstmtParams.pstmtParamSetter()));
-        }
-        default -> throw new IllegalStateException("Unexpected value: " + request);
-      }
+    return Result.success(
+        executeUpdateAsync(
+            jdbcUrl,
+            alloyDBConfig.user(),
+            alloyDBConfig.password(),
+            pstmtParams.sqlString(),
+            pstmtParams.pstmtParamSetter()));
+  }
 
-    } catch (Exception e) {
-      return Result.failure(e);
-    }
+  static Result<CompletableFuture<ResultSet>, Exception> executeQueryInternal(
+      Vectors.Request request) {
+    PreparedStmtParams pstmtParams = getPstmtParams(request);
+    String jdbcUrl = alloyJDBCUrl();
+    var alloyDBConfig = GCPEnvironment.config().alloyDBConfig();
+    return Result.success(
+        executeQueryAsync(
+            jdbcUrl,
+            alloyDBConfig.user(),
+            alloyDBConfig.password(),
+            pstmtParams.sqlString(),
+            pstmtParams.pstmtParamSetter()));
   }
 
   static CompletableFuture<Result<? extends Vectors.SearchResponse, ErrorResponse>> search(
       SearchRequest request) {
-    return switch (executeInternal(request)) {
+    return switch (executeQueryInternal(request)) {
       case Result.Failure<?, Exception>(var error) ->
           CompletableFuture.completedFuture(
               Result.failure(
@@ -275,28 +276,28 @@ public class AlloyDB {
 
   static CompletableFuture<Result<? extends Vectors.StoreResponse, ErrorResponse>> store(
       UpsertRequest request) {
-    return switch (executeInternal(request)) {
+    return switch (executeUpdateInternal(request)) {
       case Result.Failure<?, Exception>(var error) ->
           CompletableFuture.completedFuture(
               Result.failure(
                   new ErrorResponse(
                       "Errors occurred while executing upsert SQL statement.",
                       Optional.of(error))));
-      case Result.Success<CompletableFuture<ResultSet>, ?>(var value) ->
+      case Result.Success<CompletableFuture<Integer>, ?>(var value) ->
           CompletableFuture.completedFuture(Result.success(new UpsertResponse()));
     };
   }
 
   static CompletableFuture<Result<? extends Vectors.DeleteResponse, ErrorResponse>> remove(
       RemoveRequest request) {
-    return switch (executeInternal(request)) {
+    return switch (executeUpdateInternal(request)) {
       case Result.Failure<?, Exception>(var error) ->
           CompletableFuture.completedFuture(
               Result.failure(
                   new ErrorResponse(
                       "Errors occurred while executing delete SQL statement.",
                       Optional.of(error))));
-      case Result.Success<CompletableFuture<ResultSet>, ?>(var value) ->
+      case Result.Success<CompletableFuture<Integer>, ?>(var value) ->
           CompletableFuture.completedFuture(Result.success(new RemoveResponse()));
     };
   }
