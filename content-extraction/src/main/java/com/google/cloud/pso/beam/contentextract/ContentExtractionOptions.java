@@ -94,4 +94,35 @@ public interface ContentExtractionOptions extends DataflowPipelineOptions {
   String getChunkerConfiguration();
 
   void setChunkerConfiguration(String value);
+
+  @Description("The configuration for AlloyDB ip address.")
+  String getAlloyIpAddress();
+
+  void setAlloyIpAddress(String value);
+
+  @Description("The configuration for AlloyDB database name.")
+  String getAlloyDatabaseName();
+
+  void setAlloyDatabaseName(String value);
+
+  @Description("The configuration for AlloyDB Schema.")
+  String getAlloySchema();
+
+  void setAlloySchema(String value);
+
+  @Description("The configuration for AlloyDB table name .")
+  String getAlloyTableName();
+
+  void setAlloyTableName(String value);
+
+  @Description("The configuration for AlloyDb username.")
+  String getAlloyUser();
+
+  void setAlloyUser(String value);
+
+  @Description("The configuration for AlloyDB password.")
+  String getAlloyPass();
+
+  void setAlloyPass(String value);
+
 }

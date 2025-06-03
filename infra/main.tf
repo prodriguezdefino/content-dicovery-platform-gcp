@@ -112,6 +112,12 @@ resource "google_project_service" "policytroubleshooter_service" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "alloydb_api" {
+  project                    = var.project
+  service                    = "alloydb.googleapis.com"
+  disable_on_destroy         = false
+}
+
 resource "google_service_account" "dataflow_runner_sa" {
   project    = var.project
   account_id = "${var.run_name}-sa"
@@ -192,7 +198,7 @@ variable "embeddings_models" {
 variable "vector_storages" {
   description = "A list of storage engines in use for embeddings vector searches."
   type        = set(string)
-  default     = ["vector_search"]
+  default     = ["vector_search", "alloydb"]
 }
 
 variable "chunkers" {
@@ -205,6 +211,35 @@ variable "llms" {
   description = "A list of LLM implementations to be used."
   type        = set(string)
   default     = ["gemini-2.0-flash"]
+}
+
+variable "alloy_db_name" {
+  description = "The name of the database to be used within the AlloyDB instance."
+  type        = string
+  default     = "postgres"
+}
+
+variable "alloy_schema_name" {
+  description = "The name of the schme to be used within the AlloyDB instance."
+  type        = string
+  default     = "public"
+}
+
+variable "alloy_table_name" {
+  description = "The name of the table to be used within the AlloyDB instance."
+  type        = string
+  default     = "rag_embeddings"
+}
+
+variable "alloy_user" {
+  description = "The name of the user to be used within the AlloyDB instance."
+  type        = string
+  default     = "postgres"
+}
+
+variable "alloy_password" {
+  description = "The password to be used within the AlloyDB instance."
+  type        = string
 }
 
 output "df_sa" {
@@ -253,4 +288,35 @@ output "vector_storages" {
 
 output "chunkers" {
   value = one(var.chunkers)
+}
+
+output "alloydb_instance_ip_address" {
+  description = "The private IP address of the AlloyDB primary instance."
+  value       = google_alloydb_instance.primary_instance.ip_address
+}
+
+output "alloydb_database_name" {
+  description = "The name of the alloydb database created."
+  value       = var.alloy_db_name
+}
+
+output "alloydb_schema" {
+  description = "The name of the alloydb schema created."
+  value       = var.alloy_schema_name
+}
+
+output "alloy_table_name" {
+  description = "The name of the alloydb table created."
+  value       = var.alloy_table_name
+}
+
+output "alloy_user" {
+  description = "The name of the alloydb username created."
+  value       = var.alloy_user
+}
+
+output "alloy_pass" {
+  description = "The initial password for the 'postgres' user (sensitive)."
+  value       = var.alloy_password
+#   sensitive   = true
 }

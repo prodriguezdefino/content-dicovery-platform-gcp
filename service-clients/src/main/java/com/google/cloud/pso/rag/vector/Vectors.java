@@ -25,21 +25,21 @@ public interface Vectors {
 
   sealed interface Request permits Search, Store, Delete {}
 
-  sealed interface Search extends Request permits VectorSearch.SearchRequest {}
+  sealed interface Search extends Request permits AlloyDB.SearchRequest, VectorSearch.SearchRequest {}
 
-  sealed interface Store extends Request permits VectorSearch.UpsertRequest {}
+  sealed interface Store extends Request permits AlloyDB.UpsertRequest, VectorSearch.UpsertRequest {}
 
-  sealed interface Delete extends Request permits VectorSearch.RemoveRequest {}
+  sealed interface Delete extends Request permits AlloyDB.RemoveRequest, VectorSearch.RemoveRequest {}
 
   sealed interface Response permits StoreResponse, SearchResponse, DeleteResponse {}
 
-  sealed interface StoreResponse extends Response permits VectorSearch.UpsertResponse {}
+  sealed interface StoreResponse extends Response permits AlloyDB.UpsertResponse, VectorSearch.UpsertResponse {}
 
-  sealed interface SearchResponse extends Response permits VectorSearch.NeighborsResponse {
+  sealed interface SearchResponse extends Response permits AlloyDB.NeighborsResponse, VectorSearch.NeighborsResponse {
     List<Neighbors> nearestNeighbors();
   }
 
-  sealed interface DeleteResponse extends Response permits VectorSearch.RemoveResponse {}
+  sealed interface DeleteResponse extends Response permits AlloyDB.RemoveResponse, VectorSearch.RemoveResponse {}
 
   record Datapoint(String datapointId, List<Double> featureVector) {
     public Datapoint(List<Double> values) {
@@ -55,6 +55,7 @@ public interface Vectors {
       Search request) {
     return switch (request) {
       case VectorSearch.SearchRequest vectorSearch -> VectorSearch.search(vectorSearch);
+      case AlloyDB.SearchRequest alloyDBSearch -> AlloyDB.search(alloyDBSearch);
     };
   }
 
@@ -62,6 +63,7 @@ public interface Vectors {
       Store request) {
     return switch (request) {
       case VectorSearch.UpsertRequest storeVector -> VectorSearch.store(storeVector);
+      case AlloyDB.UpsertRequest alloyDBSearch -> AlloyDB.store(alloyDBSearch);
     };
   }
 
@@ -69,6 +71,7 @@ public interface Vectors {
       Delete request) {
     return switch (request) {
       case VectorSearch.RemoveRequest removeVectors -> VectorSearch.remove(removeVectors);
+      case AlloyDB.RemoveRequest alloyVectors -> AlloyDB.remove(alloyVectors);
     };
   }
 }
