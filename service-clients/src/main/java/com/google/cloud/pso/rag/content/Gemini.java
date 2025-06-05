@@ -67,6 +67,12 @@ public class Gemini {
       Then, use that description and divide it into chunks which will be used to generate text embeddings.
       """
           + CHUNKING_INSTRUCTIONS;
+  static final String VIDEO_CHUNKING_PROMPT =
+      """
+      Analyze the provided video, generate a detailed textual description of its content, including summaries of key scenes and a transcription of spoken audio if available.
+      Then, use this extracted text and divide it into chunks which will be used to generate text embeddings.
+      """
+          + CHUNKING_INSTRUCTIONS;
 
   private static final Content SYSTEM_INSTRUCTION =
       Content.fromParts(
@@ -75,7 +81,7 @@ public class Gemini {
   private Gemini() {}
 
   public sealed interface ChunkRequest extends Chunks.ChunkRequest
-      permits TextChunkRequest, PDFChunkRequest, ImageChunkRequest {}
+      permits TextChunkRequest, PDFChunkRequest, ImageChunkRequest, VideoChunkRequest {}
 
   public sealed interface ChunkResponse extends Chunks.ChunkResponse permits TextChunkResponse {}
 
@@ -85,6 +91,9 @@ public class Gemini {
       implements ChunkRequest {}
 
   public record ImageChunkRequest(String model, List<String> contents, Ingestion.SupportedType type)
+      implements ChunkRequest {}
+
+  public record VideoChunkRequest(String model, List<String> contents, Ingestion.SupportedType type)
       implements ChunkRequest {}
 
   public record TextChunkResponse(List<String> chunks) implements ChunkResponse {}
@@ -97,6 +106,8 @@ public class Gemini {
       case JPEG_LINK -> Part.fromUri(content, Ingestion.SupportedType.JPEG.mimeType());
       case PNG_LINK -> Part.fromUri(content, Ingestion.SupportedType.PNG.mimeType());
       case WEBP_LINK -> Part.fromUri(content, Ingestion.SupportedType.WEBP.mimeType());
+      case VIDEO -> Part.fromUri(content, Ingestion.SupportedType.VIDEO.mimeType());
+      case VIDEO_LINK -> Part.fromUri(content, Ingestion.SupportedType.VIDEO.mimeType());
       default -> throw new IllegalArgumentException("Type not supported: " + type);
     };
   }
@@ -159,6 +170,13 @@ public class Gemini {
               Stream.concat(
                       contents.stream().map(item -> partFromType(type, item)),
                       Stream.of(Part.fromText(IMAGE_CHUNKING_PROMPT)))
+                  .toList());
+      case VideoChunkRequest(var model, var contents, var type) ->
+          internalExec(
+              model,
+              Stream.concat(
+                      contents.stream().map(item -> partFromType(type, item)),
+                      Stream.of(Part.fromText(VIDEO_CHUNKING_PROMPT)))
                   .toList());
     };
   }
