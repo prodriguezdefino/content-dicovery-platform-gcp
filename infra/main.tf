@@ -283,7 +283,7 @@ output "embeddings_models" {
 }
 
 output "vector_storages" {
-  value = one(var.vector_storages)
+  value = tolist(var.vector_storages)[0]
 }
 
 output "chunkers" {
