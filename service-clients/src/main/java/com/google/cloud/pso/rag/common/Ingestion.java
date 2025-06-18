@@ -41,7 +41,11 @@ public interface Ingestion {
     @JsonProperty("image/webp")
     WEBP("image/webp"),
     @JsonProperty("link/webp")
-    WEBP_LINK("link/webp");
+    WEBP_LINK("link/webp"),
+    @JsonProperty("video/mp4")
+    VIDEO("video/mp4"),
+    @JsonProperty("link/mp4")
+    VIDEO_LINK("link/mp4");
 
     private String value;
 
@@ -60,6 +64,7 @@ public interface Ingestion {
         case PDF -> PDF_LINK;
         case PNG -> PNG_LINK;
         case WEBP -> WEBP_LINK;
+        case VIDEO -> VIDEO_LINK;
         default ->
             throw new IllegalArgumentException(this.name() + " does not have a link version.");
       };

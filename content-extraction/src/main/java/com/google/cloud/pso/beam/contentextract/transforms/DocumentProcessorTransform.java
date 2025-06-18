@@ -289,6 +289,12 @@ public class DocumentProcessorTransform
                       context.output(rawContent, content);
                       yield Result.<Boolean, Exception>success(true);
                     }
+                    case VIDEO, VIDEO_LINK -> {
+                      var content =
+                          new Types.Content(ref.url(), List.of(ref.url()), ref.mimeType());
+                      context.output(rawContent, content);
+                      yield Result.<Boolean, Exception>success(true);
+                    }
                     default -> Result.<Boolean, Exception>failure(notSupported(ref.toString()));
                   })
           .filter(Result::failed)
