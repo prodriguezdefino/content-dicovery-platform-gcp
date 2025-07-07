@@ -15,21 +15,19 @@
  */
 package com.google.cloud.pso.rag.vector;
 
+import static com.google.cloud.pso.rag.common.JDBCHelper.*;
+
 import com.google.cloud.pso.rag.common.GCPEnvironment;
-import com.google.cloud.pso.rag.common.JDBCHelper;
 import com.google.cloud.pso.rag.common.Result;
 import com.google.cloud.pso.rag.common.Result.ErrorResponse;
 import com.pgvector.PGvector;
-import org.postgresql.PGConnection;
-
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static com.google.cloud.pso.rag.common.JDBCHelper.*;
+import org.postgresql.PGConnection;
 
 public class AlloyDB {
 

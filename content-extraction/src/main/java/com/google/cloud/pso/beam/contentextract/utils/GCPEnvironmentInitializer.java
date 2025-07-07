@@ -29,14 +29,13 @@ public class GCPEnvironmentInitializer implements JvmInitializer {
   public void beforeProcessing(PipelineOptions options) {
     var extractionOptions = options.as(ContentExtractionOptions.class);
     var alloyDBConfig =
-      new GCPEnvironment.AlloyDBConfig(
-        extractionOptions.getAlloyIpAddress(),
-        extractionOptions.getAlloyDatabaseName(),
-        extractionOptions.getAlloyUser(),
-        extractionOptions.getAlloyPass(),
-        extractionOptions.getAlloySchema(),
-        extractionOptions.getAlloyTableName()
-    );
+        new GCPEnvironment.AlloyDBConfig(
+            extractionOptions.getAlloyIpAddress(),
+            extractionOptions.getAlloyDatabaseName(),
+            extractionOptions.getAlloyUser(),
+            extractionOptions.getAlloyPass(),
+            extractionOptions.getAlloySchema(),
+            extractionOptions.getAlloyTableName());
     var config =
         new GCPEnvironment.Config(
             extractionOptions.getProject(),
@@ -47,7 +46,7 @@ public class GCPEnvironmentInitializer implements JvmInitializer {
                 extractionOptions.getMatchingEngineIndexEndpointId(),
                 extractionOptions.getMatchingEngineIndexId(),
                 extractionOptions.getMatchingEngineIndexEndpointDeploymentName()),
-                alloyDBConfig);
+            alloyDBConfig);
     GCPEnvironment.trySetup(config);
   }
 }

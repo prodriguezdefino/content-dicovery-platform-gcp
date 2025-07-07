@@ -1,0 +1,54 @@
+logging:
+    level:
+        org.springframework.ai: INFO
+# Spring Boot Actuator - GCP uses /health
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info
+    endpoint:
+        health:
+            show-details: always
+# Server port (useful for local testing, GCP Cloud Functions can use this as well)
+server:
+    port: 8080
+spring:
+    codec:
+        max-in-memory-size: 1MB
+    threads:
+        virtual:
+            enabled: true
+    # web clients that interact will LLM needs more patience
+    http:
+        client:
+            reactive:
+              read-timeout: 20s
+              connect-timeout: 5s
+              response-timeout: 120s
+    # Claude API Configuration
+    ai:
+        retry:
+            max-attempts: 5
+        vertex:
+            ai:
+                gemini:
+                    project-id: ${GCP_PROJECT_ID}
+                    location: us-central1
+                    chat:
+                        options:
+                            model: gemini-2.5-pro-preview-03-25
+                            temperature: 1.2
+        mcp:
+            client:
+                enabled: false
+                initialized: false
+                request-timeout: 30s
+                name: rag-tools
+                toolcallback:
+                    enabled: false
+                sse:
+                    connections:
+                        gcptoolbox:
+                            url: ${MCP_SERVER_URL}:8081/
+                            sse-endpoint: /sse

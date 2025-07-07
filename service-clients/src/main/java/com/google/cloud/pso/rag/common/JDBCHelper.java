@@ -16,8 +16,6 @@
 package com.google.cloud.pso.rag.common;
 
 import com.pgvector.PGvector;
-import org.postgresql.PGConnection;
-
 import java.sql.*;
 import java.util.Iterator;
 import java.util.List;

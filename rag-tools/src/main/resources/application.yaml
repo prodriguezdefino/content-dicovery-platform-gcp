@@ -1,0 +1,30 @@
+logging:
+    level:
+        org.springframework.ai: INFO
+        com.google.cloud.pso.rag.mcp.server: DEBUG
+spring:
+    threads:
+        virtual:
+            enabled: true
+    ai:
+        mcp:
+            server:
+                name: rag-tools
+                version: 1
+                type: ASYNC
+                capabilities:
+                  tool: true
+                  resource: false
+                  prompt: false
+                  completion: false
+# Server port (useful for local testing, GCP Cloud Functions can use this as well)
+server:
+    port: 8081
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info
+    endpoint:
+        health:
+            show-details: always

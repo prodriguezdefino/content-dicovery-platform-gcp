@@ -313,12 +313,19 @@
                 <artifactId>googledocs-content-extraction-pipeline</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.google.api-client</groupId>
+                <artifactId>google-api-client</artifactId>
+                <version>2.2.0</version>
+            </dependency>
         </dependencies>
+
     </dependencyManagement>
 
     <modules>
         <module>service-clients</module>
         <module>content-extraction</module>
         <module>services</module>
+        <module>rag-tools</module>
     </modules>
 </project>

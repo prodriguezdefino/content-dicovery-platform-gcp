@@ -124,5 +124,4 @@ public interface ContentExtractionOptions extends DataflowPipelineOptions {
   String getAlloyPass();
 
   void setAlloyPass(String value);
-
 }

@@ -94,7 +94,7 @@ public class VertexAi {
       @JsonProperty("output_dimensionality") Integer outputDimensionality)
       implements Parameters {}
 
-  record TextResponse(List<TextPrediction> predictions) implements Response {
+  public record TextResponse(List<TextPrediction> predictions) implements Response {
 
     @Override
     public Embeddings.ResponseMetadata metadata() {
@@ -108,9 +108,9 @@ public class VertexAi {
 
   record TextResponseMetadata(List<Stats> stats) implements ResponseMetadata {}
 
-  record TextPrediction(TextEmbeddings embeddings) {}
+  public record TextPrediction(TextEmbeddings embeddings) {}
 
-  record TextEmbeddings(Stats statistics, List<Double> values) {}
+  public record TextEmbeddings(Stats statistics, List<Double> values) {}
 
   record Stats(Boolean truncated, @JsonProperty("token_count") Integer tokenCount) {}
 

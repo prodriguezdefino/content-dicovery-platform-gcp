@@ -1,0 +1,196 @@
+/*
+ * Copyright (C) 2025 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.pso.rag.mcp.beans;
+
+import autovalue.shaded.com.google.common.collect.Lists;
+import com.google.api.gax.rpc.ApiException;
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
+import com.google.cloud.bigtable.data.v2.BigtableDataClient;
+import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
+import com.google.cloud.bigtable.data.v2.models.Query;
+import com.google.cloud.bigtable.data.v2.models.Row;
+import com.google.cloud.bigtable.data.v2.models.RowCell;
+import com.google.cloud.bigtable.data.v2.models.RowMutation;
+import com.google.cloud.pso.rag.common.Utilities;
+import com.google.protobuf.ByteString;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import org.eclipse.microprofile.metrics.MetricUnits;
+import org.eclipse.microprofile.metrics.annotation.Timed;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class BigTableService {
+
+  private static final Comparator<RowCell> ORDERED_CELL_COMPARATOR =
+      (r1, r2) -> Long.compare(r1.getTimestamp(), r2.getTimestamp());
+
+  private final String instanceName;
+  private final String contentTableName;
+  private final String queryContextTableName;
+  private final String contentColumnFamily;
+  private final String queryContextColumnFamily;
+  private final String columnQualifierContent;
+  private final String columnQualifierLink;
+  private final String columnQualifierContext;
+  private final String projectId;
+
+  private BigtableDataClient bigTableClient;
+
+  public BigTableService(ServiceTypes.BigTableConfiguration config) {
+    this.instanceName = config.instanceName();
+    this.contentTableName = config.contentTableName();
+    this.queryContextTableName = config.queryContextTableName();
+    this.contentColumnFamily = config.contentColumnFamily();
+    this.queryContextColumnFamily = config.queryContextColumnFamily();
+    this.columnQualifierContent = config.columnQualifierContent();
+    this.columnQualifierLink = config.columnQualifierLink();
+    this.columnQualifierContext = config.columnQualifierContext();
+    this.projectId = config.projectId();
+  }
+
+  @PostConstruct
+  public void init() throws IOException {
+    bigTableClient =
+        BigtableDataClient.create(
+            BigtableDataSettings.newBuilder()
+                .setInstanceId(instanceName)
+                .setProjectId(projectId)
+                .build());
+  }
+
+  static ServiceTypes.QAndA fromAppended(String appended) {
+    var qas = appended.split("___");
+    if (qas.length != 2) {
+      //            LOG.warn("will be skipping previous non valid QAndA content: " + appended);
+      return null;
+    }
+    return new ServiceTypes.QAndA(qas[0], qas[1]);
+  }
+
+  Row readRowWithRetries(String tableId, String key) {
+    return Utilities.executeOperation(
+        Utilities.buildRetriableExecutorForOperation(
+            "readRow", Lists.newArrayList(ApiException.class)),
+        () -> bigTableClient.readRow(tableId, key));
+  }
+
+  @Timed(name = "bt.retrieve.content", unit = MetricUnits.MILLISECONDS)
+  public ServiceTypes.ContentByKeyResponse queryByPrefix(String key) {
+    var row = readRowWithRetries(contentTableName, key);
+
+    return Optional.ofNullable(row)
+        .map(
+            r ->
+                new ServiceTypes.ContentByKeyResponse(
+                    key,
+                    r.getCells(contentColumnFamily, columnQualifierContent).stream()
+                        .max(ORDERED_CELL_COMPARATOR)
+                        .map(rc -> rc.getValue().toStringUtf8())
+                        .orElse(""),
+                    r.getCells(contentColumnFamily, columnQualifierLink).stream()
+                        .max(ORDERED_CELL_COMPARATOR)
+                        .map(rc -> rc.getValue().toStringUtf8())
+                        .orElse("")))
+        .orElse(ServiceTypes.ContentByKeyResponse.empty(key));
+  }
+
+  @Timed(name = "bt.retrieve.exchanges", unit = MetricUnits.MILLISECONDS)
+  public ServiceTypes.ConversationContextBySessionResponse retrieveConversationContext(
+      String session) {
+    if (session.isEmpty() || session.isBlank()) {
+      // nothing to be retrieved.
+      return new ServiceTypes.ConversationContextBySessionResponse(session, Lists.newArrayList());
+    }
+    var row = readRowWithRetries(queryContextTableName, session);
+
+    return new ServiceTypes.ConversationContextBySessionResponse(
+        session,
+        Optional.ofNullable(row)
+            .map(
+                r ->
+                    r
+                        .getCells(
+                            queryContextColumnFamily,
+                            ByteString.copyFromUtf8(columnQualifierContext))
+                        .stream()
+                        .sorted(ORDERED_CELL_COMPARATOR)
+                        .map(rc -> fromAppended(rc.getValue().toStringUtf8()))
+                        .filter(qaa -> qaa != null)
+                        .toList())
+            .orElse(Lists.newArrayList()));
+  }
+
+  @Timed(name = "bt.store.exchange", unit = MetricUnits.MILLISECONDS)
+  public void storeQueryToContext(String session, String query, String answer) {
+    if (session.isEmpty() || session.isBlank()) {
+      // nothing to be stored.
+      return;
+    }
+    RowMutation rowMutation =
+        RowMutation.create(queryContextTableName, session)
+            .setCell(
+                queryContextColumnFamily,
+                ByteString.copyFromUtf8(columnQualifierContext),
+                Instant.now().toEpochMilli() * 1000,
+                ByteString.copyFromUtf8(query + "___" + answer));
+    Utilities.executeOperation(
+        Utilities.buildRetriableExecutorForOperation(
+            "storeQueryContext", Lists.newArrayList(ApiException.class)),
+        () -> bigTableClient.mutateRow(rowMutation));
+  }
+
+  @Timed(name = "bt.delete.content", unit = MetricUnits.MILLISECONDS)
+  public void deleteRowsByKeys(List<String> rowKeys) {
+    try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceName)) {
+      // remove all the content rows with the provided keys, blocking until all of them are
+      // completed
+      rowKeys.forEach(key -> tableAdminClient.dropRowRange(contentTableName, key));
+    } catch (Exception ex) {
+      //            LOG.error("problems while removing content ids from BigTable.", ex);
+      throw new RuntimeException(ex);
+    }
+  }
+
+  @Timed(name = "bt.delete.session", unit = MetricUnits.MILLISECONDS)
+  public void removeSessionInfo(String sessionId) {
+    try (var tableAdminClient = BigtableTableAdminClient.create(projectId, instanceName)) {
+      tableAdminClient.dropRowRange(queryContextTableName, sessionId);
+    } catch (Exception ex) {
+      //            LOG.error("problems while removing session ids from BigTable.", ex);
+      throw new RuntimeException(ex);
+    }
+  }
+
+  @Timed(name = "bt.retrieve.allcontent", unit = MetricUnits.MILLISECONDS)
+  public List<String> retrieveAllContentEntries() {
+    var contentKeys = Lists.<String>newArrayList();
+    for (var row : bigTableClient.readRows(Query.create(contentTableName))) {
+      contentKeys.add(row.getKey().toStringUtf8());
+    }
+    return contentKeys;
+  }
+
+  @PreDestroy
+  public void close() {
+    bigTableClient.close();
+  }
+}

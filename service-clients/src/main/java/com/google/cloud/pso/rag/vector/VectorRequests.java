@@ -40,13 +40,13 @@ public class VectorRequests {
 
   public static Vectors.Store store(
       String configurationEntry, String idPrefix, List<Vector> vectors) {
-    var datapoints = IntStream.range(0, vectors.size())
+    var datapoints =
+        IntStream.range(0, vectors.size())
             .mapToObj(
-                    idx -> {
-                      var vector = vectors.get(idx);
-                      return new Vectors.Datapoint(
-                              vector.id().orElse(idPrefix + idx), vector.values());
-                    })
+                idx -> {
+                  var vector = vectors.get(idx);
+                  return new Vectors.Datapoint(vector.id().orElse(idPrefix + idx), vector.values());
+                })
             .toList();
 
     return switch (configurationEntry) {
@@ -74,8 +74,7 @@ public class VectorRequests {
           new AlloyDB.SearchRequest(
               vectors.stream()
                   .map(
-                      vector ->
-                          new AlloyDB.Query(new Vectors.Datapoint(vector.values()), quantity))
+                      vector -> new AlloyDB.Query(new Vectors.Datapoint(vector.values()), quantity))
                   .toList());
       default ->
           throw new IllegalArgumentException(
